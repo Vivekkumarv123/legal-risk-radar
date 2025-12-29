@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import LegalAdvisorHero from "../LegalAdvisorHero";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function LoginPage() {
 
       if (res.ok && data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
-        router.push("/pages/chat");
+        router.push("/pages/private-chat");
       } else {
         alert(data.message || "Login failed");
       }
@@ -50,7 +51,7 @@ export default function LoginPage() {
 
       if (res.ok && data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
-        router.push("/chat");
+        router.push("/pages/private-chat");
       } else {
         alert(data.message || "Google login failed");
       }
@@ -64,12 +65,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex bg-gray-50">
 
       {/* LEFT SIDE */}
-      <div className="hidden md:flex w-1/2 bg-gradient-to-br from-blue-900 to-blue-700 text-white p-12 flex-col justify-center">
-        <h1 className="text-4xl font-bold mb-6">Legal Advisor</h1>
-        <p className="text-lg mb-4">Understand legal documents easily.</p>
-        <p className="text-lg mb-4">Detect risks before signing.</p>
-        <p className="text-sm opacity-80 mt-6">⚖️ Secure | Trusted | AI Powered</p>
-      </div>
+      <LegalAdvisorHero />
 
       {/* RIGHT SIDE */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
