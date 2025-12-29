@@ -1,6 +1,6 @@
 import dbConnect from '@/lib/dbConnect';
 import jwt from 'jsonwebtoken';
-import User from '@/models/User';
+import User from '@/models/user.model.js';
 
 export async function GET(req) {
   await dbConnect();

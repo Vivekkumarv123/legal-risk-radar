@@ -1,31 +1,22 @@
-import dbConnect from '@/lib/dbConnect';
-import User from '@/models/User';
-import bcrypt from 'bcryptjs';
-import { sendEmail } from '@/utils/email.utils';
-import { generatePassword } from '@/utils/password.utils';
+import { NextResponse } from "next/server";
+// Make sure this path matches your actual file name (e.g., authController.js or auth.controller.js)
+import { authController } from "@/controllers/auth.controller.js"; 
 
 export async function POST(req) {
-  await dbConnect();
   try {
     const body = await req.json();
-    const { name, email, password } = body;
-    if (!name || !email) return Response.json({ message: 'Name and email are required' }, { status: 400 });
 
-    const exists = await User.findOne({ email: email.toLowerCase() });
-    if (exists) return Response.json({ message: 'User already exists' }, { status: 400 });
+    // ✅ FIX: Change .register() to .signup()
+    const result = await authController.signup(body);
 
-    // allow explicit password or auto-generate
-    const rawPassword = password || generatePassword(name);
-    const hashedPassword = await bcrypt.hash(rawPassword, 8);
+    return NextResponse.json(result, { status: 201 });
 
-    await User.create({ name, email: email.toLowerCase(), password: hashedPassword, provider: 'local', role: 'user' });
-
-    // send password email asynchronously
-    sendEmail(email, 'Your Account Password', `Hello ${name},\n\nEmail: ${email}\nPassword: ${rawPassword}\n\nPlease change your password after login.`).catch(()=>{});
-
-    return Response.json({ message: 'Signup successful. Password will be sent to your email.' }, { status: 201 });
   } catch (err) {
     console.error('Signup error', err);
-    return Response.json({ message: 'Signup failed' }, { status: 500 });
+
+    const status = err.message === 'User already exists' ? 400 : 500;
+    const message = err.message || 'Signup failed';
+
+    return NextResponse.json({ message }, { status });
   }
 }

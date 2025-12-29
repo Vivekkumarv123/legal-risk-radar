@@ -1,5 +1,5 @@
 import dbConnect from '@/lib/dbConnect';
-import User from '@/models/User';
+import User from '@/models/user.model.js';
 import { generateOTP } from '@/utils/otp.utils';
 import { sendEmail } from '@/utils/email.utils';
 

@@ -1,6 +1,6 @@
 import dbConnect from '@/lib/dbConnect';
 import jwt from 'jsonwebtoken';
-import User from '@/models/User';
+import User from '@/models/user.model.js';
 import { generateAccessToken } from '@/utils/token.utils';
 
 export async function POST(req) {

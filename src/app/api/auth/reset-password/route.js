@@ -1,5 +1,5 @@
 import dbConnect from '@/lib/dbConnect';
-import User from '@/models/User';
+import User from '@/models/user.model.js';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req) {
