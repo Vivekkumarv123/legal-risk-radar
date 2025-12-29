@@ -1,14 +1,83 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { TypeAnimation } from "react-type-animation";
-import { Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, Globe, BookOpen, Sparkles } from "lucide-react";
+import { 
+    Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
+    Menu, LogOut, MessageSquare, User, Plus, AlertTriangle, Loader2, CheckCircle, XCircle 
+} from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+
+// ==========================================
+// SUB-COMPONENTS
+// ==========================================
+
+// 1. Toast Notification Component (NEW)
+function Toast({ message, type, isVisible, onClose }) {
+    if (!isVisible) return null;
+
+    return (
+        <div className={`fixed top-5 right-5 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-in slide-in-from-top-5 duration-300 ${
+            type === 'success' ? 'bg-white border-green-200 text-green-800' : 'bg-white border-red-200 text-red-800'
+        }`}>
+            {type === 'success' ? <CheckCircle className="w-5 h-5 text-green-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
+            <span className="text-sm font-medium">{message}</span>
+            <button onClick={onClose} className="ml-2 hover:bg-gray-100 rounded-full p-1">
+                <X className="w-4 h-4 text-gray-500" />
+            </button>
+        </div>
+    );
+}
+
+// 2. Updated Logout Modal (Accepts isLoading)
+function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 scale-100 animate-in zoom-in-95 duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Log out?</h3>
+                    <p className="text-gray-500 text-sm mb-6">
+                        Are you sure you want to log out? Your current session history will be cleared from this device.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Processing...</span>
+                                </>
+                            ) : (
+                                "Log out"
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // UploadBox Component
 function UploadBox({ onUpload, onCancel, file }) {
     if (file) {
         return (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between mb-3 max-w-md">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between mb-3 max-w-md w-full mx-auto">
                 <div className="flex items-center gap-2">
                     <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
                         <Paperclip className="w-5 h-5 text-blue-600" />
@@ -24,7 +93,6 @@ function UploadBox({ onUpload, onCancel, file }) {
             </div>
         );
     }
-
     return null;
 }
 
@@ -85,28 +153,19 @@ function ResultCard({ analysis, scrollToClause }) {
     const riskColor = overallRisk === 'High' ? 'text-red-600' : overallRisk === 'Medium' ? 'text-yellow-600' : 'text-green-600';
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 max-w-3xl">
-            {/* Overall Risk Score */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 max-w-3xl w-full">
             <div className="text-center py-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
                 <Shield className={`w-14 h-14 mx-auto mb-3 ${riskColor}`} />
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Overall Risk: {overallRisk}</h2>
                 <p className="text-gray-600 px-4">{analysis.summary}</p>
             </div>
 
-            {/* Risk Overview Chips */}
             <div className="flex flex-wrap gap-2 justify-center">
-                {riskCounts.low > 0 && (
-                    <RiskBadge level="low" count={riskCounts.low} onClick={() => scrollToClause('low')} />
-                )}
-                {riskCounts.medium > 0 && (
-                    <RiskBadge level="medium" count={riskCounts.medium} onClick={() => scrollToClause('medium')} />
-                )}
-                {riskCounts.high > 0 && (
-                    <RiskBadge level="high" count={riskCounts.high} onClick={() => scrollToClause('high')} />
-                )}
+                {riskCounts.low > 0 && <RiskBadge level="low" count={riskCounts.low} onClick={() => scrollToClause('low')} />}
+                {riskCounts.medium > 0 && <RiskBadge level="medium" count={riskCounts.medium} onClick={() => scrollToClause('medium')} />}
+                {riskCounts.high > 0 && <RiskBadge level="high" count={riskCounts.high} onClick={() => scrollToClause('high')} />}
             </div>
 
-            {/* Risky Clauses */}
             <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5" />
@@ -139,7 +198,6 @@ function ResultCard({ analysis, scrollToClause }) {
                 ))}
             </div>
 
-            {/* Missing Protections */}
             {analysis.missing_protections && analysis.missing_protections.length > 0 && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -160,7 +218,7 @@ function ResultCard({ analysis, scrollToClause }) {
     );
 }
 
-// RecordingWave Component - shows animated bars driven by AnalyserNode
+// RecordingWave Component
 function RecordingWave({ analyserRef, dataArrayRef, isRecording }) {
     const bars = 24;
     const barRefs = useRef([]);
@@ -178,16 +236,15 @@ function RecordingWave({ analyserRef, dataArrayRef, isRecording }) {
                         let sum = 0;
                         for (let j = 0; j < segment; j++) sum += Math.abs(data[start + j] - 128);
                         const avg = sum / segment;
-                        const height = Math.min(1, avg / 64); // normalize
+                        const height = Math.min(1, avg / 64); 
                         const el = barRefs.current[i];
-                        if (el) el.style.transform = `scaleY(${0.2 + height * 1.2})`;
-                        if (el) el.style.opacity = `${0.3 + height * 0.7}`;
+                        if (el) {
+                            el.style.transform = `scaleY(${0.2 + height * 1.2})`;
+                            el.style.opacity = `${0.3 + height * 0.7}`;
+                        }
                     }
-                } catch (e) {
-                    // ignore
-                }
+                } catch (e) { }
             } else {
-                // idle animation when no analyser available
                 for (let i = 0; i < bars; i++) {
                     const el = barRefs.current[i];
                     if (el) {
@@ -209,7 +266,7 @@ function RecordingWave({ analyserRef, dataArrayRef, isRecording }) {
                 <div
                     key={i}
                     ref={el => (barRefs.current[i] = el)}
-                    className="bg-gray-300 rounded-sm w-1"
+                    className="bg-gray-400 rounded-sm w-1"
                     style={{ transformOrigin: 'center bottom', transform: 'scaleY(0.3)', transition: 'transform 80ms linear, opacity 80ms linear' }}
                 />
             ))}
@@ -217,14 +274,27 @@ function RecordingWave({ analyserRef, dataArrayRef, isRecording }) {
     );
 }
 
-// Main App Component
+// ==========================================
+// MAIN APP COMPONENT
+// ==========================================
+
 export default function Home() {
+    const router = useRouter(); 
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [processingStage, setProcessingStage] = useState(0);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isAuthChecking, setIsAuthChecking] = useState(true); 
+    const [user, setUser] = useState(null); 
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+    
+    // New States for Logout UX
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    
     const messagesEndRef = useRef(null);
     const recognitionRef = useRef(null);
     const audioContextRef = useRef(null);
@@ -234,6 +304,30 @@ export default function Home() {
     const rafRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    // ==========================================
+    // 1. AUTH CHECKING
+    // ==========================================
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const res = await fetch('/api/auth/me', { cache: 'no-store' }); 
+                
+                if (!res.ok) {
+                    throw new Error("Unauthorized");
+                }
+                
+                const data = await res.json();
+                setUser(data.user); 
+                setIsAuthChecking(false);
+            } catch (error) {
+                console.log("Not authenticated, redirecting...");
+                router.push('/'); 
+            }
+        };
+
+        checkAuth();
+    }, [router]);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -242,7 +336,7 @@ export default function Home() {
         scrollToBottom();
     }, [messages]);
 
-    // Load persisted chat from localStorage
+    // Load/Persist chat
     useEffect(() => {
         try {
             const raw = localStorage.getItem('chat_messages');
@@ -250,7 +344,6 @@ export default function Home() {
         } catch (e) { }
     }, []);
 
-    // Persist chat to localStorage whenever messages change
     useEffect(() => {
         try {
             localStorage.setItem('chat_messages', JSON.stringify(messages));
@@ -278,20 +371,17 @@ export default function Home() {
         }
     }, []);
 
-    // Cleanup audio resources on unmount
+    // Cleanup
     useEffect(() => {
         return () => {
             if (mediaStreamRef.current) {
                 mediaStreamRef.current.getTracks().forEach(t => t.stop());
-                mediaStreamRef.current = null;
             }
             if (audioContextRef.current) {
                 try { audioContextRef.current.close(); } catch (e) { }
-                audioContextRef.current = null;
             }
             if (rafRef.current) {
                 cancelAnimationFrame(rafRef.current);
-                rafRef.current = null;
             }
         };
     }, []);
@@ -299,7 +389,6 @@ export default function Home() {
     const toggleRecording = () => {
         if (isRecording) {
             recognitionRef.current?.stop();
-            // stop audio analyser
             if (mediaStreamRef.current) {
                 mediaStreamRef.current.getTracks().forEach(t => t.stop());
                 mediaStreamRef.current = null;
@@ -308,14 +397,9 @@ export default function Home() {
                 try { audioContextRef.current.close(); } catch (e) { }
                 audioContextRef.current = null;
             }
-            if (rafRef.current) {
-                cancelAnimationFrame(rafRef.current);
-                rafRef.current = null;
-            }
             setIsRecording(false);
         } else {
             recognitionRef.current?.start();
-            // start audio analyser for waveform visual
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                     mediaStreamRef.current = stream;
@@ -346,13 +430,11 @@ export default function Home() {
         }
     };
 
-    // Animate assistant message content char-by-char
     const animateAssistantContent = (fullText) => {
         if (!fullText) {
             setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
             return;
         }
-        // Append placeholder and capture its index
         let msgIdx = -1;
         setMessages(prev => {
             const newArr = [...prev, { role: 'assistant', content: '' }];
@@ -384,20 +466,60 @@ export default function Home() {
         setFile(uploadedFile);
     };
 
+    const handleNewChat = () => {
+        setMessages([]);
+        setInputText("");
+        setFile(null);
+        setSidebarOpen(false); 
+    };
+
+    // ==========================================
+    // 2. UPDATED LOGOUT LOGIC (With Loading & Toast)
+    // ==========================================
+    const handleLogoutClick = () => {
+        setShowLogoutModal(true);
+    };
+
+    const performLogout = async () => {
+        setIsLoggingOut(true); // Start loading state in modal
+        try {
+            const res = await fetch('/api/auth/logout', { method: 'POST' });
+            
+            if (res.ok) {
+                // Show Success Toast
+                setToast({ show: true, message: 'Logged out successfully', type: 'success' });
+                localStorage.removeItem('chat_messages');
+                
+                // Wait 1.5 seconds so user sees the toast, then close modal and redirect
+                setTimeout(() => {
+                    setShowLogoutModal(false);
+                    router.push('/');
+                }, 1500);
+            } else {
+                throw new Error("Logout failed");
+            }
+        } catch (error) {
+            console.error("Logout failed", error);
+            setToast({ show: true, message: 'Failed to log out. Please try again.', type: 'error' });
+            setIsLoggingOut(false); // Stop loading so they can try again
+            
+            // Hide error toast after 3s
+            setTimeout(() => setToast({ ...toast, show: false }), 3000);
+        }
+    };
+
     const handleSend = async () => {
         if (!inputText.trim() && !file) return;
 
-        // capture input before clearing state so API payload isn't empty
         const textToSend = inputText || "Analyze this document";
-
-        // Quick client-side handling for simple greetings to avoid calling the AI
         const greet = textToSend.trim().toLowerCase();
         const greetingRegex = /^(hi+|hello|hey|hii|namaste|नमस्ते|hello\.!|hiya|yo|sup)$/i;
+        
         if (greetingRegex.test(greet)) {
             const userMsg = { role: 'user', content: textToSend, file: file?.name };
             const assistantMsg = {
                 role: 'assistant',
-                content: `Hi! 👋 I can help review contracts and highlight risks. Upload a contract or ask a question like "What does this NDA mean for me?"`
+                content: `Hi ${user?.name ? user.name.split(' ')[0] : ''}! 👋 I can help review contracts and highlight risks.`
             };
             setMessages(prev => [...prev, userMsg, assistantMsg]);
             setInputText("");
@@ -417,7 +539,6 @@ export default function Home() {
 
         try {
             if (file) {
-                // Document Analysis Flow
                 setProcessingStage(0);
                 const formData = new FormData();
                 formData.append("file", file);
@@ -434,7 +555,6 @@ export default function Home() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         documentText: ocrData.text,
-                        // send the user's question captured earlier
                         message: textToSend
                     }),
                 });
@@ -450,7 +570,6 @@ export default function Home() {
                     setLoading(false);
                 }, 500);
             } else {
-                // Text-only Flow
                 const response = await fetch("/api/generate-content", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -460,8 +579,6 @@ export default function Home() {
                 });
                 const data = await response.json();
 
-                // The API returns { success: true, data: parsedResult }
-                // prefer a human-friendly summary if available, else fall back to response/content or JSON
                 let assistantContent = "";
                 if (data && data.data) {
                     assistantContent = data.data.summary || data.data.response || JSON.stringify(data.data);
@@ -469,7 +586,6 @@ export default function Home() {
                     assistantContent = data.response || data.content || JSON.stringify(data);
                 }
 
-                // animate assistant response for smooth typing effect
                 animateAssistantContent(assistantContent);
                 setLoading(false);
             }
@@ -488,116 +604,239 @@ export default function Home() {
         element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
-    return (
-        <div className="min-h-screen bg-white flex flex-col">
-            {/* Header */}
-            <header className="border-b border-gray-200 sticky top-0 z-10 bg-white">
-                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Image
-                            src="/logo.svg"
-                            width={100}
-                            height={100}
-                            alt="Legal Risk Radar"
-                            className="w-16 h-16 animate-pulse relative z-10"
-                        />
-                        <h1 className="text-xl font-mono font-bold text-gray-900 tracking-tight">
-                            Legal Advisor
-                        </h1>
-                    </div>
-                    <button className="px-4 py-2 text-sm font-medium cursor-pointer  text-gray-900 hover:bg-gray-200 rounded-lg transition-colors">
-                        New chat
-                    </button>
-                </div>
-            </header>
-
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-4 py-8">
-                    {messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                            <Image
-                                src="/logo.svg"
-                                width={500}
-                                height={500}
-                                alt="Legal Risk Radar"
-                                className="w-25 h-25 animate-pulse relative z-10"
-                            />
-                            <h2 className="text-4xl font-semibold text-gray-900 mb-8  min-h-[60px]">
-                                <TypeAnimation
-                                    sequence={[
-                                        // 1. Type English, wait 1s
-                                        "Where should we begin?",
-                                        1000,
-                                        // 2. Delete, Type Hindi, wait 1s
-                                        "शुरुआत कहां से करें?",
-                                        1000,
-                                        // 3. Delete, Type Marathi, wait 1s
-                                        "आम्ही कुठून सुरुवात करावी?",
-                                        1000,
-                                    ]}
-                                    wrapper="span"
-                                    speed={5}
-                                    repeat={Infinity}
-                                />
-                            </h2>
-                        </div>
-                    ) : (
-                        <div className="space-y-8">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    {msg.role === 'user' ? (
-                                        <div className="bg-gray-100 rounded-2xl px-5 py-3 max-w-2xl">
-                                            {msg.file && (
-                                                <div className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                                                    <Paperclip className="w-3 h-3 cursor-pointer" />
-                                                    {msg.file}
-                                                </div>
-                                            )}
-                                            <p className="text-gray-900">{msg.content}</p>
-                                        </div>
-                                    ) : msg.analysis ? (
-                                        <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
-                                    ) : (
-                                        <div className="max-w-3xl">
-                                            <p className="text-gray-900 leading-relaxed">{msg.content}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-
-                            {loading && (
-                                <div className="flex justify-start">
-                                    <div className="bg-gray-50 rounded-2xl px-6 py-4">
-                                        <ProcessingLoader stage={processingStage} />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
+    // If checking auth, show a full-screen loader
+    if (isAuthChecking) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-white">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <p className="text-gray-500 font-medium">Verifying access...</p>
                 </div>
             </div>
+        );
+    }
 
-            {/* Input Area - Floating */}
-            <div className="pb-8 ">
-                <div className="max-w-3xl mx-auto px-4">
-                    {file && (
-                        <div className="flex justify-center mb-2">
-                            <UploadBox file={file} onCancel={() => setFile(null)} />
+    return (
+        <div className="flex h-screen bg-white overflow-hidden relative">
+            
+            {/* TOAST NOTIFICATION */}
+            <Toast 
+                message={toast.message} 
+                type={toast.type} 
+                isVisible={toast.show} 
+                onClose={() => setToast({ ...toast, show: false })}
+            />
+
+            {/* LOGOUT MODAL */}
+            <LogoutModal 
+                isOpen={showLogoutModal} 
+                onClose={() => !isLoggingOut && setShowLogoutModal(false)} // Prevent closing while loading
+                onConfirm={performLogout} 
+                isLoading={isLoggingOut} // Pass loading state to modal
+            />
+
+            {/* ================= Sidebar ================= */}
+            {sidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-20 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            <aside className={`
+                fixed md:static inset-y-0 left-0 z-30
+                w-64 bg-gray-50 border-r border-gray-200 transform transition-transform duration-300 ease-in-out
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+                flex flex-col
+            `}>
+                <div className="p-4 border-b border-gray-200 flex items-center gap-2">
+                    <Image
+                        src="/logo.svg"
+                        width={32}
+                        height={32}
+                        alt="Logo"
+                        className="w-8 h-8"
+                    />
+                    <span className="font-bold text-gray-900">Legal Advisor</span>
+                    <button 
+                        onClick={() => setSidebarOpen(false)}
+                        className="md:hidden ml-auto p-1 text-gray-500"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="flex-1 p-4 overflow-y-auto">
+                    <button 
+                        onClick={handleNewChat}
+                        className="w-full flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm mb-6"
+                    >
+                        <Plus className="w-5 h-5" />
+                        <span className="font-medium">New Chat</span>
+                    </button>
+
+                    <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Recent</p>
+                        {messages.length > 0 ? (
+                            <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm text-left truncate">
+                                <MessageSquare className="w-4 h-4 shrink-0 text-gray-400" />
+                                <span className="truncate">Current Session</span>
+                            </button>
+                        ) : (
+                            <p className="text-sm text-gray-400 px-2 italic">No history yet</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sidebar Footer */}
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                    <div className="flex items-center gap-3 mb-4 px-2">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden relative border border-blue-200">
+                            {user?.avatar ? (
+                                <img 
+                                    src={user.avatar} 
+                                    alt={user.name} 
+                                    className="w-full h-full object-cover" 
+                                />
+                            ) : (
+                                <User className="w-4 h-4" />
+                            )}
                         </div>
-                    )}
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                                {user?.name || "User Account"}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                                {user?.email || "user@example.com"}
+                            </p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={handleLogoutClick}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Log out
+                    </button>
+                </div>
+            </aside>
 
-                    <div className="bg-white border border-gray-300 rounded-3xl shadow-lg hover:shadow-xl transition-shadow">
-                        <div className="flex items-end gap-2 p-3">
-                            {/* Left Action Buttons */}
-                            <div className="flex items-center gap-1 pb-1">
+            {/* ================= Main Content ================= */}
+            <main className="flex-1 flex flex-col h-full w-full relative">
+                <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                    <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => setSidebarOpen(true)}
+                                className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            >
+                                <Menu className="w-6 h-6" />
+                            </button>
+                            <div className="md:hidden flex items-center gap-2">
+                                <Image src="/logo.svg" width={28} height={28} alt="Logo" />
+                                <span className="font-bold text-gray-900">Legal Advisor</span>
+                            </div>
+                            <h1 className="hidden md:block text-lg font-medium text-gray-700">
+                                Contract Analysis AI
+                            </h1>
+                        </div>
+                    </div>
+                </header>
+
+                <div className="flex-1 overflow-y-auto">
+                    <div className="max-w-3xl mx-auto px-4 py-8">
+                        {messages.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center min-h-[50vh] mt-10">
+                                <Image
+                                    src="/logo.svg"
+                                    width={120}
+                                    height={120}
+                                    alt="Legal Risk Radar"
+                                    className="w-24 h-24 mb-6 animate-pulse"
+                                />
+                                <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-4 text-center min-h-[60px]">
+                                    <TypeAnimation
+                                        sequence={[
+                                            `Hello ${user?.name?.split(' ')[0] || 'there'}!`,
+                                            1000,
+                                            "Where should we begin?",
+                                            1000,
+                                            "शुरुआत कहां से करें?",
+                                            1000,
+                                            "आम्ही कुठून सुरुवात करावी?",
+                                            1000,
+                                        ]}
+                                        wrapper="span"
+                                        speed={5}
+                                        repeat={Infinity}
+                                    />
+                                </h2>
+                                <p className="text-gray-500 text-center max-w-md">
+                                    Upload a contract or ask me anything about legal documents
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-8 pb-4">
+                                {messages.map((msg, idx) => (
+                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        {msg.role === 'user' ? (
+                                            <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-5 py-3 max-w-[85%] shadow-sm">
+                                                {msg.file && (
+                                                    <div className="text-xs text-blue-100 mb-2 flex items-center gap-1 bg-blue-700/50 p-1.5 rounded">
+                                                        <Paperclip className="w-3 h-3" />
+                                                        {msg.file}
+                                                    </div>
+                                                )}
+                                                <p className="leading-relaxed">{msg.content}</p>
+                                            </div>
+                                        ) : msg.analysis ? (
+                                            <div className="w-full">
+                                                <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
+                                            </div>
+                                        ) : (
+                                            <div className="max-w-3xl w-full">
+                                                <div className="flex gap-4">
+                                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-1">
+                                                        <Image src="/logo.svg" width={20} height={20} alt="AI" />
+                                                    </div>
+                                                    <div className="flex-1 space-y-2">
+                                                        <p className="text-gray-800 leading-relaxed">{msg.content}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {loading && (
+                                    <div className="flex justify-start w-full">
+                                        <div className="max-w-3xl w-full bg-gray-50 rounded-xl p-6 border border-gray-100">
+                                            <ProcessingLoader stage={processingStage} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+                </div>
+
+                <div className="p-4 bg-white">
+                    <div className="max-w-3xl mx-auto">
+                        {file && (
+                            <div className="flex justify-center mb-2">
+                                <UploadBox file={file} onCancel={() => setFile(null)} />
+                            </div>
+                        )}
+
+                        <div className="bg-gray-50 border border-gray-200 rounded-3xl shadow-sm focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all">
+                            <div className="flex items-end gap-2 p-2">
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer hover:rounded-full hover:bg-gray-400 transition-colors group"
-                                    title="Attach"
+                                    className="p-3 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                                    title="Attach File"
                                 >
-                                    <Paperclip className="w-5 h-5 text-gray-600  group-hover:text-gray-900" />
+                                    <Paperclip className="w-5 h-5" />
                                 </button>
                                 <input
                                     ref={fileInputRef}
@@ -606,10 +845,7 @@ export default function Home() {
                                     onChange={(e) => handleFileUpload(e.target.files[0])}
                                     className="hidden"
                                 />
-                            </div>
 
-                            {/* Text Input */}
-                            <div className="flex-1">
                                 <textarea
                                     value={inputText}
                                     onChange={(e) => setInputText(e.target.value)}
@@ -619,45 +855,41 @@ export default function Home() {
                                             handleSend();
                                         }
                                     }}
-                                    placeholder="Ask anything"
+                                    placeholder="Ask anything..."
                                     rows={1}
-                                    className="w-full resize-none outline-none text-gray-900 placeholder-gray-500 bg-transparent px-2 py-2 max-h-32"
-                                    style={{ minHeight: '24px' }}
+                                    className="flex-1 bg-transparent resize-none border-none focus:ring-0 p-3 max-h-32 text-gray-900 placeholder-gray-500"
+                                    style={{ minHeight: '44px' }}
                                 />
-                            </div>
 
-                            {/* Right Action Buttons */}
-                            <div className="flex items-center gap-1 pb-1">
-                                <div className="flex items-center gap-2">
-                                    <RecordingWave analyserRef={analyserRef} dataArrayRef={dataArrayRef} isRecording={isRecording} />
+                                <div className="flex items-center gap-1">
+                                    <div className="hidden sm:block">
+                                        <RecordingWave analyserRef={analyserRef} dataArrayRef={dataArrayRef} isRecording={isRecording} />
+                                    </div>
                                     <button
                                         onClick={toggleRecording}
-                                        className={`p-2 rounded-lg transition-colors ${isRecording ? 'bg-red-500 text-white hover:bg-red-600' : 'hover:bg-gray-100 text-gray-600'
-                                            }`}
-                                        title="Voice"
+                                        className={`p-3 rounded-full transition-all ${isRecording 
+                                            ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                                            : 'text-gray-500 hover:bg-gray-200'
+                                        }`}
                                     >
                                         {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                                     </button>
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={loading || (!inputText.trim() && !file)}
+                                        className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-all shadow-md"
+                                    >
+                                        <Send className="w-5 h-5" />
+                                    </button>
                                 </div>
-
-                                <button
-                                    onClick={handleSend}
-                                    disabled={loading || (!inputText.trim() && !file)}
-                                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                    title="Send"
-                                >
-                                    <Send className="w-5 h-5" />
-                                </button>
                             </div>
                         </div>
+                        <p className="text-xs text-center text-gray-400 mt-2">
+                            AI can make mistakes. Please verify important information.
+                        </p>
                     </div>
-
-                    {/* Bottom Text */}
-                    <p className="text-xs text-center text-gray-500 mt-3">
-                        Legal Risk Radar can make mistakes. Check important info.
-                    </p>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

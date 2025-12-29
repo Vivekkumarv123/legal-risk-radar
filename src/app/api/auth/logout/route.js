@@ -1,22 +1,50 @@
-import dbConnect from '@/lib/dbConnect';
-import User from '@/models/user.model.js';
-import jwt from 'jsonwebtoken';
+import { NextResponse } from "next/server";
+import { authController } from "@/controllers/auth.controller.js"; // Check path
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 
 export async function POST(req) {
-  await dbConnect();
   try {
-    const auth = req.headers.get('authorization') || '';
-    if (!auth.startsWith('Bearer ')) return Response.json({ message: 'Unauthorized' }, { status: 401 });
-    const token = auth.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded?.id) return Response.json({ message: 'Invalid token' }, { status: 401 });
+    // 1. Get Cookies (Await is required in Next.js 15/newest)
+    const cookieStore = await cookies();
+    
+    // 2. Retrieve the token from the cookie (Preferred over header for logout)
+    const refreshToken = cookieStore.get("refreshToken")?.value;
 
-    await User.findByIdAndUpdate(decoded.id, { refreshToken: null });
+    // 3. ALWAYS Delete the cookie immediately
+    // Even if the token is invalid or expired, we want the browser to forget it.
+    cookieStore.delete("refreshToken");
 
-    const headers = { 'Set-Cookie': 'refreshToken=; Path=/; HttpOnly; Max-Age=0; SameSite=None;' };
-    return new Response(JSON.stringify({ message: 'Logout successful' }), { status: 200, headers });
+    // 4. (Optional) Invalidate in Database
+    // We try to decode the token to find the user and clear their DB record.
+    if (refreshToken) {
+      try {
+        // Try verifying with Refresh Secret
+        const decoded = jwt.verify(
+            refreshToken, 
+            process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+        );
+        
+        if (decoded?.id) {
+          await authController.logout(decoded.id);
+        }
+      } catch (err) {
+        // If token is expired/invalid, we don't care, the cookie is already deleted.
+        console.log("Logout: Token was invalid or expired, but cookie cleared.");
+      }
+    }
+
+    return NextResponse.json(
+      { message: 'Logout successful' }, 
+      { status: 200 }
+    );
+
   } catch (err) {
     console.error('Logout error', err);
-    return Response.json({ message: 'Logout failed' }, { status: 500 });
+    // Even if error, return 200 so frontend redirects
+    return NextResponse.json(
+      { message: 'Logout processed' }, 
+      { status: 200 }
+    );
   }
 }
