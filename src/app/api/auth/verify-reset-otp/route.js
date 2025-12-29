@@ -1,8 +1,6 @@
-import dbConnect from '@/lib/dbConnect';
 import { User } from '@/models/user.model.js';
 
 export async function POST(req) {
-  await dbConnect();
   try {
     const { email, otp } = await req.json();
     if (!email || !otp) return Response.json({ message: 'Email and OTP required' }, { status: 400 });

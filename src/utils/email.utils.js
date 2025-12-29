@@ -1,10 +1,14 @@
 import nodemailer from "nodemailer";
 
-export const sendEmail = async (to, subject, text) => {
+// 👇 FIX: Use curly braces {} to accept an object
+export const sendEmail = async ({ to, subject, html, text }) => {
   if (!to) {
     console.error("❌ Email recipient missing");
     return;
   }
+
+  // Debug log
+  console.log("📨 Sending to:", to);
 
   try {
     const transporter = nodemailer.createTransport({
@@ -21,15 +25,17 @@ export const sendEmail = async (to, subject, text) => {
     });
 
     await transporter.sendMail({
-      from: `"Technoholic Chatbot" <${process.env.SMTP_EMAIL}>`,
+      from: `"Legal Advisor" <${process.env.SMTP_EMAIL}>`,
       to,
       subject,
       text,
+      html,
     });
 
     console.log("✅ Email sent successfully to:", to);
   } catch (error) {
     console.error("❌ Email sending failed:", error?.message || error);
+    throw error;
   }
 };
 

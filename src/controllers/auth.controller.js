@@ -6,6 +6,7 @@ import { sendEmail } from "@/utils/email.utils";
 import { generatePassword } from "@/utils/password.utils";
 import { generateOTP } from "@/utils/otp.utils";
 import { generateAccessToken, generateRefreshToken } from "@/utils/token.utils";
+import { getSignupEmailHtml } from "@/utils/email-templates";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
@@ -29,12 +30,16 @@ export const authController = {
       role: "user",
     });
 
-    // Send email asynchronously
-    sendEmail(
-      normalizedEmail,
-      "Your Account Password",
-      `Hello ${name},\n\nEmail: ${normalizedEmail}\nPassword: ${rawPassword}\n\nPlease change your password after login.`
-    ).catch((err) => console.error("Email error:", err));
+    // Generate the professional HTML content
+    const emailHtml = getSignupEmailHtml(name, normalizedEmail, rawPassword);
+
+    // Send email asynchronously using the object syntax
+    sendEmail({
+      to: normalizedEmail,
+      subject: "Welcome to Legal Advisor - Your Credentials",
+      html: emailHtml, // Pass the HTML here
+      text: `Hello ${name},\n\nEmail: ${normalizedEmail}\nPassword: ${rawPassword}\n\nPlease change your password after login.` // Fallback text
+    }).catch((err) => console.error("Email error:", err));
 
     return { message: "Signup successful. Password will be sent to your email." };
   },

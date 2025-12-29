@@ -1,9 +1,7 @@
-import dbConnect from '@/lib/dbConnect';
 import { User } from '@/models/user.model.js';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req) {
-  await dbConnect();
   try {
     const { email, otp, newPassword, confirmPassword } = await req.json();
     if (newPassword !== confirmPassword) return Response.json({ message: 'Passwords do not match' }, { status: 400 });
