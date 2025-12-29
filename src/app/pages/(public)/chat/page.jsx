@@ -49,7 +49,7 @@ function FilePreview({ file, onRemove, index }) {
             }}
         >
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
                     <Paperclip className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -59,7 +59,7 @@ function FilePreview({ file, onRemove, index }) {
             </div>
             <button
                 onClick={onRemove}
-                className="p-1.5 hover:bg-blue-200 rounded-lg transition-all flex-shrink-0 group"
+                className="p-1.5 hover:bg-blue-200 rounded-lg transition-all shrink-0 group"
                 aria-label="Remove file"
             >
                 <X className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
@@ -111,7 +111,7 @@ function FileUploadArea({ files, onAdd, onRemove }) {
 
             {showLimitWarning && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-2 animate-fadeIn">
-                    <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
                     <p className="text-sm text-orange-800">
                         Maximum 2 files allowed. Additional files were not added.
                     </p>
@@ -259,7 +259,7 @@ function ResultCard({ analysis, scrollToClause }) {
     return (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 max-w-3xl shadow-sm">
             {/* Overall Risk Score */}
-            <div className="text-center py-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+            <div className="text-center py-8 bg-linear-to-br from-blue-50 to-indigo-50 rounded-xl">
                 <Shield className={`w-16 h-16 mx-auto mb-3 ${riskColor}`} />
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Overall Risk: {overallRisk}</h2>
                 <p className="text-gray-600 px-6 max-w-2xl mx-auto">{analysis.summary}</p>
@@ -628,7 +628,7 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col">
+        <div className="min-h-screen bg-linear-to-b from-gray-50 to-white flex flex-col">
             {/* Header */}
             <header className="border-b border-gray-200 sticky top-0 z-10 bg-white/80 backdrop-blur-md">
                 <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -663,7 +663,7 @@ export default function Home() {
                                 alt="Legal Risk Radar"
                                 className="w-24 h-24 animate-pulse relative z-10"
                             />
-                            <h2 className="sm:text-4xl font-semibold text-gray-900 mb-4 sm:mb-6 text-xl  min-h-[60px]">
+                            <h2 className="sm:text-4xl font-semibold text-gray-900 mb-4 sm:mb-6 text-xl  min-h-15">
                                 <TypeAnimation
                                     sequence={[
                                         "How can I help you today?",
