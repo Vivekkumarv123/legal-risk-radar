@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import toast from "react-hot-toast";
 import { TypeAnimation } from "react-type-animation";
 import { 
     Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
@@ -12,22 +13,7 @@ import { useRouter } from "next/navigation";
 // SUB-COMPONENTS
 // ==========================================
 
-// 1. Toast Notification Component (NEW)
-function Toast({ message, type, isVisible, onClose }) {
-    if (!isVisible) return null;
-
-    return (
-        <div className={`fixed top-5 right-5 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-in slide-in-from-top-5 duration-300 ${
-            type === 'success' ? 'bg-white border-green-200 text-green-800' : 'bg-white border-red-200 text-red-800'
-        }`}>
-            {type === 'success' ? <CheckCircle className="w-5 h-5 text-green-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
-            <span className="text-sm font-medium">{message}</span>
-            <button onClick={onClose} className="ml-2 hover:bg-gray-100 rounded-full p-1">
-                <X className="w-4 h-4 text-gray-500" />
-            </button>
-        </div>
-    );
-}
+// Using react-hot-toast via `toast` (Toaster is mounted in layout.js)
 
 // 2. Updated Logout Modal (Accepts isLoading)
 function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
@@ -293,7 +279,6 @@ export default function Home() {
     
     // New States for Logout UX
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     
     const messagesEndRef = useRef(null);
     const recognitionRef = useRef(null);
@@ -487,9 +472,9 @@ export default function Home() {
             
             if (res.ok) {
                 // Show Success Toast
-                setToast({ show: true, message: 'Logged out successfully', type: 'success' });
+                toast.success('Logged out successfully');
                 localStorage.removeItem('chat_messages');
-                
+
                 // Wait 1.5 seconds so user sees the toast, then close modal and redirect
                 setTimeout(() => {
                     setShowLogoutModal(false);
@@ -500,11 +485,8 @@ export default function Home() {
             }
         } catch (error) {
             console.error("Logout failed", error);
-            setToast({ show: true, message: 'Failed to log out. Please try again.', type: 'error' });
+            toast.error('Failed to log out. Please try again.');
             setIsLoggingOut(false); // Stop loading so they can try again
-            
-            // Hide error toast after 3s
-            setTimeout(() => setToast({ ...toast, show: false }), 3000);
         }
     };
 
@@ -619,13 +601,7 @@ export default function Home() {
     return (
         <div className="flex h-screen bg-white overflow-hidden relative">
             
-            {/* TOAST NOTIFICATION */}
-            <Toast 
-                message={toast.message} 
-                type={toast.type} 
-                isVisible={toast.show} 
-                onClose={() => setToast({ ...toast, show: false })}
-            />
+            {/* Toasts handled by react-hot-toast (Toaster is in layout) */}
 
             {/* LOGOUT MODAL */}
             <LogoutModal 

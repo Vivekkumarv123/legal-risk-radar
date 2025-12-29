@@ -1,5 +1,5 @@
 import dbConnect from '@/lib/dbConnect';
-import User from '@/models/user.model.js';
+import { User } from '@/models/user.model.js';
 import { generateOTP } from '@/utils/otp.utils';
 import { sendEmail } from '@/utils/email.utils';
 
@@ -7,13 +7,17 @@ export async function POST(req) {
   await dbConnect();
   try {
     const { email } = await req.json();
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const normalized = email?.toLowerCase?.() || '';
+    const user = await User.findOne({ email: normalized });
     if (!user) return Response.json({ message: 'User not found' }, { status: 404 });
 
     const otp = generateOTP();
-    user.resetOtp = otp;
-    user.resetOtpExpiry = Date.now() + 10 * 60 * 1000;
-    await user.save();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await User.update(user.id, {
+      resetOtp: otp,
+      resetOtpExpiry: expiry,
+    });
 
     await sendEmail(user.email, 'Password Reset OTP', `Your OTP is ${otp}. It expires in 10 minutes.`);
 

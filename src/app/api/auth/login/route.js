@@ -16,7 +16,8 @@ export async function POST(req) {
     cookieStore.set("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none", // Matches your original code (requires Secure: true in Prod)
+      // Use 'none' only in production where Secure is true (HTTPS). In dev use 'lax'
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
       path: "/",
     });
