@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Legal Risk Radar",
-  description: "Legal Risk Radar uses Gemini 3 to visually highlight legal risks inside documents, helping people understand contracts before they sign.",
+  description:
+    "Legal Risk Radar uses Gemini 3 to visually highlight legal risks inside documents, helping people understand contracts before they sign.",
 };
 
 export default function RootLayout({ children }) {
@@ -22,7 +24,11 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <GoogleOAuthProvider
+          clientId={process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID}
+        >
+          {children}
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
