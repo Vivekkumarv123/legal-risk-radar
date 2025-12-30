@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
@@ -12,7 +13,7 @@ import Image from "next/image";
 export default function HomePage() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+    const router = useRouter();
     // Handle scroll for sticky navbar effect
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -100,8 +101,8 @@ export default function HomePage() {
                             <Link href="/pages/signup" className="bg-blue-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 group">
                                 Start Analyzing <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                             </Link>
-                            <button className="bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                                <Play size={18} className="fill-slate-700" /> Watch Demo
+                            <button onClick={() => {router.push("/pages/chat")}} className="bg-white cursor-pointer text-slate-700 border border-slate-200 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+                                <Play size={18} className="fill-slate-700" /> Try Demo
                             </button>
                         </motion.div>
 
