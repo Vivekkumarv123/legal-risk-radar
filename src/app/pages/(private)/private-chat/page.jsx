@@ -619,7 +619,7 @@ export default function Home() {
         let textToSend = rawInput;
 
         // 2. Determine if this is a "Long Text" (likely a contract paste)
-        const isLongText = rawInput.length > 20;
+        const isLongText = rawInput.length > 15;
 
         // 3. Logic: If text is long and no file, force "Analyze: " prefix.
         // This prevents the AI from treating it as a casual chat message.
