@@ -10,7 +10,7 @@ Upload a legal document (PDF or image), and the system will:
 - Explain everything clearly
 - Read explanations aloud in the user’s language
 
-> **⚠️ Disclaimer:** This is not legal advice. It is a legal awareness and risk-explanation tool.
+> **⚠️ Disclaimer:** This is not legal advice. It is a legal awareness and risk-explanation tool .
 
 ---
 
