@@ -1,10 +1,10 @@
+import LoginPage from '@/components/login/login'
 import React from 'react'
-import HomePage from './pages/home/page'
 
 export default function page() {
   return (
     <div>
-      <HomePage/>
+        <LoginPage/>
     </div>
   )
 }
