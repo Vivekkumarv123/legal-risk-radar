@@ -3,9 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, Mail, ArrowRight, Scale, CheckCircle, Shield, Zap } from "lucide-react";
+import { User, Mail, ArrowRight, Scale, Shield, Zap } from "lucide-react";
 import toast from "react-hot-toast";
-import Image from "next/image";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -34,7 +33,7 @@ export default function SignupPage() {
 
       if (res.ok) {
         toast.success("Account created! Password sent to your email 📧");
-        router.push("/login"); // Redirect to login typically after signup
+        router.push("/login");
       } else {
         toast.error(data.message || "Signup failed");
       }
@@ -46,7 +45,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50 font-sans">
+    <div className="min-h-screen flex bg-slate-50 font-sans">
 
       {/* ================= LEFT SIDE (BRAND PANEL) ================= */}
       <div className="hidden lg:flex w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12 text-white">
@@ -59,8 +58,10 @@ export default function SignupPage() {
         {/* Content Layer */}
         <div className="relative z-10 max-w-lg space-y-8">
             <div className="flex items-center gap-3 text-blue-400 font-bold text-2xl mb-8">
-                <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
-                Legal Advisor
+                <div className="bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20">
+                    <Scale size={28} />
+                </div>
+                LegalAI
             </div>
 
             <h1 className="text-5xl font-bold leading-tight tracking-tight">
@@ -74,14 +75,14 @@ export default function SignupPage() {
 
             {/* Feature Cards */}
             <div className="grid grid-cols-1 gap-4 pt-4">
-                <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
                     <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><Zap size={20} /></div>
                     <div>
                         <h3 className="font-semibold text-white">Lightning Fast</h3>
                         <p className="text-sm text-slate-400">Get contract summaries in seconds, not days.</p>
                     </div>
                 </div>
-                <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors">
                     <div className="bg-green-500/20 p-2 rounded-lg text-green-400"><Shield size={20} /></div>
                     <div>
                         <h3 className="font-semibold text-white">Bank-Grade Security</h3>
@@ -90,6 +91,7 @@ export default function SignupPage() {
                 </div>
             </div>
 
+            {/* Social Proof */}
             <div className="pt-4 flex items-center gap-4 text-sm text-slate-400 font-medium">
                 <div className="flex -space-x-2">
                     {[1,2,3,4].map(i => (
@@ -133,7 +135,8 @@ export default function SignupPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                        disabled={loading}
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all disabled:opacity-50"
                     />
                 </div>
             </div>
@@ -149,7 +152,8 @@ export default function SignupPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                        disabled={loading}
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all disabled:opacity-50"
                     />
                 </div>
             </div>
@@ -181,7 +185,8 @@ export default function SignupPage() {
           {/* GOOGLE SIGNUP BUTTON */}
           <button
             type="button"
-            className="w-full border border-slate-200 flex items-center justify-center gap-3 py-3 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-700 font-semibold"
+            disabled={loading}
+            className="w-full border border-slate-200 flex items-center justify-center gap-3 py-3 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-700 font-semibold disabled:opacity-50"
           >
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"

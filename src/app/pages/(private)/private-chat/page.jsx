@@ -5,13 +5,14 @@ import { TypeAnimation } from "react-type-animation";
 import { 
     Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
     Menu, LogOut, MessageSquare, User, Plus, AlertTriangle, 
-    Loader2, Clock, Trash2 
+    Loader2, Clock, Trash2, UserX 
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler"; // ✅ Import Utility
 
 // ==========================================
-// SUB-COMPONENTS (Unchanged)
+// SUB-COMPONENTS
 // ==========================================
 
 function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
@@ -21,8 +22,8 @@ function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <LogOut className="w-6 h-6 text-gray-600" />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Log out?</h3>
                     <p className="text-gray-500 text-sm mb-6">
@@ -39,9 +40,82 @@ function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
                         <button 
                             onClick={onConfirm}
                             disabled={isLoading}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70"
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-black text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70"
                         >
                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log out"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DeleteAccountModal({ isOpen, onClose, onConfirm, isLoading }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-2 border-red-50">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Delete Account?</h3>
+                    <p className="text-gray-500 text-sm mb-6">
+                        This action is <strong>irreversible</strong>. All your chat history, documents, and data will be permanently deleted.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70"
+                        >
+                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ✅ NEW: Delete Chat Modal
+function DeleteChatModal({ isOpen, onClose, onConfirm, isLoading }) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 scale-100 animate-in zoom-in-95 duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                        <Trash2 className="w-6 h-6 text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Delete Chat?</h3>
+                    <p className="text-gray-500 text-sm mb-6">
+                        Are you sure you want to delete this conversation? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={onConfirm}
+                            disabled={isLoading}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70"
+                        >
+                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
                         </button>
                     </div>
                 </div>
@@ -59,7 +133,7 @@ function UploadBox({ onCancel, file }) {
                     <Paperclip className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                    <p className="font-medium text-gray-900 text-sm truncate max-w-50">{file.name}</p>
+                    <p className="font-medium text-gray-900 text-sm truncate max-w-[200px]">{file.name}</p>
                     <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
             </div>
@@ -120,7 +194,7 @@ function ResultCard({ analysis, scrollToClause }) {
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
-            <div className="p-6 bg-linaer-to-br from-gray-50 to-white border-b border-gray-100">
+            <div className="p-6 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
                     <Shield className={`w-8 h-8 ${riskColor}`} />
                     <h2 className="text-xl font-bold text-gray-900">Risk Level: {overallRisk}</h2>
@@ -250,10 +324,17 @@ export default function Home() {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [chatId, setChatId] = useState(null); 
     
+    // Account Management State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
     // Chat History State
     const [chatHistory, setChatHistory] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-    const [deletingChatId, setDeletingChatId] = useState(null); // Tracks delete loading state
+    
+    // Chat Deletion State
+    const [chatToDelete, setChatToDelete] = useState(null); // Stores ID of chat to be deleted
+    const [isDeletingChat, setIsDeletingChat] = useState(false);
 
     // REFS
     const messagesEndRef = useRef(null);
@@ -267,7 +348,7 @@ export default function Home() {
     const textareaRef = useRef(null);
 
     // ==========================================
-    // DATA FETCHING FUNCTIONS
+    // DATA FETCHING & ACTIONS
     // ==========================================
 
     const fetchChats = async () => {
@@ -287,33 +368,25 @@ export default function Home() {
         }
     };
 
-    // Handle Delete Chat
-    const handleDeleteChat = async (e, chatIdToDelete) => {
-        // Prevent bubbling so it doesn't try to load the chat
+    // TRIGGER DELETE CONFIRMATION
+    const confirmDeleteChat = (e, id) => {
         e.stopPropagation();
+        setChatToDelete(id);
+    };
+
+    // PERFORM DELETE
+    const handleDeleteChat = async () => {
+        if (!chatToDelete) return;
         
-        if (!confirm("Are you sure you want to delete this chat? This cannot be undone.")) return;
-
-        setDeletingChatId(chatIdToDelete);
-
+        setIsDeletingChat(true);
         try {
-            // Assuming your delete endpoint is at /api/chat/delete?chatId=...
-            const res = await fetch(`/api/chats/delete?chatId=${chatIdToDelete}`, {
-                method: "DELETE",
-            });
-
+            const res = await fetch(`/api/chats/delete?chatId=${chatToDelete}`, { method: "DELETE" });
             const data = await res.json();
 
             if (res.ok) {
                 toast.success("Chat deleted");
-                
-                // Optimistically update UI
-                setChatHistory(prev => prev.filter(chat => chat.id !== chatIdToDelete));
-
-                // If deleted active chat, start new one
-                if (chatId === chatIdToDelete) {
-                    handleNewChat();
-                }
+                setChatHistory(prev => prev.filter(chat => chat.id !== chatToDelete));
+                if (chatId === chatToDelete) handleNewChat();
             } else {
                 throw new Error(data.error || "Failed to delete");
             }
@@ -321,13 +394,34 @@ export default function Home() {
             console.error(error);
             toast.error("Failed to delete chat");
         } finally {
-            setDeletingChatId(null);
+            setIsDeletingChat(false);
+            setChatToDelete(null); // Close modal
+        }
+    };
+
+    const performDeleteAccount = async () => {
+        setIsDeletingAccount(true);
+        try {
+            const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
+            const data = await res.json();
+
+            if (res.ok) {
+                toast.success("Account deleted successfully");
+                setTimeout(() => {
+                    setShowDeleteModal(false);
+                    router.push('/');
+                }, 1000);
+            } else {
+                throw new Error(data.error || "Failed to delete account");
+            }
+        } catch (error) {
+            toast.error(error.message || "Could not delete account");
+            setIsDeletingAccount(false);
         }
     };
 
     const handleLoadChat = async (id) => {
         if (id === chatId) return; 
-        
         setLoading(true);
         setSidebarOpen(false); 
         
@@ -340,7 +434,6 @@ export default function Home() {
                 // Ensure messages match frontend structure
                 const formattedMessages = data.messages.map(msg => {
                     let analysis = null;
-
                     if (msg.analysisData) {
                         analysis = {
                             summary: msg.analysisData.summary,
@@ -367,13 +460,11 @@ export default function Home() {
                         createdAt: msg.createdAt
                     };
                 });
-
                 setMessages(formattedMessages);
             } else {
                 toast.error("Failed to load chat");
             }
         } catch (error) {
-            console.error("Error loading chat:", error);
             toast.error("Error loading chat");
         } finally {
             setLoading(false);
@@ -390,10 +481,8 @@ export default function Home() {
                 if (!res.ok) throw new Error("Unauthorized");
                 const data = await res.json();
                 setUser(data.user); 
-                
                 fetchChats();
             } catch (error) {
-                console.log("Redirecting to login...");
                 router.push('/'); 
             } finally {
                 setIsAuthChecking(false);
@@ -402,7 +491,6 @@ export default function Home() {
         checkAuth();
     }, [router]);
 
-    // Scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, loading, isGenerating]);
@@ -531,7 +619,34 @@ export default function Home() {
     const handleSend = async () => {
         if (!inputText.trim() && !file) return;
 
-        const textToSend = inputText || "Analyze this document";
+        const textToSend = inputText.trim() || "Analyze this document";
+        
+        // ---------------------------------------------
+        // ✅ NEW: LOCAL GREETING LOGIC
+        // ---------------------------------------------
+        if (!file && isGreeting(textToSend)) {
+            // Optimistic Update
+            setMessages(prev => [...prev, { role: "user", content: textToSend }]);
+            setInputText("");
+            setIsGenerating(true);
+
+            // Simulate small delay for realism
+            setTimeout(() => {
+                const reply = getGreetingResponse(textToSend);
+                setMessages(prev => [...prev, { 
+                    role: "assistant", 
+                    content: reply, 
+                    createdAt: new Date().toISOString() 
+                }]);
+                setIsGenerating(false);
+            }, 600);
+            
+            return; // 🛑 EXIT EARLY (Don't hit API)
+        }
+
+        // ---------------------------------------------
+        // STANDARD API FLOW
+        // ---------------------------------------------
         
         // Optimistic UI Update
         const userMsg = { role: "user", content: textToSend, file: file?.name };
@@ -549,7 +664,7 @@ export default function Home() {
 
             // 1. OCR Step
             if (file) {
-                setProcessingStage(0);
+                setProcessingStage(0); // "Reading..."
                 const formData = new FormData();
                 formData.append("file", file);
                 
@@ -560,8 +675,8 @@ export default function Home() {
                 apiBody.documentText = ocrData.text; 
             }
 
-            // 2. AI Generation
-            setProcessingStage(1);
+            // 2. AI Generation Step
+            setProcessingStage(1); // "Analyzing..."
             const aiRes = await fetch("/api/generate-content", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -578,12 +693,10 @@ export default function Home() {
             // Capture new ChatID from backend
             if (aiData.chatId) {
                 setChatId(aiData.chatId);
-                if (isNewConversation) {
-                    fetchChats(); 
-                }
+                if (isNewConversation) fetchChats(); 
             }
 
-            setProcessingStage(2); 
+            setProcessingStage(2); // "Finalizing..."
             
             setTimeout(() => {
                 setLoading(false);
@@ -634,6 +747,21 @@ export default function Home() {
                 isLoading={isLoggingOut} 
             />
 
+            <DeleteAccountModal
+                isOpen={showDeleteModal}
+                onClose={() => !isDeletingAccount && setShowDeleteModal(false)}
+                onConfirm={performDeleteAccount}
+                isLoading={isDeletingAccount}
+            />
+
+            {/* ✅ NEW: Delete Chat Modal */}
+            <DeleteChatModal 
+                isOpen={!!chatToDelete}
+                onClose={() => !isDeletingChat && setChatToDelete(null)}
+                onConfirm={handleDeleteChat}
+                isLoading={isDeletingChat}
+            />
+
             {/* Sidebar Overlay (Mobile) */}
             {sidebarOpen && (
                 <div className="fixed inset-0 bg-black/40 z-20 md:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
@@ -648,7 +776,7 @@ export default function Home() {
             `}>
                 <div className="p-6 border-b border-gray-100 flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shadow-blue-200 shadow-lg">
-                        <Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-10 h-10  " />
+                        <Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-10 h-10" />
                     </div>
                     <span className="font-bold text-gray-900 text-lg">Legal Advisor</span>
                     <button onClick={() => setSidebarOpen(false)} className="md:hidden ml-auto text-gray-400 hover:text-gray-600">
@@ -692,18 +820,13 @@ export default function Home() {
                                         </div>
                                     </button>
 
-                                    {/* Delete Button - Shows on Hover */}
+                                    {/* Delete Button */}
                                     <button 
-                                        onClick={(e) => handleDeleteChat(e, chat.id)}
-                                        disabled={deletingChatId === chat.id}
-                                        className="absolute right-2 top-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all z-10"
+                                        onClick={(e) => confirmDeleteChat(e, chat.id)}
+                                        className="absolute right-2 top-3 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 z-10"
                                         title="Delete chat"
                                     >
-                                        {deletingChatId === chat.id ? (
-                                            <Loader2 className="w-4 h-4 animate-spin text-red-500" />
-                                        ) : (
-                                            <Trash2 className="text-red-500  cursor-pointer w-4 h-4" />
-                                        )}
+                                        <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
                             ))
@@ -716,8 +839,8 @@ export default function Home() {
                 </div>
 
                 <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-                    <div className="flex items-center gap-3 mb-4 px-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-gray-200">
-                        <div className="w-9 h-9 rounded-full bg-linear-to-tr from-blue-100 to-purple-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">
+                    <div className="flex items-center gap-3 mb-4 px-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-gray-200 group">
+                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">
                             {user?.avatar ? (
                                 <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
                             ) : (
@@ -728,7 +851,17 @@ export default function Home() {
                             <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || "User"}</p>
                             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
+                        
+                        {/* DELETE ACCOUNT BUTTON */}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setShowDeleteModal(true); }}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                            title="Delete Account"
+                        >
+                            <UserX className="w-5 h-5" />
+                        </button>
                     </div>
+                    
                     <button 
                         onClick={handleLogoutClick}
                         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
@@ -756,7 +889,7 @@ export default function Home() {
                             <div className="flex flex-col items-center justify-center min-h-[60vh] mt-4">
                                 <div className="relative mb-8 group">
                                     <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50 group-hover:scale-110 transition-transform"></div>
-                                    <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20  animate-pulse" />
+                                    <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
                                 </div>
                                 <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
                                     <TypeAnimation
