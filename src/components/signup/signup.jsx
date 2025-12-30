@@ -44,7 +44,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="min-h-screen flex bg-gradient-to-br from-blue-50 via-white to-blue-100">
 
       {/* LEFT SIDE */}
       <div className="hidden md:flex w-1/2 items-center justify-center px-16">
@@ -86,18 +86,16 @@ export default function SignupPage() {
       </div>
 
       {/* RIGHT SIDE */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-white p-8">
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-gray-100 p-8">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
 
-          <div className="items-center justify-center text-center">
-            {/* Header */}
+          {/* Header */}
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            ✨ Create Account ✨
+            Create Account ✨
           </h2>
           <p className="text-gray-600 mb-8">
             Password will be sent to your email
           </p>
-          </div>
 
           {/* FORM */}
           <form onSubmit={handleSubmit} className="space-y-5">

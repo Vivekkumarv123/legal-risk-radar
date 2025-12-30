@@ -4,103 +4,65 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 export default function HomePage() {
-  return (
-    <div className="flex flex-col">
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* HERO SECTION */}
-      <section className="min-h-[80vh] flex items-center justify-center bg-white px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-4xl text-center"
-        >
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Smart Legal Guidance, Powered by AI ⚖️
-          </h1>
+            {/* NAVBAR */}
+            <header className="flex justify-between items-center px-10 py-6 bg-white shadow-sm">
+                <h1 className="text-2xl font-bold text-blue-700">Legal Advisor</h1>
 
-          <p className="text-gray-600 text-lg mb-8">
-            Understand contracts, detect legal risks, and get expert-level
-            insights in seconds — before you sign anything.
-          </p>
+                <nav className="space-x-6">
+                    <Link href="/pages/features" className="text-gray-600 hover:text-blue-600">
+                        Features
+                    </Link>
+                    <Link href="/pages/pricing" className="text-gray-600 hover:text-blue-600">
+                        Pricing
+                    </Link>
+                    <Link href="/pages/login" className="text-blue-600 font-semibold">
+                        Login
+                    </Link>
+                </nav>
+            </header>
 
-          <div className="flex justify-center gap-4">
-            <Link
-              href="/pages/signup"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition"
-            >
-              Get Started
-            </Link>
+            {/* HERO */}
+            <main className="flex-1 flex items-center justify-center px-10">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                    className="max-w-3xl text-center"
+                >
+                    <h2 className="text-5xl font-bold text-gray-900 mb-6">
+                        Smart Legal Guidance, Powered by AI ⚖️
+                    </h2>
 
-            <Link
-              href="/pages/pricing"
-              className="border border-blue-600 text-blue-600 px-8 py-3 rounded-xl font-semibold hover:bg-blue-50 transition"
-            >
-              View Pricing
-            </Link>
-          </div>
-        </motion.div>
-      </section>
+                    <p className="text-gray-600 text-lg mb-8">
+                        Get instant legal insights, document analysis, and expert guidance
+                        anytime, anywhere.
+                    </p>
 
-      {/* FEATURES SECTION */}
-      <section className="py-20 bg-gray-50 px-6">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Why Choose Legal Advisor?
-          </h2>
+                    <div className="flex justify-center gap-4">
+                        <Link
+                            href="/pages/signup"
+                            className="bg-blue-700 hover:bg-blue-800 text-white px-8 py-3 rounded-xl font-semibold"
+                        >
+                            Get Started
+                        </Link>
 
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">
-                AI Risk Detection
-              </h3>
-              <p className="text-gray-600">
-                Automatically highlights risky clauses and hidden obligations
-                in legal documents.
-              </p>
-            </div>
+                        <Link
+                            href="/pages/pricing"
+                            className="border border-blue-700 text-blue-700 px-8 py-3 rounded-xl font-semibold hover:bg-blue-50"
+                        >
+                            View Pricing
+                        </Link>
+                    </div>
+                </motion.div>
+            </main>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">
-                Plain English Explanations
-              </h3>
-              <p className="text-gray-600">
-                Legal jargon translated into simple language anyone can
-                understand.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm text-center">
-              <h3 className="text-xl font-semibold mb-3 text-gray-900">
-                Secure & Private
-              </h3>
-              <p className="text-gray-600">
-                Your documents stay private with enterprise-grade security and
-                encryption.
-              </p>
-            </div>
-          </div>
+            {/* FOOTER */}
+            <footer className="text-center py-4 text-gray-500 text-sm">
+                © {new Date().getFullYear()} Legal Advisor. All rights reserved.
+            </footer>
         </div>
-      </section>
-
-      {/* CALL TO ACTION */}
-      <section className="py-16 bg-white text-center px-6">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          Make Confident Legal Decisions
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Join professionals, startups, and individuals using AI to stay
-          legally safe.
-        </p>
-
-        <Link
-          href="/pages/signup"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-semibold transition"
-        >
-          Start Free Trial
-        </Link>
-      </section>
-
-    </div>
-  );
+    );
 }
