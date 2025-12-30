@@ -1,9 +1,11 @@
 "use client";
+
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { User, Mail } from "lucide-react";
+import { User, Mail, ArrowRight, Scale, CheckCircle, Shield, Zap } from "lucide-react";
 import toast from "react-hot-toast";
+import Image from "next/image";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -32,7 +34,7 @@ export default function SignupPage() {
 
       if (res.ok) {
         toast.success("Account created! Password sent to your email 📧");
-        router.push("/");
+        router.push("/login"); // Redirect to login typically after signup
       } else {
         toast.error(data.message || "Signup failed");
       }
@@ -44,134 +46,159 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="min-h-screen flex bg-gray-50 font-sans">
 
-      {/* LEFT SIDE */}
-      <div className="hidden md:flex w-1/2 items-center justify-center px-16">
-        <div className="max-w-lg space-y-8">
+      {/* ================= LEFT SIDE (BRAND PANEL) ================= */}
+      <div className="hidden lg:flex w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12 text-white">
+        
+        {/* Abstract Background Shapes */}
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-slate-950 opacity-80"></div>
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-600 rounded-full blur-[120px] opacity-40 animate-pulse"></div>
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
 
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-lg">
-              ⚖️
+        {/* Content Layer */}
+        <div className="relative z-10 max-w-lg space-y-8">
+            <div className="flex items-center gap-3 text-blue-400 font-bold text-2xl mb-8">
+                <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
+                Legal Advisor
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Legal Advisor
+
+            <h1 className="text-5xl font-bold leading-tight tracking-tight">
+                Join the future of <br/>
+                <span className="text-blue-400">Legal Intelligence.</span>
             </h1>
-          </div>
+            
+            <p className="text-slate-300 text-lg leading-relaxed">
+                Create an account to access instant contract analysis, risk detection, and 24/7 AI legal support.
+            </p>
 
-          {/* Heading */}
-          <h2 className="text-4xl font-extrabold leading-tight text-gray-900">
-            Create your <span className="text-blue-600">AI-powered</span> legal account
-          </h2>
+            {/* Feature Cards */}
+            <div className="grid grid-cols-1 gap-4 pt-4">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                    <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400"><Zap size={20} /></div>
+                    <div>
+                        <h3 className="font-semibold text-white">Lightning Fast</h3>
+                        <p className="text-sm text-slate-400">Get contract summaries in seconds, not days.</p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                    <div className="bg-green-500/20 p-2 rounded-lg text-green-400"><Shield size={20} /></div>
+                    <div>
+                        <h3 className="font-semibold text-white">Bank-Grade Security</h3>
+                        <p className="text-sm text-slate-400">Your documents are encrypted and private.</p>
+                    </div>
+                </div>
+            </div>
 
-          {/* Description */}
-          <p className="text-lg text-gray-600">
-            Sign up once and get instant access to legal insights, risk analysis,
-            and AI-powered guidance.
-          </p>
-
-          {/* Features */}
-          <ul className="space-y-3 text-gray-700 text-base">
-            <li>✅ AI contract analysis</li>
-            <li>✅ Simple legal explanations</li>
-            <li>✅ Private & secure chats</li>
-          </ul>
-
-          {/* Trust */}
-          <p className="text-sm text-gray-500">
-            🔒 Secure • Trusted • AI Powered
-          </p>
+            <div className="pt-4 flex items-center gap-4 text-sm text-slate-400 font-medium">
+                <div className="flex -space-x-2">
+                    {[1,2,3,4].map(i => (
+                        <div key={i} className="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-900"></div>
+                    ))}
+                </div>
+                <p>Joined by 10,000+ professionals</p>
+            </div>
         </div>
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-gray-100 p-8">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
+      {/* ================= RIGHT SIDE (SIGNUP FORM) ================= */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 lg:p-12 relative">
+        
+        {/* Mobile Logo */}
+        <div className="lg:hidden absolute top-8 left-8 flex items-center gap-2 text-blue-700 font-bold text-xl">
+            <Scale size={24} /> LegalAI
+        </div>
 
-          {/* Header */}
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Account ✨
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Password will be sent to your email
-          </p>
+        <div className="w-full max-w-md bg-white">
+          
+          {/* HEADER */}
+          <div className="mb-10 text-center lg:text-left">
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Create your account</h2>
+            <p className="text-slate-500">
+                Start your 7-day free trial. No credit card required.
+            </p>
+          </div>
 
           {/* FORM */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* NAME */}
-            <div className="relative">
-              <User className="absolute left-3 top-3.5 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl
-                bg-white text-gray-900 outline-none
-                focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
-              />
+            <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Full Name</label>
+                <div className="relative">
+                    <User className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="John Doe"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                </div>
             </div>
 
             {/* EMAIL */}
-            <div className="relative">
-              <Mail className="absolute left-3 top-3.5 text-gray-400" size={18} />
-              <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl
-                bg-white text-gray-900 outline-none
-                focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
-              />
+            <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Work Email</label>
+                <div className="relative">
+                    <Mail className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                        type="email"
+                        placeholder="name@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                </div>
             </div>
 
             {/* SIGNUP BUTTON */}
             <button
               disabled={loading}
               type="submit"
-              className="w-full py-3 bg-blue-700 hover:bg-blue-800
-              text-white font-semibold rounded-xl transition
-              disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group"
             >
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? (
+                  <>Creating Account...</>
+              ) : (
+                  <>Get Started <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></>
+              )}
             </button>
           </form>
 
           {/* DIVIDER */}
-          <div className="flex items-center my-6">
-            <div className="flex-1 h-px bg-gray-300" />
-            <span className="px-3 text-gray-400 text-sm">OR</span>
-            <div className="flex-1 h-px bg-gray-300" />
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-slate-500 font-medium">Or sign up with</span>
+            </div>
           </div>
 
-          {/* GOOGLE SIGNUP (UI ONLY) */}
+          {/* GOOGLE SIGNUP BUTTON */}
           <button
             type="button"
-            className="w-full border border-gray-300 flex items-center justify-center gap-2 py-3 rounded-xl hover:bg-gray-100 transition"
+            className="w-full border border-slate-200 flex items-center justify-center gap-3 py-3 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-700 font-semibold"
           >
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"
               alt="Google"
               className="w-5 h-5"
             />
-            <span className="text-gray-700 font-medium">
-              Sign up with Google
-            </span>
+            Google
           </button>
 
-          {/* LOGIN LINK */}
-          <p className="text-center text-sm text-gray-600 mt-6">
+          {/* LOGIN CTA */}
+          <p className="text-center text-slate-500 mt-8 font-medium">
             Already have an account?{" "}
             <Link
-              href="/"
-              className="text-blue-600 font-medium hover:underline"
+              href="/pages/login"
+              className="text-blue-600 font-bold hover:text-blue-700 hover:underline transition-colors"
             >
-              Login
+              Log in
             </Link>
           </p>
 

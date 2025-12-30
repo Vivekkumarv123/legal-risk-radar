@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Scale, CheckCircle, ArrowRight } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import toast from "react-hot-toast";
-import LegalAdvisorHero from "../LegalAdvisorHero";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,110 +68,180 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50 font-sans">
 
-      {/* LEFT SIDE */}
-      <LegalAdvisorHero />
+      {/* ================= LEFT SIDE (BRAND PANEL) ================= */}
+      <div className="hidden lg:flex w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12 text-white">
+        
+        {/* Abstract Background Shapes */}
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-slate-950 opacity-80"></div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-600 rounded-full blur-[100px] opacity-30 animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-600 rounded-full blur-[100px] opacity-30"></div>
 
-      {/* RIGHT SIDE */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-10">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl px-8 py-10">
+        {/* Content Layer */}
+        <div className="relative z-10 max-w-lg space-y-8">
+            <div className="flex items-center gap-3  text-blue-400 font-bold text-2xl mb-8">
+                <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
+                Legal Advisor
+            </div>
 
+            <h1 className="text-5xl font-bold leading-tight tracking-tight">
+                Simplify your legal <br/>
+                <span className="text-blue-400">journey today.</span>
+            </h1>
+            
+            <p className="text-slate-300 text-lg leading-relaxed">
+                Unlock the power of AI to analyze contracts, understand risks, and get instant legal guidance tailored for India.
+            </p>
+
+            {/* Feature List */}
+            <div className="space-y-4 pt-4">
+                {[
+                    "Instant Document Analysis",
+                    "Risk Detection & Alerts",
+                    "24/7 AI Legal Assistant"
+                ].map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 text-slate-200 font-medium">
+                        <CheckCircle size={20} className="text-green-400" />
+                        {item}
+                    </div>
+                ))}
+            </div>
+
+            {/* Testimonial / Social Proof */}
+            <div className="mt-10 p-2 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+                <p className="italic text-slate-300 mb-4">"LegalAI saved me hours of reading and potential legal trouble. A must-have tool!"</p>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500"></div>
+                    <div>
+                        <p className="font-bold text-sm">Aditya Verma</p>
+                        <p className="text-xs text-slate-400">Freelance Designer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      {/* ================= RIGHT SIDE (LOGIN FORM) ================= */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 lg:p-12 relative">
+        
+        {/* Mobile Logo (Visible only on small screens) */}
+        <div className="lg:hidden absolute top-8 left-8 flex items-center gap-2 text-blue-700 font-bold text-xl">
+            <Scale size={24} /> LegalAI
+        </div>
+
+        <div className="w-full max-w-md bg-white">
+          
           {/* HEADER */}
-          <h2 className="text-3xl font-bold text-gray-900 mb-1">
-            Welcome Back 👋
-          </h2>
-          <p className="text-gray-600 mb-8">
-            Login to continue to Legal Advisor
-          </p>
+          <div className="mb-10 text-center lg:text-left">
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Welcome back</h2>
+            <p className="text-slate-500">
+                Please enter your details to sign in.
+            </p>
+          </div>
 
           {/* FORM */}
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
 
             {/* EMAIL */}
-            <div className="relative">
-              <Mail className="absolute left-4 top-3.5 text-gray-400" size={18} />
-              <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full pl-11 pr-4 py-3 border border-gray-300
-                rounded-xl text-gray-900 placeholder-gray-400
-                focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
+            <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                <div className="relative">
+                    <Mail className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                        type="email"
+                        placeholder="name@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                </div>
             </div>
 
             {/* PASSWORD */}
-            <div className="relative">
-              <Lock className="absolute left-4 top-3.5 text-gray-400" size={18} />
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-11 pr-10 py-3 border border-gray-300
-                rounded-xl text-gray-900 placeholder-gray-400
-                focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-
-              {/* SHOW / HIDE */}
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Password</label>
+                <div className="relative">
+                    <Lock className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                </div>
             </div>
 
             {/* FORGOT PASSWORD */}
-            <div className="text-right">
-              <Link
-                href="/pages/forgot-password"
-                className="text-sm text-blue-600 hover:underline font-medium"
-              >
-                Forgot password?
-              </Link>
+            <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-slate-500">Remember me</span>
+                </label>
+                <Link
+                    href="/pages/forgot-password"
+                    className="text-sm text-blue-600 hover:text-blue-700 font-semibold hover:underline"
+                >
+                    Forgot password?
+                </Link>
             </div>
 
             {/* LOGIN BUTTON */}
             <button
               disabled={loading}
-              className="w-full bg-blue-700 hover:bg-blue-800
-              text-white py-3 rounded-xl font-semibold transition
-              disabled:opacity-50"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group"
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? (
+                  <>Logging in...</>
+              ) : (
+                  <>Sign in <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></>
+              )}
             </button>
           </form>
 
           {/* DIVIDER */}
-          <div className="flex items-center my-6">
-            <div className="flex-1 h-px bg-gray-300" />
-            <span className="px-4 text-gray-400 text-sm">OR</span>
-            <div className="flex-1 h-px bg-gray-300" />
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-slate-500 font-medium">Or continue with</span>
+            </div>
           </div>
 
           {/* GOOGLE LOGIN */}
-          <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => toast.error("Google Login Failed")}
-              width="100%"
-            />
+          <div className="flex justify-center w-full">
+            <div className="w-full google-btn-wrapper"> {/* Add custom class for potential CSS overrides if needed */}
+                <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => toast.error("Google Login Failed")}
+                    width="100%"
+                    theme="outline"
+                    size="large"
+                    shape="pill"
+                    text="continue_with"
+                />
+            </div>
           </div>
 
-          {/* SIGNUP */}
-          <p className="text-center text-sm mt-6 text-gray-600">
+          {/* SIGNUP CTA */}
+          <p className="text-center text-slate-500 mt-8 font-medium">
             Don’t have an account?{" "}
             <Link
               href="/pages/signup"
-              className="text-blue-600 font-medium hover:underline"
+              className="text-blue-600 font-bold hover:text-blue-700 hover:underline transition-colors"
             >
-              Sign up
+              Create free account
             </Link>
           </p>
 

@@ -59,7 +59,7 @@ function UploadBox({ onCancel, file }) {
                     <Paperclip className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                    <p className="font-medium text-gray-900 text-sm truncate max-w-[200px]">{file.name}</p>
+                    <p className="font-medium text-gray-900 text-sm truncate max-w-50">{file.name}</p>
                     <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
             </div>
@@ -120,7 +120,7 @@ function ResultCard({ analysis, scrollToClause }) {
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
-            <div className="p-6 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+            <div className="p-6 bg-linaer-to-br from-gray-50 to-white border-b border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
                     <Shield className={`w-8 h-8 ${riskColor}`} />
                     <h2 className="text-xl font-bold text-gray-900">Risk Level: {overallRisk}</h2>
@@ -717,7 +717,7 @@ export default function Home() {
 
                 <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                     <div className="flex items-center gap-3 mb-4 px-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-gray-200">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-100 to-purple-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">
+                        <div className="w-9 h-9 rounded-full bg-linear-to-tr from-blue-100 to-purple-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">
                             {user?.avatar ? (
                                 <img src={user.avatar} alt="User" className="w-full h-full object-cover" />
                             ) : (

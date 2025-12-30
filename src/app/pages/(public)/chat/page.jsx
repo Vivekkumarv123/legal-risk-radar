@@ -52,7 +52,7 @@ function LimitModal({ isOpen, router }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 scale-100 animate-in zoom-in-95 duration-300 text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Lock className="w-8 h-8 text-blue-600" />
@@ -183,7 +183,7 @@ function ResultCard({ analysis, scrollToClause }) {
 
     return (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 max-w-3xl shadow-sm">
-            <div className="text-center py-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+            <div className="text-center py-8 bg-linear-to-br from-blue-50 to-indigo-50 rounded-xl">
                 <Shield className={`w-16 h-16 mx-auto mb-3 ${riskColor}`} />
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Overall Risk: {overallRisk}</h2>
                 <p className="text-gray-600 px-6 max-w-2xl mx-auto">{analysis.summary}</p>

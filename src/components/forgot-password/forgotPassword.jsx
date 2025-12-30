@@ -8,14 +8,16 @@ import {
   Shield,
   CheckCircle2,
   X,
-  AlertTriangle // Import AlertTriangle for specific error UI if needed
+  ArrowRight,
+  Scale,
+  KeyRound
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import toast from "react-hot-toast"; // Ensure you have react-hot-toast installed
+import toast from "react-hot-toast"; 
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link"; // Ensure Link is imported if used for back navigation
 
 /* ================= CUSTOM OTP INPUT COMPONENT ================= */
-// ... (Keep OtpInput code exactly as is) ...
 const OtpInput = ({ value, onChange, length = 6 }) => {
   const inputRef = useRef(null);
   const handleBoxClick = () => {
@@ -45,24 +47,24 @@ const OtpInput = ({ value, onChange, length = 6 }) => {
           const isActive = value.length === index;
           const isFilled = value.length > index;
           return (
-            <div key={index} className="relative w-12 h-14 md:w-14 md:h-16 flex items-center justify-center">
+            <div key={index} className="relative w-10 h-12 md:w-12 md:h-14 flex items-center justify-center">
               <motion.div
                 initial={false}
                 animate={{
-                  borderColor: isActive ? "#2563eb" : isFilled ? "#93c5fd" : "#e5e7eb",
+                  borderColor: isActive ? "#2563eb" : isFilled ? "#93c5fd" : "#e2e8f0",
                   borderWidth: isActive ? 2 : 1,
                   scale: isActive ? 1.05 : 1,
-                  boxShadow: isActive ? "0 4px 12px rgba(37, 99, 235, 0.2)" : "none",
-                  backgroundColor: isFilled ? "#eff6ff" : "#f9fafb"
+                  boxShadow: isActive ? "0 4px 12px rgba(37, 99, 235, 0.1)" : "none",
+                  backgroundColor: isFilled ? "#eff6ff" : "#f8fafc"
                 }}
                 transition={{ duration: 0.2 }}
-                className="absolute inset-0 rounded-xl border bg-gray-50 z-10"
+                className="absolute inset-0 rounded-xl border bg-slate-50 z-10"
               />
               <motion.span
                 key={digit}
-                initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                initial={{ opacity: 0, scale: 0.5, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="relative z-10 text-2xl font-bold text-gray-800"
+                className="relative z-10 text-xl font-bold text-slate-800"
               >
                 {digit}
               </motion.span>
@@ -71,7 +73,7 @@ const OtpInput = ({ value, onChange, length = 6 }) => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [0, 1, 0] }}
                   transition={{ duration: 0.8, repeat: Infinity }}
-                  className="absolute z-10 w-0.5 h-6 bg-blue-600 rounded-full"
+                  className="absolute z-10 w-0.5 h-5 bg-blue-600 rounded-full"
                 />
               )}
             </div>
@@ -83,7 +85,6 @@ const OtpInput = ({ value, onChange, length = 6 }) => {
 };
 
 /* ================= MAIL SEND ANIMATION OVERLAY ================= */
-// ... (Keep MailSendAnimation code exactly as is) ...
 function MailSendAnimation({ status, onComplete }) {
   const [show, setShow] = useState(false);
   const [particles, setParticles] = useState([]);
@@ -119,10 +120,10 @@ function MailSendAnimation({ status, onComplete }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
       >
         {status === "success" && (
-          <>
+          <div className="relative flex flex-col items-center">
             {particles.map((p) => (
               <motion.div
                 key={p.id}
@@ -143,53 +144,57 @@ function MailSendAnimation({ status, onComplete }) {
               initial={{ scale: 0, rotate: -45 }}
               animate={{ scale: [0, 1.2, 1], rotate: [-45, -45, 0] }}
               transition={{ duration: 0.5, ease: "backOut" }}
-              className="relative"
+              className="relative mb-8"
             >
               <motion.div
                 animate={{ x: [0, 20, 400], y: [0, -10, -400], scale: [1, 1, 0], opacity: [1, 1, 0] }}
                 transition={{ duration: 1.2, delay: 0.6, ease: "easeInOut" }}
               >
-                <Mail size={80} className="text-blue-600 drop-shadow-2xl" strokeWidth={1.5} />
+                <div className="bg-white p-6 rounded-full shadow-2xl">
+                    <Mail size={48} className="text-blue-600" strokeWidth={2} />
+                </div>
               </motion.div>
             </motion.div>
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.2 }}
-              className="absolute bottom-1/3 bg-white px-8 py-4 rounded-2xl shadow-2xl"
+              className="bg-white px-8 py-5 rounded-2xl shadow-2xl text-center"
             >
-              <p className="text-2xl font-bold text-gray-900">Mail sent! 📩</p>
-              <p className="text-sm text-gray-500">Check your inbox for OTP</p>
+              <p className="text-xl font-bold text-slate-900 mb-1">Email Sent! 📩</p>
+              <p className="text-sm text-slate-500">Check your inbox for the reset code</p>
             </motion.div>
-          </>
+          </div>
         )}
 
         {status === "error" && (
-          <>
+          <div className="relative flex flex-col items-center">
             <motion.div 
                animate={{ x: [0, -10, 10, -10, 0] }}
                transition={{ duration: 0.5 }}
-               className="relative"
+               className="relative mb-8"
             >
-              <Mail size={80} className="text-red-500 drop-shadow-2xl" strokeWidth={1.5} />
+              <div className="bg-white p-6 rounded-full shadow-2xl border-2 border-red-50">
+                  <Mail size={48} className="text-red-500" strokeWidth={2} />
+              </div>
               <motion.div 
                  initial={{ scale: 0 }} 
                  animate={{ scale: 1 }}
-                 className="absolute -right-2 -bottom-2 bg-red-600 rounded-full p-2"
+                 className="absolute -right-1 -bottom-1 bg-red-600 rounded-full p-1.5 border-2 border-white"
               >
-                 <X size={30} className="text-white" strokeWidth={3} />
+                 <X size={20} className="text-white" strokeWidth={3} />
               </motion.div>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="absolute bottom-1/3 bg-white px-8 py-4 rounded-2xl shadow-2xl border-2 border-red-100"
+              className="bg-white px-8 py-5 rounded-2xl shadow-2xl border border-red-100 text-center"
             >
-              <p className="text-xl font-bold text-red-600">Sending Failed</p>
-              <p className="text-sm text-gray-500">Please try again</p>
+              <p className="text-xl font-bold text-red-600 mb-1">Sending Failed</p>
+              <p className="text-sm text-slate-500">Please verify your email and try again</p>
             </motion.div>
-          </>
+          </div>
         )}
       </motion.div>
     </AnimatePresence>
@@ -210,7 +215,7 @@ export default function ForgotPassword() {
   
   const [mailStatus, setMailStatus] = useState(null); 
 
-  /* ================= SEND OTP (UPDATED LOGIC) ================= */
+  /* ================= SEND OTP ================= */
   const handleSendOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -222,21 +227,17 @@ export default function ForgotPassword() {
         body: JSON.stringify({ email: emailOrPhone.trim() }),
       });
 
-      const data = await res.json(); // ALWAYS parse the JSON
+      const data = await res.json(); 
 
       if (res.ok) {
         setMailStatus("success");
       } else {
-        // CHECK IF IT'S THE PROVIDER ERROR
         if (res.status === 400 && data.message) {
-          // Show the specific message from backend via Toast
           toast.error(data.message, {
-            duration: 5000, // Show longer so they can read
+            duration: 4000,
             icon: '🚫',
           });
-          // DO NOT trigger setMailStatus("error"), as this isn't a "sending failure", it's a validation error.
         } else {
-          // Generic error or server error
           setMailStatus("error");
         }
       }
@@ -270,13 +271,13 @@ export default function ForgotPassword() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success("OTP verified ✅");
+        toast.success("Code verified successfully ✅");
         setStep(3);
       } else {
-        toast.error(data.message || "Invalid OTP");
+        toast.error(data.message || "Invalid Code");
       }
     } catch {
-      toast.error("OTP verification failed");
+      toast.error("Verification failed");
     } finally {
       setLoading(false);
     }
@@ -304,7 +305,7 @@ export default function ForgotPassword() {
 
       if (res.ok) {
         toast.success("Password reset successfully 🔐");
-        setTimeout(() => (window.location.href = "/"), 1500);
+        setTimeout(() => (window.location.href = "/pages/login"), 1500);
       } else {
         const data = await res.json();
         toast.error(data.message || "Reset failed");
@@ -316,123 +317,147 @@ export default function ForgotPassword() {
     }
   };
 
-  const inputClass =
-    "w-full bg-gray-50 text-gray-900 placeholder-gray-400 " +
-    "border border-gray-300 rounded-xl px-10 py-3 " +
-    "focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all";
-
   return (
-    <div className="min-h-screen flex bg-linear-to-br from-blue-50 via-white to-blue-100">
+    <div className="min-h-screen flex bg-slate-50 font-sans">
       
       <MailSendAnimation status={mailStatus} onComplete={handleAnimationComplete} />
 
-      {/* LEFT SIDE */}
-      <div className="hidden md:flex w-1/2 px-20 py-16">
-        <div className="flex flex-col justify-center space-y-10 max-w-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xl">
-              <Shield size={28} />
+      {/* ================= LEFT SIDE (BRAND PANEL) ================= */}
+      <div className="hidden lg:flex w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12 text-white">
+        {/* Abstract Background Shapes (Consistent with Login/Signup) */}
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-slate-950 opacity-80"></div>
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-blue-600 rounded-full blur-[120px] opacity-30 animate-pulse"></div>
+        
+        <div className="relative z-10 max-w-lg space-y-10">
+            <div className="flex items-center gap-3 text-blue-400 font-bold text-2xl mb-8">
+                <div className="bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20">
+                    <Scale size={28} />
+                </div>
+                LegalAI
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Legal Advisor</h1>
-          </div>
 
-          <h2 className="text-4xl font-extrabold text-gray-900 leading-tight">
-            Secure <span className="text-blue-600">Password Recovery</span>
-          </h2>
+            <div>
+                <h2 className="text-4xl font-bold leading-tight mb-4">
+                    Account <span className="text-blue-400">Security</span>
+                </h2>
+                <p className="text-slate-300 text-lg leading-relaxed">
+                    We use multi-factor authentication and secure OTP verification to ensure only you can access your legal documents.
+                </p>
+            </div>
 
-          <p className="text-lg text-gray-600">
-            Recover your account using a secure OTP-based password reset process.
-          </p>
-
-          <div className="space-y-4">
-            {["OTP-based secure reset", "Fast verification", "Private & encrypted"].map(
-              (item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.15 }}
-                  className="flex items-center gap-3 text-gray-700"
-                >
-                  <CheckCircle2 className="text-blue-600" />
-                  {item}
-                </motion.div>
-              )
-            )}
-          </div>
+            <div className="space-y-5">
+                {[
+                    "End-to-End Encryption", 
+                    "Secure OTP Verification", 
+                    "Instant Account Recovery"
+                ].map((item, i) => (
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.15 }}
+                        className="flex items-center gap-4 text-slate-200 font-medium"
+                    >
+                        <div className="bg-green-500/20 p-1.5 rounded-full">
+                            <CheckCircle2 size={18} className="text-green-400" />
+                        </div>
+                        {item}
+                    </motion.div>
+                ))}
+            </div>
         </div>
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-1">
-            Forgot Password 🔑
-          </h2>
-          <p className="text-gray-600 mb-6">Reset your password securely</p>
+      {/* ================= RIGHT SIDE (FORM) ================= */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative">
+        <div className="w-full max-w-md bg-white">
+          
+          {/* Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-2">
+                {step === 1 && "Forgot Password?"}
+                {step === 2 && "Verify Identity"}
+                {step === 3 && "Reset Password"}
+            </h2>
+            <p className="text-slate-500">
+                {step === 1 && "Don't worry, we'll send you reset instructions."}
+                {step === 2 && `Enter the 6-digit code sent to ${emailOrPhone}`}
+                {step === 3 && "Create a new strong password for your account."}
+            </p>
+          </div>
 
           {/* STEP 1: EMAIL */}
           {step === 1 && (
             <motion.form
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
               onSubmit={handleSendOtp} 
-              className="space-y-5"
+              className="space-y-6"
             >
-              <label className="text-sm font-semibold text-gray-700">
-                Registered Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3.5 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="Enter your registered email"
-                  value={emailOrPhone}
-                  onChange={(e) => setEmailOrPhone(e.target.value)}
-                  required
-                  className={inputClass}
-                />
+              <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                      type="email"
+                      placeholder="name@company.com"
+                      value={emailOrPhone}
+                      onChange={(e) => setEmailOrPhone(e.target.value)}
+                      required
+                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                  </div>
               </div>
+
               <button
                 disabled={loading}
-                className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-semibold transition-transform active:scale-95"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group"
               >
-                {loading ? "Sending..." : "Send OTP"}
+                {loading ? (
+                    "Sending..." 
+                ) : (
+                    <>Send Instructions <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></>
+                )}
               </button>
+
+              <div className="text-center">
+                  <Link href="/pages/login" className="text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors">
+                      ← Back to Login
+                  </Link>
+              </div>
             </motion.form>
           )}
 
-          {/* STEP 2: OTP (BOXED) */}
+          {/* STEP 2: OTP */}
           {step === 2 && (
             <motion.form
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }} 
+              exit={{ opacity: 0, x: -20 }}
               onSubmit={handleVerifyOtp} 
-              className="space-y-5"
+              className="space-y-8"
             >
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700">Enter OTP</label>
-                <p className="text-xs text-gray-500">We sent a code to {emailOrPhone}</p>
-              </div>
-
               <div className="py-2 flex justify-center">
                  <OtpInput value={otp} onChange={setOtp} length={6} />
               </div>
 
-              <button
-                disabled={loading}
-                className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-semibold transition-transform active:scale-95 mt-2"
-              >
-                {loading ? "Verifying..." : "Verify OTP"}
-              </button>
-              
-              <button 
-                type="button" 
-                onClick={() => setStep(1)}
-                className="w-full text-sm text-gray-500 hover:text-blue-600"
-              >
-                Wrong email? Go back
-              </button>
+              <div className="space-y-4">
+                  <button
+                    disabled={loading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all disabled:opacity-70"
+                  >
+                    {loading ? "Verifying..." : "Verify Code"}
+                  </button>
+                  
+                  <button 
+                    type="button" 
+                    onClick={() => setStep(1)}
+                    className="w-full text-sm text-slate-500 hover:text-blue-600 font-medium transition-colors"
+                  >
+                    Didn't receive code? Try again
+                  </button>
+              </div>
             </motion.form>
           )}
 
@@ -441,54 +466,55 @@ export default function ForgotPassword() {
             <motion.form
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }} 
+              exit={{ opacity: 0, x: -20 }}
               onSubmit={handleResetPassword} 
-              className="space-y-5"
+              className="space-y-6"
             >
-              <label className="text-sm font-semibold text-gray-700">
-                New Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className={inputClass}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3.5 text-gray-400 hover:text-blue-600"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
+              <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">New Password</label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
               </div>
 
-              <label className="text-sm font-semibold text-gray-700">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 text-gray-400" />
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Re-enter new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={inputClass}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3.5 text-gray-400 hover:text-blue-600"
-                >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
+              <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Confirm Password</label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-4 top-3.5 text-slate-400" size={20} />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full pl-12 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
               </div>
 
               <button
                 disabled={loading}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-transform active:scale-95"
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-green-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {loading ? "Updating..." : "Reset Password"}
               </button>
