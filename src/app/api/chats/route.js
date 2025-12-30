@@ -14,21 +14,22 @@ export async function GET() {
     const decoded = jwt.verify(token, secret);
     const userId = decoded.id;
 
-    // Fetch chat summaries for this user
+    // Fetch only the necessary fields for the sidebar (ID, Title, Date)
     const chatsSnapshot = await db.collection("chats")
       .where("userId", "==", userId)
       .orderBy("updatedAt", "desc")
-      .limit(20)
+      .limit(50) 
       .get();
 
     const chats = chatsSnapshot.docs.map(doc => ({
       id: doc.id,
-      title: doc.data().title || "Untitled Analysis",
-      updatedAt: doc.data().updatedAt?.toDate().toISOString(),
+      title: doc.data().title || "New Conversation",
+      updatedAt: doc.data().updatedAt?.toDate().toISOString(), // Safe for JSON
     }));
 
     return NextResponse.json({ success: true, chats });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Fetch Chats Error:", error);
+    return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 });
   }
 }

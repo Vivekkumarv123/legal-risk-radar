@@ -4,13 +4,14 @@ import toast from "react-hot-toast";
 import { TypeAnimation } from "react-type-animation";
 import { 
     Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
-    Menu, LogOut, MessageSquare, User, Plus, AlertTriangle, Loader2 
+    Menu, LogOut, MessageSquare, User, Plus, AlertTriangle, 
+    Loader2, Clock, Trash2 
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 // ==========================================
-// SUB-COMPONENTS
+// SUB-COMPONENTS (Unchanged)
 // ==========================================
 
 function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
@@ -247,7 +248,12 @@ export default function Home() {
     const [user, setUser] = useState(null); 
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [chatId, setChatId] = useState(null); // Tracks current session ID
+    const [chatId, setChatId] = useState(null); 
+    
+    // Chat History State
+    const [chatHistory, setChatHistory] = useState([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [deletingChatId, setDeletingChatId] = useState(null); // Tracks delete loading state
 
     // REFS
     const messagesEndRef = useRef(null);
@@ -261,16 +267,131 @@ export default function Home() {
     const textareaRef = useRef(null);
 
     // ==========================================
+    // DATA FETCHING FUNCTIONS
+    // ==========================================
+
+    const fetchChats = async () => {
+        setIsLoadingHistory(true);
+        try {
+            const res = await fetch('/api/chats', { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) {
+                    setChatHistory(data.chats);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching chats:", error);
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    };
+
+    // Handle Delete Chat
+    const handleDeleteChat = async (e, chatIdToDelete) => {
+        // Prevent bubbling so it doesn't try to load the chat
+        e.stopPropagation();
+        
+        if (!confirm("Are you sure you want to delete this chat? This cannot be undone.")) return;
+
+        setDeletingChatId(chatIdToDelete);
+
+        try {
+            // Assuming your delete endpoint is at /api/chat/delete?chatId=...
+            const res = await fetch(`/api/chats/delete?chatId=${chatIdToDelete}`, {
+                method: "DELETE",
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                toast.success("Chat deleted");
+                
+                // Optimistically update UI
+                setChatHistory(prev => prev.filter(chat => chat.id !== chatIdToDelete));
+
+                // If deleted active chat, start new one
+                if (chatId === chatIdToDelete) {
+                    handleNewChat();
+                }
+            } else {
+                throw new Error(data.error || "Failed to delete");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete chat");
+        } finally {
+            setDeletingChatId(null);
+        }
+    };
+
+    const handleLoadChat = async (id) => {
+        if (id === chatId) return; 
+        
+        setLoading(true);
+        setSidebarOpen(false); 
+        
+        try {
+            const res = await fetch(`/api/chats/${id}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                setChatId(id);
+                // Ensure messages match frontend structure
+                const formattedMessages = data.messages.map(msg => {
+                    let analysis = null;
+
+                    if (msg.analysisData) {
+                        analysis = {
+                            summary: msg.analysisData.summary,
+                            overall_risk_score: msg.analysisData.overall_risk_score,
+                            missing_protections: msg.analysisData.missing_clauses || [],
+                            clauses: Array.isArray(msg.analysisData.clauses) 
+                                ? msg.analysisData.clauses.map(c => ({
+                                    ...c,
+                                    clause: c.clause_snippet || c.clause,
+                                    risk_level: c.risk_level,
+                                    explanation: c.explanation
+                                }))
+                                : []
+                        };
+                    } else if (msg.analysis) {
+                        analysis = msg.analysis;
+                    }
+
+                    return {
+                        role: msg.role || 'user',
+                        content: msg.content,
+                        analysis: analysis,
+                        file: msg.file || null,
+                        createdAt: msg.createdAt
+                    };
+                });
+
+                setMessages(formattedMessages);
+            } else {
+                toast.error("Failed to load chat");
+            }
+        } catch (error) {
+            console.error("Error loading chat:", error);
+            toast.error("Error loading chat");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ==========================================
     // AUTH & SETUP
     // ==========================================
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                // Ensure this API returns your logged-in user data
                 const res = await fetch('/api/auth/me', { cache: 'no-store' }); 
                 if (!res.ok) throw new Error("Unauthorized");
                 const data = await res.json();
                 setUser(data.user); 
+                
+                fetchChats();
             } catch (error) {
                 console.log("Redirecting to login...");
                 router.push('/'); 
@@ -381,7 +502,7 @@ export default function Home() {
         setMessages([]);
         setInputText("");
         setFile(null);
-        setChatId(null); // Reset chat ID for new session
+        setChatId(null); 
         setSidebarOpen(false); 
         toast.success("New chat started");
     };
@@ -418,15 +539,17 @@ export default function Home() {
         setInputText("");
         setLoading(true);
 
+        const isNewConversation = !chatId;
+
         try {
             let apiBody = { 
                 message: textToSend,
-                chatId: chatId // Send existing ChatID if available (for memory)
+                chatId: chatId 
             };
 
-            // 1. OCR Step (Only if file exists)
+            // 1. OCR Step
             if (file) {
-                setProcessingStage(0); // "Reading..."
+                setProcessingStage(0);
                 const formData = new FormData();
                 formData.append("file", file);
                 
@@ -434,17 +557,14 @@ export default function Home() {
                 if (!ocrRes.ok) throw new Error("OCR Failed");
                 const ocrData = await ocrRes.json();
                 
-                apiBody.documentText = ocrData.text; // Add text to payload
+                apiBody.documentText = ocrData.text; 
             }
 
-            // 2. AI Generation Step
-            setProcessingStage(1); // "Analyzing..."
+            // 2. AI Generation
+            setProcessingStage(1);
             const aiRes = await fetch("/api/generate-content", {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json" 
-                    // Note: No 'x-guest-id' here. Cookies handle auth.
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(apiBody),
             });
 
@@ -455,20 +575,23 @@ export default function Home() {
             
             const aiData = await aiRes.json();
 
-            // Capture new ChatID from backend (important for next msg)
-            if (aiData.chatId) setChatId(aiData.chatId);
+            // Capture new ChatID from backend
+            if (aiData.chatId) {
+                setChatId(aiData.chatId);
+                if (isNewConversation) {
+                    fetchChats(); 
+                }
+            }
 
-            setProcessingStage(2); // "Finalizing..."
+            setProcessingStage(2); 
             
             setTimeout(() => {
                 setLoading(false);
-                setFile(null); // Clear file after send
+                setFile(null); 
 
                 if (aiData.data.clauses && aiData.data.clauses.length > 0) {
-                    // Structure result (Document Analysis)
                     setMessages(prev => [...prev, { role: "assistant", analysis: aiData.data }]);
                 } else {
-                    // Chat result (Text)
                     const textResponse = aiData.data.summary || aiData.data.response || "I processed your request.";
                     animateAssistantContent(textResponse);
                 }
@@ -524,8 +647,8 @@ export default function Home() {
                 flex flex-col shadow-lg md:shadow-none
             `}>
                 <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-blue-200 shadow-lg">
-                        <Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-6 h-6 invert brightness-0" />
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shadow-blue-200 shadow-lg">
+                        <Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-10 h-10  " />
                     </div>
                     <span className="font-bold text-gray-900 text-lg">Legal Advisor</span>
                     <button onClick={() => setSidebarOpen(false)} className="md:hidden ml-auto text-gray-400 hover:text-gray-600">
@@ -533,7 +656,7 @@ export default function Home() {
                     </button>
                 </div>
 
-                <div className="flex-1 p-4 overflow-y-auto">
+                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
                     <button 
                         onClick={handleNewChat}
                         className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium"
@@ -542,15 +665,51 @@ export default function Home() {
                     </button>
 
                     <div className="space-y-1">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3">History</p>
-                        {chatId ? (
-                            <button className="w-full flex items-center gap-3 px-3 py-3 text-blue-700 bg-blue-50 border border-blue-100 rounded-xl text-sm text-left transition-colors">
-                                <MessageSquare className="w-4 h-4 shrink-0" />
-                                <span className="truncate font-medium">Current Session</span>
-                            </button>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3 flex justify-between items-center">
+                            History
+                            {isLoadingHistory && <Loader2 className="w-3 h-3 animate-spin" />}
+                        </p>
+                        
+                        {/* Dynamic Chat History List */}
+                        {chatHistory.length > 0 ? (
+                            chatHistory.map((chat) => (
+                                <div key={chat.id} className="group relative">
+                                    <button
+                                        onClick={() => handleLoadChat(chat.id)}
+                                        className={`w-full flex items-start gap-3 px-3 py-3 rounded-xl text-sm text-left transition-colors pr-10 group ${
+                                            chatId === chat.id 
+                                            ? "bg-blue-50 border border-blue-100 text-blue-700" 
+                                            : "text-gray-600 hover:bg-gray-50 border border-transparent"
+                                        }`}
+                                    >
+                                        <MessageSquare className={`w-4 h-4 shrink-0 mt-0.5 ${chatId === chat.id ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-medium truncate">{chat.title || "Untitled Conversation"}</div>
+                                            <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                                <Clock className="w-3 h-3" />
+                                                {new Date(chat.updatedAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    </button>
+
+                                    {/* Delete Button - Shows on Hover */}
+                                    <button 
+                                        onClick={(e) => handleDeleteChat(e, chat.id)}
+                                        disabled={deletingChatId === chat.id}
+                                        className="absolute right-2 top-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all z-10"
+                                        title="Delete chat"
+                                    >
+                                        {deletingChatId === chat.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                                        ) : (
+                                            <Trash2 className="text-red-500  cursor-pointer w-4 h-4" />
+                                        )}
+                                    </button>
+                                </div>
+                            ))
                         ) : (
                             <div className="text-center py-8 text-gray-400 text-sm italic">
-                                No active chats
+                                {isLoadingHistory ? "Loading history..." : "No active chats"}
                             </div>
                         )}
                     </div>
@@ -597,7 +756,7 @@ export default function Home() {
                             <div className="flex flex-col items-center justify-center min-h-[60vh] mt-4">
                                 <div className="relative mb-8 group">
                                     <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50 group-hover:scale-110 transition-transform"></div>
-                                    <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 opacity-90" />
+                                    <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20  animate-pulse" />
                                 </div>
                                 <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
                                     <TypeAnimation
@@ -661,7 +820,10 @@ export default function Home() {
                                             
                                             {/* Timestamp (Optional) */}
                                             <span className="text-[10px] text-gray-400 px-1">
-                                                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {msg.createdAt 
+                                                    ? new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                                                    : new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                                                }
                                             </span>
                                         </div>
 
