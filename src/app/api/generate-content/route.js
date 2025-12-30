@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { callGemini } from "@/lib/gemini";
 import { db } from "@/lib/firebaseAdmin"; 
 import { FieldValue } from "firebase-admin/firestore";
-import { headers, cookies } from "next/headers"; // ✅ Added cookies
+import { headers, cookies } from "next/headers"; 
 import jwt from "jsonwebtoken";
 
 // CONFIGURATION
@@ -22,18 +22,15 @@ export async function POST(req) {
     // STEP 1: IDENTIFY THE USER (Cookie OR Header)
     // ============================================================
     const headersList = await headers();
-    const cookieStore = await cookies(); // ✅ Access Cookies
+    const cookieStore = await cookies();
     
     // 1. Try to get Token from Header OR Cookie
     const authHeader = headersList.get("authorization");
     let token = null;
-    console.log("Auth Header:", authHeader);
-    console.log("Cookies:", cookieStore.getAll());
+    
     if (authHeader && authHeader.startsWith("Bearer ")) {
         token = authHeader.split(" ")[1];
     } else {
-        // ✅ Check cookies (This fixes the 400 Error!)
-        // It checks for 'token' or 'refreshToken' depending on what your login saves
         token = cookieStore.get("token")?.value || 
                 cookieStore.get("accessToken")?.value || 
                 cookieStore.get("refreshToken")?.value; 
@@ -64,29 +61,45 @@ export async function POST(req) {
     // 3. Fallback to Guest ID
     if (isGuest) {
       if (!guestIdHeader) {
-        // This was the cause of your 400 error. Now handled correctly.
         return NextResponse.json({ error: "Authentication failed. Please log in again." }, { status: 401 });
       }
       trackerId = `guest_${guestIdHeader}`;
     }
 
     // ============================================================
-    // STEP 2: CHECK USAGE LIMITS (Guests Only)
+    // STEP 2: CHECK USAGE LIMITS (With Daily Reset Logic)
     // ============================================================
     const usageRef = db.collection("usage_limits").doc(trackerId);
     let currentCount = 0;
 
     if (isGuest) {
       const doc = await usageRef.get();
+      
       if (doc.exists) {
-        currentCount = doc.data().count || 0;
+        const data = doc.data();
+        const lastUsed = data.lastUsed?.toDate ? data.lastUsed.toDate() : new Date(data.lastUsed || Date.now());
+        const today = new Date();
+
+        // ✅ Check if the last usage was on the same day as today
+        const isSameDay = lastUsed.getDate() === today.getDate() &&
+                          lastUsed.getMonth() === today.getMonth() &&
+                          lastUsed.getFullYear() === today.getFullYear();
+
+        if (isSameDay) {
+            // Same day: Keep the existing count
+            currentCount = data.count || 0;
+        } else {
+            // New day: Reset count to 0
+            currentCount = 0;
+        }
       }
 
+      // Check limit *after* potential reset
       if (currentCount >= GUEST_DAILY_LIMIT) {
         return NextResponse.json({ 
           error: "Free limit reached", 
           isLimitReached: true, 
-          message: "You have used your free tries. Please create an account." 
+          message: "You have used your free tries for today. Please create an account." 
         }, { status: 403 });
       }
     }
@@ -106,7 +119,7 @@ export async function POST(req) {
     }
 
     // ============================================================
-    // STEP 4: PREPARE PROMPT (YOUR ORIGINAL PROMPT)
+    // STEP 4: PREPARE PROMPT
     // ============================================================
     const sanitizedDoc = (contextToAnalyze || "").replace(/"""/g, "'''");
     const question = userQuestion || message || "Explain the risks.";
@@ -199,9 +212,11 @@ export async function POST(req) {
     // ============================================================
     
     // A. Increment Usage Count
+    // If it was a new day, currentCount was 0, so we save 1.
+    // If it was same day, currentCount was N, so we save N + 1.
     await usageRef.set({
       count: isGuest ? currentCount + 1 : 0, 
-      lastUsed: new Date(),
+      lastUsed: FieldValue.serverTimestamp(), // Update time to NOW
       type: isGuest ? "guest" : "user"
     }, { merge: true });
 

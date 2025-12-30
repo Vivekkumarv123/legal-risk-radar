@@ -33,7 +33,7 @@ export default function SignupPage() {
 
       if (res.ok) {
         toast.success("Account created! Password sent to your email 📧");
-        router.push("/login");
+        router.push("/pages/login");
       } else {
         toast.error(data.message || "Signup failed");
       }

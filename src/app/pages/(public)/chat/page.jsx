@@ -237,112 +237,134 @@ export default function Try() {
 
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-    const animateAssistantContent = (fullText) => {
-        if (!fullText) {
-            setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-            setIsGenerating(false);
-            return;
-        }
-        let msgIdx = -1;
-        setMessages(prev => {
-            const newArr = [...prev, { role: 'assistant', content: '' }];
-            msgIdx = newArr.length - 1;
-            return newArr;
-        });
+   const animateAssistantContent = (fullText) => {
+        const textToType = fullText || "I processed your request, but received no text response.";
+        
+        setIsGenerating(true);
+
+        // 1. Add an empty assistant message first
+        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
         let charIndex = 0;
-        const step = () => {
-            if (!isGenerating) return;
-            charIndex += 2;
-            const current = fullText.slice(0, charIndex);
-            setMessages(prev => {
-                const copy = [...prev];
-                if (copy[msgIdx]) copy[msgIdx] = { ...copy[msgIdx], content: current };
-                return copy;
-            });
-            if (charIndex < fullText.length) setTimeout(step, 20);
-            else setIsGenerating(false);
-        };
-        step();
+        const speed = 10; // ms per character
+
+        const intervalId = setInterval(() => {
+            charIndex += 2; // Type 2 chars at a time for speed
+
+            if (charIndex >= textToType.length) {
+                clearInterval(intervalId);
+                setIsGenerating(false);
+                // Ensure full text is set at the end
+                setMessages(prev => {
+                    const newArr = [...prev];
+                    const lastIdx = newArr.length - 1;
+                    if (lastIdx >= 0) {
+                        newArr[lastIdx] = { ...newArr[lastIdx], content: textToType };
+                    }
+                    return newArr;
+                });
+            } else {
+                // Update the last message with the sliced text
+                setMessages(prev => {
+                    const newArr = [...prev];
+                    const lastIdx = newArr.length - 1;
+                    if (lastIdx >= 0) {
+                        newArr[lastIdx] = { ...newArr[lastIdx], content: textToType.slice(0, charIndex) };
+                    }
+                    return newArr;
+                });
+            }
+        }, speed);
     };
 
+    // ✅ FIXED: Handle Send Logic
     const handleSend = async () => {
         if (!inputText.trim() && files.length === 0) return;
 
         const textToSend = inputText || "Analyze this document";
-        const guestId = getGuestId(); // Get ID
+        const guestId = getGuestId();
 
-        // Add user message
+        // 1. Add User Message immediately
         setMessages(prev => [...prev, { role: "user", content: textToSend, files: files.map(f => f.name) }]);
+        
+        // 2. Clear Inputs
         setInputText("");
         const currentFiles = [...files];
         setFiles([]);
-        setLoading(true);
-        setIsGenerating(true);
+        
+        setLoading(true); // Show "Reading/Analyzing" loader
 
         try {
+            let documentText = "";
+
+            // A. Handle OCR if files exist
             if (currentFiles.length > 0) {
-                // 1. OCR Upload
-                setProcessingStage(0);
+                setProcessingStage(0); // "Reading document..."
                 const formData = new FormData();
                 currentFiles.forEach(file => formData.append("file", file));
 
                 const ocrRes = await fetch("/api/ocr", { method: "POST", body: formData });
+                if (!ocrRes.ok) throw new Error("OCR Upload failed");
                 const ocrData = await ocrRes.json();
+                documentText = ocrData.text;
+            }
 
-                // 2. AI Analysis
-                setProcessingStage(1);
-                const aiRes = await fetch("/api/generate-content", {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "x-guest-id": guestId // PASS GUEST ID
-                    },
-                    body: JSON.stringify({ documentText: ocrData.text, message: textToSend }),
-                });
+            // B. Call Gemini AI
+            setProcessingStage(1); // "Analyzing risks..."
+            
+            const apiBody = {
+                message: textToSend,
+                ...(documentText && { documentText }) // Only add if text exists
+            };
 
-                // HANDLE LIMIT REACHED
-                if (aiRes.status === 403) {
-                    setLoading(false);
-                    setIsGenerating(false);
-                    setShowLimitModal(true); // Open Modal
-                    return;
-                }
+            const aiRes = await fetch("/api/generate-content", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "x-guest-id": guestId
+                },
+                body: JSON.stringify(apiBody),
+            });
 
-                const aiData = await aiRes.json();
-                setProcessingStage(2);
-                
+            // Handle Free Limit
+            if (aiRes.status === 403) {
+                setShowLimitModal(true);
+                setLoading(false);
+                return;
+            }
+
+            if (!aiRes.ok) throw new Error("AI Generation failed");
+
+            const aiData = await aiRes.json();
+            setProcessingStage(2); // "Finalizing..."
+
+            // C. DETERMINE RESPONSE TYPE (Analysis Card vs Text Chat)
+            // We check if the backend returned "clauses". If so, use the Card.
+            // If not, treat it as a chat message.
+            const hasClauses = aiData.data?.clauses && Array.isArray(aiData.data.clauses) && aiData.data.clauses.length > 0;
+
+            setLoading(false); // Hide loading spinner now
+
+            if (hasClauses) {
+                // RENDER CARD
                 const normalized = normalizeAnalysis(aiData.data);
                 setMessages(prev => [...prev, { role: "assistant", analysis: normalized }]);
-                
             } else {
-                // Text Only
-                const aiRes = await fetch("/api/generate-content", {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "x-guest-id": guestId // PASS GUEST ID
-                    },
-                    body: JSON.stringify({ message: textToSend }),
-                });
-
-                // HANDLE LIMIT REACHED
-                if (aiRes.status === 403) {
-                    setLoading(false);
-                    setIsGenerating(false);
-                    setShowLimitModal(true); // Open Modal
-                    return;
-                }
-
-                const data = await aiRes.json();
-                let content = data.data?.summary || data.data?.response || JSON.stringify(data.data);
-                animateAssistantContent(content);
+                // RENDER TEXT (Streaming Effect)
+                // Fallback logic to find the text string in the response
+                const responseText = 
+                    aiData.data?.summary || 
+                    aiData.data?.response || 
+                    aiData.data?.text || 
+                    (typeof aiData.data === 'string' ? aiData.data : "I processed the document but couldn't find specific risks to list.");
+                
+                animateAssistantContent(responseText);
             }
+
         } catch (error) {
-            console.error(error);
-            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, error processing request." }]);
-        } finally {
+            console.error("Handle Send Error:", error);
             setLoading(false);
-            if(files.length > 0) setIsGenerating(false); // Text animation handles its own state
+            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
         }
     };
 
