@@ -47,6 +47,7 @@ export default function HomePage() {
                         <Link href="#how-it-works" className="hover:text-blue-600 transition">How it Works</Link>
                         <Link href="/pages/pricing" className="hover:text-blue-600 transition">Features & Pricing</Link>
                         <div className="h-6 w-px bg-slate-200"></div>
+                                                <Link href="/pages/feedback" className="hover:text-blue-600 transition">FeedBack</Link>
                         <Link href="/pages/login" className="hover:text-blue-600 transition">Login</Link>
                         <Link href="/pages/signup" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-900/20">
                             Get Started
