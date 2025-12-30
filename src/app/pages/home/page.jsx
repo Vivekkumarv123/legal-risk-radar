@@ -72,7 +72,7 @@ export default function HomePage() {
             {/* ================= HERO SECTION ================= */}
             <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
                 {/* Tech Background Grid */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
                 
                 <div className="max-w-7xl mx-auto px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
                     
@@ -89,7 +89,7 @@ export default function HomePage() {
                         
                         <motion.h1 variants={fadeInUp} className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.1] mb-6">
                             Decode Legal <br/>
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Jargon Instantly.</span>
+                            <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600">Jargon Instantly.</span>
                         </motion.h1>
                         
                         <motion.p variants={fadeInUp} className="text-lg text-slate-500 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
@@ -123,7 +123,7 @@ export default function HomePage() {
                         <div className="absolute bottom-0 left-10 w-72 h-72 bg-indigo-400 rounded-full blur-[80px] opacity-20"></div>
 
                         {/* Glassmorphism Card */}
-                        <div className="relative bg-white/60 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-auto transform rotate-[-2deg] hover:rotate-0 transition-transform duration-500">
+                        <div className="relative bg-white/60 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-auto transform -rotate-2 hover:rotate-0 transition-transform duration-500">
                             {/* Fake Header */}
                             <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
                                 <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ export default function HomePage() {
 
                     <div className="grid md:grid-cols-3 gap-8 relative">
                         {/* Connecting Line (Desktop) */}
-                        <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100 -z-10"></div>
+                        <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-linear-to-r from-blue-100 via-blue-200 to-blue-100 -z-10"></div>
 
                         {[
                             { title: "Upload", desc: "Drag & drop any PDF contract or legal document.", icon: <FileText size={24} /> },
@@ -216,7 +216,7 @@ export default function HomePage() {
             <section className="py-20 px-6">
                 <div className="max-w-5xl mx-auto bg-slate-900 rounded-[2.5rem] p-12 md:p-20 text-center relative overflow-hidden">
                     {/* Background Glow */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-800 via-slate-900 to-slate-900 opacity-50"></div>
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-blue-800 via-slate-900 to-slate-900 opacity-50"></div>
                     
                     <div className="relative z-10">
                         <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Stop signing blindly.</h2>

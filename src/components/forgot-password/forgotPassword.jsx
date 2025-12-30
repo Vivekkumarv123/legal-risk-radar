@@ -325,7 +325,7 @@ export default function ForgotPassword() {
       {/* ================= LEFT SIDE (BRAND PANEL) ================= */}
       <div className="hidden lg:flex w-1/2 bg-slate-900 relative overflow-hidden items-center justify-center p-12 text-white">
         {/* Abstract Background Shapes (Consistent with Login/Signup) */}
-        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-slate-950 opacity-80"></div>
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,var(--tw-gradient-stops))] from-blue-900 via-slate-900 to-slate-950 opacity-80"></div>
         <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-blue-600 rounded-full blur-[120px] opacity-30 animate-pulse"></div>
         
         <div className="relative z-10 max-w-lg space-y-10">

@@ -101,9 +101,9 @@ export default function PricingAndFeatures() {
             {/* ================= HERO SECTION (REVAMPED) ================= */}
             <section className="relative pt-20 pb-32 overflow-hidden">
                 {/* Background Decor */}
-                <div className="absolute top-0 left-0 w-full h-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50"></div>
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[500px] h-[500px] bg-blue-100 rounded-full blur-3xl opacity-40 animate-pulse"></div>
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[400px] h-[400px] bg-purple-100 rounded-full blur-3xl opacity-40"></div>
+                <div className="absolute top-0 left-0 w-full h-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [bg-size:16px_16px] mask-[radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50"></div>
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-125 h-125 bg-blue-100 rounded-full blur-3xl opacity-40 animate-pulse"></div>
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-100 h-100 bg-purple-100 rounded-full blur-3xl opacity-40"></div>
 
                 <div className="relative max-w-7xl mx-auto px-6 text-center z-10">
 
@@ -119,7 +119,7 @@ export default function PricingAndFeatures() {
                     {/* Headline */}
                     <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight mb-6 leading-tight">
                         Your Personal AI <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                        <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600">
                             Legal Consultant
                         </span>
                     </h1>
@@ -176,7 +176,7 @@ export default function PricingAndFeatures() {
                                 key={i}
                                 className="group bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
                             >
-                                <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-transparent to-gray-50 rounded-bl-full opacity-50 group-hover:scale-110 transition-transform`}></div>
+                                <div className={`absolute top-0 right-0 w-24 h-24 bg-linear-to-br from-transparent to-gray-50 rounded-bl-full opacity-50 group-hover:scale-110 transition-transform`}></div>
 
                                 <div className={`mb-6 ${f.color} w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg`}>
                                     {f.icon}
@@ -196,7 +196,7 @@ export default function PricingAndFeatures() {
                         <h2 className="text-4xl font-bold text-gray-900 mb-6">Simple, Transparent Pricing</h2>
 
                         {/* Toggle Switch */}
-                        <div className="flex items-center justify-center gap-4 p-1.5 bg-gray-100 inline-flex rounded-full">
+                        <div className="flex items-center justify-center gap-4 p-1.5 bg-gray-100  rounded-full">
                             <button
                                 onClick={() => setIsAnnual(false)}
                                 className={`px-6 py-2 rounded-full text-sm font-semibold transition-all ${!isAnnual ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
@@ -222,7 +222,7 @@ export default function PricingAndFeatures() {
                                     }`}
                             >
                                 {plan.popular && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg">
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-linear-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg">
                                         Most Popular
                                     </div>
                                 )}
