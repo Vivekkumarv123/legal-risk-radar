@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler"; // ✅ Import Utility
+import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler"; 
 
 // ==========================================
 // SUB-COMPONENTS
@@ -87,7 +87,6 @@ function DeleteAccountModal({ isOpen, onClose, onConfirm, isLoading }) {
     );
 }
 
-// ✅ NEW: Delete Chat Modal
 function DeleteChatModal({ isOpen, onClose, onConfirm, isLoading }) {
     if (!isOpen) return null;
 
@@ -333,7 +332,7 @@ export default function Home() {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     
     // Chat Deletion State
-    const [chatToDelete, setChatToDelete] = useState(null); // Stores ID of chat to be deleted
+    const [chatToDelete, setChatToDelete] = useState(null); 
     const [isDeletingChat, setIsDeletingChat] = useState(false);
 
     // REFS
@@ -368,13 +367,11 @@ export default function Home() {
         }
     };
 
-    // TRIGGER DELETE CONFIRMATION
     const confirmDeleteChat = (e, id) => {
         e.stopPropagation();
         setChatToDelete(id);
     };
 
-    // PERFORM DELETE
     const handleDeleteChat = async () => {
         if (!chatToDelete) return;
         
@@ -395,7 +392,7 @@ export default function Home() {
             toast.error("Failed to delete chat");
         } finally {
             setIsDeletingChat(false);
-            setChatToDelete(null); // Close modal
+            setChatToDelete(null); 
         }
     };
 
@@ -495,7 +492,6 @@ export default function Home() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, loading, isGenerating]);
 
-    // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -503,7 +499,6 @@ export default function Home() {
         }
     }, [inputText]);
 
-    // Voice Setup
     useEffect(() => {
         if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -518,7 +513,6 @@ export default function Home() {
         }
     }, []);
 
-    // Cleanup
     useEffect(() => {
         return () => {
             if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach(t => t.stop());
@@ -567,7 +561,7 @@ export default function Home() {
         
         let charIndex = 0;
         const interval = setInterval(() => {
-            charIndex += 3; // Typing speed
+            charIndex += 3;
             if (charIndex >= fullText.length) {
                 clearInterval(interval);
                 setIsGenerating(false);
@@ -616,23 +610,34 @@ export default function Home() {
         }
     };
 
+    // ✅ FIXED: UPDATED SEND HANDLER TO FORCE ANALYSIS FOR LONG TEXTS
     const handleSend = async () => {
         if (!inputText.trim() && !file) return;
 
-        const textToSend = inputText.trim() || "Analyze this document";
-        
-        // ---------------------------------------------
-        // ✅ NEW: LOCAL GREETING LOGIC
-        // ---------------------------------------------
-        if (!file && isGreeting(textToSend)) {
+        // 1. Capture raw input
+        const rawInput = inputText.trim();
+        let textToSend = rawInput;
+
+        // 2. Determine if this is a "Long Text" (likely a contract paste)
+        const isLongText = rawInput.length > 20;
+
+        // 3. Logic: If text is long and no file, force "Analyze: " prefix.
+        // This prevents the AI from treating it as a casual chat message.
+        if (!file && isLongText) { 
+            textToSend = `Analyze the following legal text and identify risks/clauses:\n\n${rawInput}`;
+        } else if (!rawInput) {
+            textToSend = "Analyze this document"; // Default for file uploads
+        }
+
+        // 4. Greeting Logic (Only runs if it's NOT a long text and NO file)
+        if (!file && !isLongText && isGreeting(rawInput)) {
             // Optimistic Update
-            setMessages(prev => [...prev, { role: "user", content: textToSend }]);
+            setMessages(prev => [...prev, { role: "user", content: rawInput }]);
             setInputText("");
             setIsGenerating(true);
 
-            // Simulate small delay for realism
             setTimeout(() => {
-                const reply = getGreetingResponse(textToSend);
+                const reply = getGreetingResponse(rawInput);
                 setMessages(prev => [...prev, { 
                     role: "assistant", 
                     content: reply, 
@@ -644,13 +649,12 @@ export default function Home() {
             return; // 🛑 EXIT EARLY (Don't hit API)
         }
 
-        // ---------------------------------------------
-        // STANDARD API FLOW
-        // ---------------------------------------------
+        // 5. STANDARD API FLOW
         
-        // Optimistic UI Update
-        const userMsg = { role: "user", content: textToSend, file: file?.name };
+        // Optimistic UI Update (Show exactly what user typed, not the prefix)
+        const userMsg = { role: "user", content: rawInput || "Analyze this document", file: file?.name };
         setMessages(prev => [...prev, userMsg]);
+        
         setInputText("");
         setLoading(true);
 
@@ -658,11 +662,11 @@ export default function Home() {
 
         try {
             let apiBody = { 
-                message: textToSend,
+                message: textToSend, // Send the modified/prefixed text to AI
                 chatId: chatId 
             };
 
-            // 1. OCR Step
+            // OCR Step
             if (file) {
                 setProcessingStage(0); // "Reading..."
                 const formData = new FormData();
@@ -675,7 +679,7 @@ export default function Home() {
                 apiBody.documentText = ocrData.text; 
             }
 
-            // 2. AI Generation Step
+            // AI Generation Step
             setProcessingStage(1); // "Analyzing..."
             const aiRes = await fetch("/api/generate-content", {
                 method: "POST",
@@ -754,7 +758,6 @@ export default function Home() {
                 isLoading={isDeletingAccount}
             />
 
-            {/* ✅ NEW: Delete Chat Modal */}
             <DeleteChatModal 
                 isOpen={!!chatToDelete}
                 onClose={() => !isDeletingChat && setChatToDelete(null)}
