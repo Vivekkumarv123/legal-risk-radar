@@ -322,7 +322,7 @@ export default function ForgotPassword() {
     "focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all";
 
   return (
-    <div className="min-h-screen flex bg-linear-to-br from-blue-50 via-white to-blue-100">
+    <div className="flex bg-linear-to-br from-blue-50 via-white to-blue-100">
       
       <MailSendAnimation status={mailStatus} onComplete={handleAnimationComplete} />
 
