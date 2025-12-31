@@ -2,14 +2,15 @@
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { TypeAnimation } from "react-type-animation";
-import { 
-    Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
-    Menu, LogOut, MessageSquare, User, Plus, AlertTriangle, 
-    Loader2, Clock, Trash2, UserX 
+import ReactMarkdown from 'react-markdown';
+import {
+    Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield,
+    Menu, LogOut, MessageSquare, BrainCircuit , Plus, AlertTriangle,
+    Loader2, Clock, Trash2, UserX, Volume2, StopCircle, Phone
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler"; 
+import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler";
 
 // ==========================================
 // SUB-COMPONENTS
@@ -21,16 +22,12 @@ function LogoutModal({ isOpen, onClose, onConfirm, isLoading }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <LogOut className="w-6 h-6 text-gray-600" />
-                    </div>
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4"><LogOut className="w-6 h-6 text-gray-600" /></div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Log out?</h3>
-                    <p className="text-gray-500 text-sm mb-6">Are you sure you want to log out? Your current session history will be cleared.</p>
+                    <p className="text-gray-500 text-sm mb-6">Are you sure you want to log out?</p>
                     <div className="flex gap-3 w-full">
                         <button onClick={onClose} disabled={isLoading} className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50">Cancel</button>
-                        <button onClick={onConfirm} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-black text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log out"}
-                        </button>
+                        <button onClick={onConfirm} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-black text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70">{isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Log out"}</button>
                     </div>
                 </div>
             </div>
@@ -49,9 +46,7 @@ function DeleteAccountModal({ isOpen, onClose, onConfirm, isLoading }) {
                     <p className="text-gray-500 text-sm mb-6">This action is <strong>irreversible</strong>.</p>
                     <div className="flex gap-3 w-full">
                         <button onClick={onClose} disabled={isLoading} className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50">Cancel</button>
-                        <button onClick={onConfirm} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
-                        </button>
+                        <button onClick={onConfirm} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70">{isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}</button>
                     </div>
                 </div>
             </div>
@@ -70,9 +65,7 @@ function DeleteChatModal({ isOpen, onClose, onConfirm, isLoading }) {
                     <p className="text-gray-500 text-sm mb-6">This action cannot be undone.</p>
                     <div className="flex gap-3 w-full">
                         <button onClick={onClose} disabled={isLoading} className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50">Cancel</button>
-                        <button onClick={onConfirm} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
-                        </button>
+                        <button onClick={onConfirm} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70">{isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}</button>
                     </div>
                 </div>
             </div>
@@ -168,7 +161,7 @@ function RecordingWave({ analyserRef, dataArrayRef, isRecording }) {
                 for (let i = 0; i < bars; i++) {
                     let sum = 0;
                     for (let j = 0; j < segment; j++) sum += Math.abs(data[i * segment + j] - 128);
-                    const height = Math.min(1, (sum / segment) / 32); 
+                    const height = Math.min(1, (sum / segment) / 32);
                     if (barRefs.current[i]) barRefs.current[i].style.transform = `scaleY(${0.2 + height * 2})`;
                 }
             } else {
@@ -189,8 +182,8 @@ function RecordingWave({ analyserRef, dataArrayRef, isRecording }) {
 // ==========================================
 
 export default function Home() {
-    const router = useRouter(); 
-    
+    const router = useRouter();
+
     // STATE
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
@@ -200,25 +193,27 @@ export default function Home() {
     const [isRecording, setIsRecording] = useState(false);
     const [processingStage, setProcessingStage] = useState(0);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isAuthChecking, setIsAuthChecking] = useState(true); 
-    const [user, setUser] = useState(null); 
+    const [isAuthChecking, setIsAuthChecking] = useState(true);
+    const [user, setUser] = useState(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [chatId, setChatId] = useState(null); 
-    
-    // ✅ NEW: Context State to remember the document text
-    const [documentContext, setDocumentContext] = useState(""); 
+    const [chatId, setChatId] = useState(null);
 
-    // Account Management State
+    // ✅ NEW STATES
+    const [documentContext, setDocumentContext] = useState("");
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [wasVoiceInput, setWasVoiceInput] = useState(false);
+    const [guestId, setGuestId] = useState("");
+    const [isLiveMode, setIsLiveMode] = useState(false);
+    const [liveStatus, setLiveStatus] = useState("idle");
+    const [availableVoices, setAvailableVoices] = useState([]);
+
+    // Account & Chat Management
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-
-    // Chat History State
     const [chatHistory, setChatHistory] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-    
-    // Chat Deletion State
-    const [chatToDelete, setChatToDelete] = useState(null); 
+    const [chatToDelete, setChatToDelete] = useState(null);
     const [isDeletingChat, setIsDeletingChat] = useState(false);
 
     // REFS
@@ -233,160 +228,160 @@ export default function Home() {
     const textareaRef = useRef(null);
 
     // ==========================================
-    // DATA FETCHING & ACTIONS
-    // ==========================================
-
-    const fetchChats = async () => {
-        setIsLoadingHistory(true);
-        try {
-            const res = await fetch('/api/chats', { cache: 'no-store' });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                    setChatHistory(data.chats);
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching chats:", error);
-        } finally {
-            setIsLoadingHistory(false);
-        }
-    };
-
-    const confirmDeleteChat = (e, id) => {
-        e.stopPropagation();
-        setChatToDelete(id);
-    };
-
-    const handleDeleteChat = async () => {
-        if (!chatToDelete) return;
-        
-        setIsDeletingChat(true);
-        try {
-            const res = await fetch(`/api/chats/delete?chatId=${chatToDelete}`, { method: "DELETE" });
-            const data = await res.json();
-
-            if (res.ok) {
-                toast.success("Chat deleted");
-                setChatHistory(prev => prev.filter(chat => chat.id !== chatToDelete));
-                if (chatId === chatToDelete) handleNewChat();
-            } else {
-                throw new Error(data.error || "Failed to delete");
-            }
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete chat");
-        } finally {
-            setIsDeletingChat(false);
-            setChatToDelete(null); 
-        }
-    };
-
-    const performDeleteAccount = async () => {
-        setIsDeletingAccount(true);
-        try {
-            const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
-            const data = await res.json();
-
-            if (res.ok) {
-                toast.success("Account deleted successfully");
-                setTimeout(() => {
-                    setShowDeleteModal(false);
-                    router.push('/');
-                }, 1000);
-            } else {
-                throw new Error(data.error || "Failed to delete account");
-            }
-        } catch (error) {
-            toast.error(error.message || "Could not delete account");
-            setIsDeletingAccount(false);
-        }
-    };
-
-    const handleLoadChat = async (id) => {
-        if (id === chatId) return; 
-        setLoading(true);
-        setSidebarOpen(false); 
-        
-        try {
-            const res = await fetch(`/api/chats/${id}`);
-            const data = await res.json();
-            
-            if (data.success) {
-                setChatId(id);
-                // Load messages
-                const formattedMessages = data.messages.map(msg => {
-                    let analysis = null;
-                    if (msg.analysisData) {
-                        analysis = {
-                            summary: msg.analysisData.summary,
-                            overall_risk_score: msg.analysisData.overall_risk_score,
-                            missing_protections: msg.analysisData.missing_clauses || [],
-                            clauses: Array.isArray(msg.analysisData.clauses) 
-                                ? msg.analysisData.clauses.map(c => ({ ...c, clause: c.clause_snippet || c.clause }))
-                                : []
-                        };
-                    } else if (msg.analysis) {
-                        analysis = msg.analysis;
-                    }
-                    return { role: msg.role || 'user', content: msg.content, analysis: analysis, file: msg.file || null, createdAt: msg.createdAt };
-                });
-                setMessages(formattedMessages);
-            } else {
-                toast.error("Failed to load chat");
-            }
-        } catch (error) {
-            toast.error("Error loading chat");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // ==========================================
     // AUTH & SETUP
     // ==========================================
     useEffect(() => {
+        let storedGuestId = localStorage.getItem("guest_id");
+        if (!storedGuestId) {
+            storedGuestId = "guest_" + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem("guest_id", storedGuestId);
+        }
+        setGuestId(storedGuestId);
+
+        // Load Voices
+        const loadVoices = () => {
+            const v = window.speechSynthesis.getVoices();
+            if (v.length > 0) setAvailableVoices(v);
+        };
+        loadVoices();
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+
         const checkAuth = async () => {
             try {
-                const res = await fetch('/api/auth/me', { cache: 'no-store' }); 
+                const res = await fetch('/api/auth/me', { cache: 'no-store' });
                 if (!res.ok) throw new Error("Unauthorized");
                 const data = await res.json();
-                setUser(data.user); 
+                setUser(data.user);
                 fetchChats();
-            } catch (error) {
-                router.push('/'); 
-            } finally {
-                setIsAuthChecking(false);
-            }
+            } catch (error) { }
+            finally { setIsAuthChecking(false); }
         };
         checkAuth();
-    }, [router]);
+    }, []);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, loading, isGenerating]);
+    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, isGenerating]);
+    useEffect(() => { if (textareaRef.current) textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`; }, [inputText]);
 
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    // ==========================================
+    // VOICE UTILS (With Language Detection)
+    // ==========================================
+
+    const getBestVoice = (text) => {
+        if (!availableVoices.length) return null;
+        const isIndianLang = /[\u0900-\u097F]/.test(text);
+        if (isIndianLang) {
+            return availableVoices.find(v => v.lang.includes('hi') || v.name.includes('Hindi')) || null;
         }
-    }, [inputText]);
+        return availableVoices.find(v => v.lang === 'en-US' || v.name.includes('Google US English')) || null;
+    };
 
-    // Voice Setup
+    const cleanMarkdown = (text) => {
+        return text
+            .replace(/\*\*/g, "")
+            .replace(/\*/g, "")
+            .replace(/#{1,6}\s/g, "")
+            .replace(/`{1,3}/g, "")
+            .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+            .trim();
+    };
+
+    const speakTextPromise = (text) => {
+        return new Promise((resolve) => {
+            if (!window.speechSynthesis) { resolve(); return; }
+            window.speechSynthesis.cancel();
+
+            const cleanText = cleanMarkdown(text);
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+
+            const voice = getBestVoice(cleanText);
+            if (voice) utterance.voice = voice;
+            utterance.lang = voice ? voice.lang : (/[\u0900-\u097F]/.test(cleanText) ? 'hi-IN' : 'en-US');
+
+            utterance.onstart = () => setLiveStatus("speaking");
+            utterance.onend = () => { setLiveStatus("idle"); resolve(); };
+            utterance.onerror = () => { setLiveStatus("idle"); resolve(); };
+
+            window.speechSynthesis.speak(utterance);
+        });
+    };
+
+    const speakText = (text) => {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+
+        const cleanText = cleanMarkdown(text);
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+
+        const voice = getBestVoice(cleanText);
+        if (voice) utterance.voice = voice;
+        utterance.lang = voice ? voice.lang : (/[\u0900-\u097F]/.test(cleanText) ? 'hi-IN' : 'en-US');
+
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const stopSpeaking = () => { if (window.speechSynthesis) { window.speechSynthesis.cancel(); setIsSpeaking(false); } };
+
+    // ==========================================
+    // LIVE MODE LOOP
+    // ==========================================
+
+    const startLiveLoop = () => {
+        if (!recognitionRef.current) return;
+        setLiveStatus("listening");
+        recognitionRef.current.start();
+    };
+
+    const handleLiveInput = async (transcript) => {
+        setLiveStatus("thinking");
+        try {
+            const res = await fetch("/api/live-conversation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-guest-id": guestId },
+                body: JSON.stringify({ message: transcript }),
+            });
+
+            const data = await res.json();
+            const reply = data.data?.response || "I didn't catch that.";
+
+            await speakTextPromise(reply);
+
+            if (isLiveMode) {
+                setTimeout(() => startLiveLoop(), 500);
+            }
+        } catch (e) {
+            console.error(e);
+            setLiveStatus("idle");
+        }
+    };
+
+    // Speech Recognition Setup
     useEffect(() => {
         if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.onresult = (event) => {
-                const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
-                setInputText(transcript);
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                if (isLiveMode) {
+                    handleLiveInput(transcript);
+                } else {
+                    setInputText(transcript);
+                }
             };
-            recognitionRef.current.onerror = () => setIsRecording(false);
+
+            recognition.onerror = () => {
+                if (isLiveMode) setLiveStatus("idle");
+                else setIsRecording(false);
+            };
+
+            recognitionRef.current = recognition;
         }
-    }, []);
+    }, [isLiveMode, guestId]);
 
     useEffect(() => {
         return () => {
@@ -396,232 +391,90 @@ export default function Home() {
         };
     }, []);
 
-    // ==========================================
-    // ACTION HANDLERS
-    // ==========================================
-
-    const handleFileUpload = (uploadedFile) => {
-        setFile(uploadedFile);
-    };
+    const handleFileUpload = (uploadedFile) => { setFile(uploadedFile); };
 
     const toggleRecording = () => {
-        if (isRecording) {
-            recognitionRef.current?.stop();
-            setIsRecording(false);
-        } else {
-            recognitionRef.current?.start();
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                    mediaStreamRef.current = stream;
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    const audioCtx = new AudioContext();
-                    audioContextRef.current = audioCtx;
-                    const source = audioCtx.createMediaStreamSource(stream);
-                    const analyser = audioCtx.createAnalyser();
-                    analyser.fftSize = 256;
-                    analyserRef.current = analyser;
-                    dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
-                    source.connect(analyser);
-                    setIsRecording(true);
-                }).catch(err => {
-                    console.warn('Audio Error:', err);
-                });
-            }
-        }
+        if (isRecording) { recognitionRef.current?.stop(); setIsRecording(false); }
+        else { recognitionRef.current?.start(); setWasVoiceInput(true); setIsRecording(true); }
     };
 
-    const animateAssistantContent = (fullText) => {
-        setIsGenerating(true);
-        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-        
-        let charIndex = 0;
-        const interval = setInterval(() => {
-            charIndex += 3;
-            if (charIndex >= fullText.length) {
-                clearInterval(interval);
-                setIsGenerating(false);
-                setMessages(prev => {
-                    const newArr = [...prev];
-                    newArr[newArr.length - 1].content = fullText;
-                    return newArr;
-                });
-            } else {
-                setMessages(prev => {
-                    const newArr = [...prev];
-                    newArr[newArr.length - 1].content = fullText.slice(0, charIndex);
-                    return newArr;
-                });
-            }
-        }, 10);
-    };
-
-    const handleNewChat = () => {
-        setMessages([]);
-        setInputText("");
-        setFile(null);
-        setChatId(null);
-        setDocumentContext(""); // ✅ Reset memory on new chat
-        setSidebarOpen(false); 
-        toast.success("New chat started");
-    };
-
+    const handleNewChat = () => { setMessages([]); setInputText(""); setFile(null); setChatId(null); setDocumentContext(""); setSidebarOpen(false); toast.success("New chat started"); };
     const handleLogoutClick = () => setShowLogoutModal(true);
+    const performLogout = async () => { setIsLoggingOut(true); try { const res = await fetch('/api/auth/logout', { method: 'POST' }); if (res.ok) { toast.success('Logged out successfully'); setTimeout(() => { setShowLogoutModal(false); router.push('/'); }, 1000); } else { throw new Error("Logout Failed"); } } catch { toast.error('Logout failed'); setIsLoggingOut(false); } };
+    const fetchChats = async () => { setIsLoadingHistory(true); try { const res = await fetch('/api/chats', { cache: 'no-store' }); if (res.ok) { const data = await res.json(); if (data.success) setChatHistory(data.chats); } } catch (error) { console.error("Error fetching chats:", error); } finally { setIsLoadingHistory(false); } };
+    const confirmDeleteChat = (e, id) => { e.stopPropagation(); setChatToDelete(id); };
+    const handleDeleteChat = async () => { if (!chatToDelete) return; setIsDeletingChat(true); try { const res = await fetch(`/api/chats/delete?chatId=${chatToDelete}`, { method: "DELETE" }); const data = await res.json(); if (res.ok) { toast.success("Chat deleted"); setChatHistory(prev => prev.filter(chat => chat.id !== chatToDelete)); if (chatId === chatToDelete) handleNewChat(); } else { throw new Error(data.error || "Failed to delete"); } } catch (error) { toast.error("Failed to delete chat"); } finally { setIsDeletingChat(false); setChatToDelete(null); } };
+    const performDeleteAccount = async () => { setIsDeletingAccount(true); try { const res = await fetch('/api/auth/delete-account', { method: 'DELETE' }); if (res.ok) { toast.success("Account deleted successfully"); setTimeout(() => { setShowDeleteModal(false); router.push('/'); }, 1000); } else { throw new Error("Failed to delete account"); } } catch (error) { toast.error("Could not delete account"); setIsDeletingAccount(false); } };
+    const animateAssistantContent = (fullText) => { setIsGenerating(true); setMessages(prev => [...prev, { role: 'assistant', content: '' }]); let charIndex = 0; const interval = setInterval(() => { charIndex += 3; if (charIndex >= fullText.length) { clearInterval(interval); setIsGenerating(false); setMessages(prev => { const newArr = [...prev]; newArr[newArr.length - 1].content = fullText; return newArr; }); } else { setMessages(prev => { const newArr = [...prev]; newArr[newArr.length - 1].content = fullText.slice(0, charIndex); return newArr; }); } }, 10); };
 
-    const performLogout = async () => {
-        setIsLoggingOut(true);
-        try {
-            const res = await fetch('/api/auth/logout', { method: 'POST' });
-            if (res.ok) {
-                toast.success('Logged out successfully');
-                setTimeout(() => {
-                    setShowLogoutModal(false);
-                    router.push('/');
-                }, 1000);
-            } else {
-                throw new Error("Logout Failed");
-            }
-        } catch {
-            toast.error('Logout failed');
-            setIsLoggingOut(false);
-        }
-    };
+    const handleLoadChat = async (id) => { if (id === chatId) return; setLoading(true); setSidebarOpen(false); try { const res = await fetch(`/api/chats/${id}`); const data = await res.json(); if (data.success) { setChatId(id); setDocumentContext(data.documentContext || ""); const formattedMessages = data.messages.map(msg => { let analysis = null; if (msg.analysisData) { analysis = { summary: msg.analysisData.summary, overall_risk_score: msg.analysisData.overall_risk_score, missing_protections: msg.analysisData.missing_clauses || [], clauses: Array.isArray(msg.analysisData.clauses) ? msg.analysisData.clauses.map(c => ({ ...c, clause: c.clause_snippet || c.clause })) : [] }; } else if (msg.analysis) { analysis = msg.analysis; } return { role: msg.role || 'user', content: msg.content, analysis: analysis, file: msg.file || null, createdAt: msg.createdAt }; }); setMessages(formattedMessages); } else { toast.error("Failed to load chat"); } } catch (error) { toast.error("Error loading chat"); } finally { setLoading(false); } };
+    const scrollToClause = (riskLevel) => { const element = document.getElementById(`clause-${riskLevel}-0`); element?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
 
-    // ✅ FIXED: INTELLIGENT SEND HANDLER WITH MEMORY
+    // ==========================================
+    // 4. SMART SEND HANDLER (Document Locking)
+    // ==========================================
     const handleSend = async () => {
         if (!inputText.trim() && !file) return;
-
-        // 1. Capture raw input
         const rawInput = inputText.trim();
         let textToSend = rawInput;
 
-        // 2. Check if this is a new "Long Text" (likely a contract paste)
-        const isLongText = rawInput.length > 40; 
+        const isQuestion = /^(can|could|would|is|are|do|does|what|where|when|who|why|how|explain|summarize|translate|convert|give|describe)/i.test(rawInput) || rawInput.endsWith("?");
+        const isHello = isGreeting(rawInput);
+        const isLongText = rawInput.length > 200;
+        const isNewDocument = file || (isLongText && !isQuestion);
 
-        // 3. LOGIC: Setting Context
-        // If user pastes a long text and no file, assume it's a new document
-        if (!file && isLongText) { 
-            textToSend = `Analyze the following legal text and identify risks/clauses:\n\n${rawInput}`;
-            setDocumentContext(rawInput); // ✅ Save to memory
-        } else if (!rawInput) {
-            textToSend = "Analyze this document"; // Default for file uploads
+        if (isNewDocument) {
+            if (!file) {
+                textToSend = `Analyze the following legal text and identify risks/clauses:\n\n${rawInput}`;
+                setDocumentContext(rawInput);
+            }
+        } else {
+            textToSend = rawInput;
         }
 
-        // 4. Greeting Logic: 
-        // Only run greeting if (A) No file, (B) Not long text, AND (C) No active document context.
-        // If documentContext exists, we skip greeting so the user can chat with the doc.
-        if (!file && !isLongText && !documentContext && isGreeting(rawInput)) {
-            setMessages(prev => [...prev, { role: "user", content: rawInput }]);
-            setInputText("");
-            setIsGenerating(true);
-
-            setTimeout(() => {
-                const reply = getGreetingResponse(rawInput);
-                setMessages(prev => [...prev, { 
-                    role: "assistant", 
-                    content: reply, 
-                    createdAt: new Date().toISOString() 
-                }]);
-                setIsGenerating(false);
-            }, 600);
-            return; 
+        if (!isNewDocument && !documentContext && isHello) {
+            setMessages(prev => [...prev, { role: "user", content: rawInput }]); setInputText(""); setIsGenerating(true);
+            setTimeout(() => { const reply = getGreetingResponse(rawInput); setMessages(prev => [...prev, { role: "assistant", content: reply, createdAt: new Date().toISOString() }]); setIsGenerating(false); if (wasVoiceInput) speakText(reply); setWasVoiceInput(false); }, 600); return;
         }
 
-        // 5. STANDARD API FLOW
         const userMsg = { role: "user", content: rawInput || "Analyze this document", file: file?.name };
-        setMessages(prev => [...prev, userMsg]);
-        
-        setInputText("");
-        setLoading(true);
-
+        setMessages(prev => [...prev, userMsg]); setInputText(""); setLoading(true);
         const isNewConversation = !chatId;
 
         try {
-            let apiBody = { 
-                message: textToSend, 
-                chatId: chatId 
-            };
+            let apiBody = { message: textToSend, chatId: chatId };
 
-            // ✅ INJECT MEMORY: If we have context but aren't sending a new file/text, attach the old one.
-            if (!file && !isLongText && documentContext) {
+            if (!isNewDocument && documentContext) {
                 apiBody.documentText = documentContext;
             }
 
-            // OCR Step
-            if (file) {
-                setProcessingStage(0); 
-                const formData = new FormData();
-                formData.append("file", file);
-                
-                const ocrRes = await fetch("/api/ocr", { method: "POST", body: formData });
-                if (!ocrRes.ok) throw new Error("OCR Failed");
-                const ocrData = await ocrRes.json();
-                
-                apiBody.documentText = ocrData.text; 
-                setDocumentContext(ocrData.text); // ✅ Save OCR text to memory
-            }
+            if (file) { setProcessingStage(0); const formData = new FormData(); formData.append("file", file); const ocrRes = await fetch("/api/ocr", { method: "POST", body: formData }); if (!ocrRes.ok) throw new Error("OCR Failed"); const ocrData = await ocrRes.json(); apiBody.documentText = ocrData.text; setDocumentContext(ocrData.text); }
 
-            // AI Generation Step
-            setProcessingStage(1); 
+            setProcessingStage(1);
             const aiRes = await fetch("/api/generate-content", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(apiBody),
+                method: "POST", headers: { "Content-Type": "application/json", "x-guest-id": guestId }, body: JSON.stringify(apiBody),
             });
-
-            if (!aiRes.ok) {
-                const errorData = await aiRes.json();
-                throw new Error(errorData.error || "AI Processing Failed");
-            }
-            
+            if (!aiRes.ok) throw new Error("AI Failed");
             const aiData = await aiRes.json();
+            if (aiData.chatId) { setChatId(aiData.chatId); if (isNewConversation) fetchChats(); }
+            setProcessingStage(2);
 
-            // Capture new ChatID from backend
-            if (aiData.chatId) {
-                setChatId(aiData.chatId);
-                if (isNewConversation) fetchChats(); 
-            }
-
-            setProcessingStage(2); 
-            
             setTimeout(() => {
-                setLoading(false);
-                setFile(null); 
-
+                setLoading(false); setFile(null);
                 if (aiData.data.clauses && aiData.data.clauses.length > 0) {
                     setMessages(prev => [...prev, { role: "assistant", analysis: aiData.data }]);
+                    if (wasVoiceInput) speakText("I have analyzed the document. Here is the risk assessment.");
                 } else {
-                    const textResponse = aiData.data.summary || aiData.data.response || "I processed your request.";
+                    const textResponse = aiData.data.response || aiData.data.summary || "Done.";
                     animateAssistantContent(textResponse);
+                    if (wasVoiceInput) speakText(textResponse);
                 }
+                setWasVoiceInput(false);
             }, 600);
-
-        } catch (error) {
-            console.error(error);
-            toast.error("Something went wrong");
-            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error processing your request." }]);
-            setLoading(false);
-        }
+        } catch (error) { toast.error("Error"); setMessages(prev => [...prev, { role: "assistant", content: "Error processing request." }]); setLoading(false); setWasVoiceInput(false); }
     };
 
-    const scrollToClause = (riskLevel) => {
-        const element = document.getElementById(`clause-${riskLevel}-0`);
-        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
-
-    // ==========================================
-    // RENDER
-    // ==========================================
-
-    if (isAuthChecking) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-white">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-                    <p className="text-gray-500 font-medium animate-pulse">Verifying secure access...</p>
-                </div>
-            </div>
-        );
-    }
+    if (isAuthChecking) return <div className="flex h-screen items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600" /></div>;
 
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden relative font-sans">
@@ -629,51 +482,65 @@ export default function Home() {
             <DeleteAccountModal isOpen={showDeleteModal} onClose={() => !isDeletingAccount && setShowDeleteModal(false)} onConfirm={performDeleteAccount} isLoading={isDeletingAccount} />
             <DeleteChatModal isOpen={!!chatToDelete} onClose={() => !isDeletingChat && setChatToDelete(null)} onConfirm={handleDeleteChat} isLoading={isDeletingChat} />
 
-            {/* Sidebar Overlay (Mobile) */}
+            {/* ✅ LIVE MODE */}
+            {isLiveMode && (
+                <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center animate-in fade-in duration-300">
+                    <button onClick={() => { setIsLiveMode(false); window.speechSynthesis.cancel(); }} className="absolute top-6 right-6 p-3 bg-gray-100 rounded-full hover:bg-gray-200"><X className="w-6 h-6 text-gray-700" /></button>
+                    <div className="flex flex-col items-center gap-8">
+                        <div className={`w-40 h-40 rounded-full flex items-center justify-center transition-all duration-500 ${liveStatus === 'listening' ? 'bg-blue-100 scale-110 shadow-blue-200 shadow-xl' : liveStatus === 'speaking' ? 'bg-green-100 scale-100 shadow-green-200 shadow-lg' : liveStatus === 'thinking' ? 'bg-purple-100 animate-pulse' : 'bg-gray-100'}`}>
+                            {liveStatus === 'listening' && <Mic className="w-16 h-16 text-blue-600 animate-bounce" />}
+                            {liveStatus === 'speaking' && <Volume2 className="w-16 h-16 text-green-600 animate-pulse" />}
+                            {liveStatus === 'thinking' && <Loader2 className="w-16 h-16 text-purple-600 animate-spin" />}
+                            {liveStatus === 'idle' && <MicOff className="w-16 h-16 text-gray-400" />}
+                        </div>
+                        <div className="text-center space-y-2">
+                            <h2 className="text-2xl font-bold text-gray-900">{liveStatus === 'listening' ? "I'm listening..." : liveStatus === 'speaking' ? "Speaking..." : liveStatus === 'thinking' ? "Thinking..." : "Tap to Speak"}</h2>
+                            <p className="text-gray-500">Live Conversation Mode</p>
+                        </div>
+                        <div className="flex gap-6">
+                            {liveStatus === 'idle' && <button onClick={startLiveLoop} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-lg shadow-lg hover:bg-blue-700 hover:scale-105 transition-all">Start Talking</button>}
+                            {liveStatus !== 'idle' && <button onClick={() => { recognitionRef.current?.stop(); window.speechSynthesis.cancel(); setLiveStatus("idle"); }} className="px-8 py-4 bg-red-100 text-red-600 rounded-full font-bold text-lg hover:bg-red-200 transition-all">Stop</button>}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-20 md:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />}
 
-            {/* Sidebar */}
             <aside className={`fixed md:static inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col shadow-lg md:shadow-none`}>
                 <div className="p-6 border-b border-gray-100 flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shadow-blue-200 shadow-lg"><Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-10 h-10" /></div>
                     <span className="font-bold text-gray-900 text-lg">Legal Advisor</span>
                     <button onClick={() => setSidebarOpen(false)} className="md:hidden ml-auto text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
                 </div>
-
                 <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                    <button onClick={handleNewChat} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium"><Plus className="w-5 h-5" /> New Analysis</button>
+                    <button onClick={handleNewChat} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-4 font-medium"><Plus className="w-5 h-5" /> New Analysis</button>
+                    {/* ✅ LIVE BUTTON */}
+                    <button onClick={() => setIsLiveMode(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium"><BrainCircuit  className="w-5 h-5 animate-pulse" /> Live Chat</button>
+
                     <div className="space-y-1">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3 flex justify-between items-center">History {isLoadingHistory && <Loader2 className="w-3 h-3 animate-spin" />}</p>
-                        {chatHistory.length > 0 ? (
-                            chatHistory.map((chat) => (
-                                <div key={chat.id} className="group relative">
-                                    <button onClick={() => handleLoadChat(chat.id)} className={`w-full flex items-start gap-3 px-3 py-3 rounded-xl text-sm text-left transition-colors pr-10 group ${chatId === chat.id ? "bg-blue-50 border border-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-50 border border-transparent"}`}>
-                                        <MessageSquare className={`w-4 h-4 shrink-0 mt-0.5 ${chatId === chat.id ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="font-medium truncate">{chat.title || "Untitled Conversation"}</div>
-                                            <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(chat.updatedAt).toLocaleDateString()}</div>
-                                        </div>
-                                    </button>
-                                    <button onClick={(e) => confirmDeleteChat(e, chat.id)} className="absolute right-2 top-3 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 z-10" title="Delete chat"><Trash2 className="w-4 h-4" /></button>
-                                </div>
-                            ))
-                        ) : (<div className="text-center py-8 text-gray-400 text-sm italic">{isLoadingHistory ? "Loading history..." : "No active chats"}</div>)}
+                        {chatHistory.length > 0 ? chatHistory.map((chat) => (
+                            <div key={chat.id} className="group relative">
+                                <button onClick={() => handleLoadChat(chat.id)} className={`w-full flex items-start gap-3 px-3 py-3 rounded-xl text-sm text-left transition-colors pr-10 group ${chatId === chat.id ? "bg-blue-50 border border-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-50 border border-transparent"}`}>
+                                    <MessageSquare className={`w-4 h-4 shrink-0 mt-0.5 ${chatId === chat.id ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                    <div className="min-w-0 flex-1"><div className="font-medium truncate">{chat.title || "Untitled Conversation"}</div><div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(chat.updatedAt).toLocaleDateString()}</div></div>
+                                </button>
+                                <button onClick={(e) => confirmDeleteChat(e, chat.id)} className="absolute right-2 top-3 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 z-10"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                        )) : <div className="text-center py-8 text-gray-400 text-sm italic">No active chats</div>}
                     </div>
                 </div>
-
                 <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                     <div className="flex items-center gap-3 mb-4 px-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-gray-200 group">
-                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">
-                            {user?.avatar ? (<img src={user.avatar} alt="User" className="w-full h-full object-cover" />) : (<span className="font-bold text-sm">{user?.name?.charAt(0) || "U"}</span>)}
-                        </div>
+                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">{user?.avatar ? (<img src={user.avatar} alt="User" className="w-full h-full object-cover" />) : (<span className="font-bold text-sm">{user?.name?.charAt(0) || "U"}</span>)}</div>
                         <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{user?.name || "User"}</p><p className="text-xs text-gray-500 truncate">{user?.email}</p></div>
-                        <button onClick={(e) => { e.stopPropagation(); setShowDeleteModal(true); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0" title="Delete Account"><UserX className="w-5 h-5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setShowDeleteModal(true); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"><UserX className="w-5 h-5" /></button>
                     </div>
                     <button onClick={handleLogoutClick} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"><LogOut className="w-4 h-4" /> Sign Out</button>
                 </div>
             </aside>
 
-            {/* Chat Area */}
             <main className="flex-1 flex flex-col h-full w-full relative bg-gray-50/50">
                 <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
                     <div className="flex items-center gap-3">
@@ -681,7 +548,6 @@ export default function Home() {
                         <span className="font-bold text-gray-900">Legal Advisor</span>
                     </div>
                 </header>
-
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="max-w-4xl mx-auto px-4 py-8">
                         {messages.length === 0 ? (
@@ -690,14 +556,10 @@ export default function Home() {
                                     <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50 group-hover:scale-110 transition-transform"></div>
                                     <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
-                                    <TypeAnimation sequence={[`Hello ${user?.name?.split(' ')[0] || 'there'}!`, 2000, "Upload a contract...", 2000, "Ask a legal question...", 2000]} wrapper="span" speed={50} repeat={Infinity} />
-                                </h2>
+                                <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center"><TypeAnimation sequence={[`Hello ${user?.name?.split(' ')[0] || 'there'}!`, 2000, "Upload a contract...", 2000, "Ask a legal question...", 2000]} wrapper="span" speed={50} repeat={Infinity} /></h2>
                                 <p className="text-gray-500 text-center max-w-md mb-8 leading-relaxed">I'm your AI legal assistant. Upload a PDF or paste text to get instant risk analysis and clause breakdowns.</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-                                    {["Analyze NDA Risk", "Review Employment Contract", "Explain Indemnity Clause", "Summarize Lease Agreement"].map((suggestion) => (
-                                        <button key={suggestion} onClick={() => setInputText(suggestion)} className="px-4 py-3 text-sm text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left shadow-sm hover:shadow-md">{suggestion} →</button>
-                                    ))}
+                                    {["Analyze NDA Risk", "Review Employment Contract", "Explain Indemnity Clause", "Summarize Lease Agreement"].map((suggestion) => (<button key={suggestion} onClick={() => setInputText(suggestion)} className="px-4 py-3 text-sm text-gray-600 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left shadow-sm hover:shadow-md">{suggestion} →</button>))}
                                 </div>
                             </div>
                         ) : (
@@ -705,7 +567,9 @@ export default function Home() {
                                 {messages.map((msg, idx) => (
                                     <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         {msg.role === 'assistant' && (
-                                            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-md mt-1"><Image src="/logo.svg" width={16} height={16} alt="AI" className="invert brightness-0" /></div>
+                                            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-md mt-1">
+                                                <Image src="/logo.svg" width={16} height={16} alt="AI" className="invert brightness-0" />
+                                            </div>
                                         )}
                                         <div className={`max-w-[85%] sm:max-w-[75%] space-y-1 ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
                                             {msg.role === 'user' ? (
@@ -714,31 +578,55 @@ export default function Home() {
                                                     <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                                 </div>
                                             ) : (
-                                                msg.analysis ? (<ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />) : (
-                                                    <div className="bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm"><p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p></div>
+                                                msg.analysis ? (
+                                                    <div className="flex flex-col gap-2 w-full">
+                                                        <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
+                                                        <div className="flex gap-2 ml-2 mt-1">
+                                                            <button onClick={() => speakText(msg.analysis.summary)} className="self-start flex items-center gap-2 text-xs text-gray-500 hover:text-blue-600 transition-colors ml-2">
+                                                                <Volume2 className="w-5 h-5" placeholder="Listen to Summary" /> 
+                                                            </button>
+                                                            {isSpeaking && <button onClick={stopSpeaking} className="p-1.5 text-red-400 hover:text-red-600 rounded-full transition-colors animate-pulse" title="Stop Speaking"><StopCircle className="w-5 h-5" /></button>}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-1 items-start w-full">
+                                                        <div className="bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm px-6 py-5 shadow-sm w-full">
+                                                            <div className="markdown-content text-sm leading-relaxed">
+                                                                <ReactMarkdown
+                                                                    components={{
+                                                                        strong: ({ node, ...props }) => <span className="font-bold text-gray-900" {...props} />,
+                                                                        ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-2 my-2 text-gray-700" {...props} />,
+                                                                        ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-2 my-2 text-gray-700" {...props} />,
+                                                                        li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                                                                        p: ({ node, ...props }) => <p className="mb-3 last:mb-0" {...props} />,
+                                                                        h1: ({ node, ...props }) => <h1 className="text-lg font-bold text-gray-900 mb-2" {...props} />,
+                                                                        h2: ({ node, ...props }) => <h2 className="text-base font-bold text-gray-900 mb-2" {...props} />,
+                                                                    }}
+                                                                >
+                                                                    {msg.content}
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2 ml-2 mt-1">
+                                                            <button onClick={() => speakText(msg.content)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full transition-colors" title="Read Aloud"><Volume2 className="w-6 h-6" /></button>
+                                                            {isSpeaking && <button onClick={stopSpeaking} className="p-1.5 text-red-400 hover:text-red-600 rounded-full transition-colors animate-pulse" title="Stop Speaking"><StopCircle className="w-6 h-6" /></button>}
+                                                        </div>
+                                                    </div>
                                                 )
                                             )}
-                                            <span className="text-[10px] text-gray-400 px-1">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                            <span className="text-[10px] text-gray-400 px-1">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        {msg.role === 'user' && (
-                                            <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0 mt-1 border border-white shadow-sm">
-                                                {user?.avatar ? (<img src={user.avatar} alt="Me" className="w-full h-full object-cover" />) : (<div className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-bold">ME</div>)}
-                                            </div>
-                                        )}
+                                        {msg.role === 'user' && (<div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0 mt-1 border border-white shadow-sm">{user?.avatar ? (<img src={user.avatar} alt="Me" className="w-full h-full object-cover" />) : (<div className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-bold">ME</div>)}</div>)}
                                     </div>
                                 ))}
-                                {loading && (
-                                    <div className="flex gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-md"><Loader2 className="w-4 h-4 text-white animate-spin" /></div>
-                                        <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm w-full max-w-md"><ProcessingLoader stage={processingStage} /></div>
-                                    </div>
-                                )}
+                                {loading && (<div className="flex gap-4"><div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-md"><Loader2 className="w-4 h-4 text-white animate-spin" /></div><div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm w-full max-w-md"><ProcessingLoader stage={processingStage} /></div></div>)}
                             </div>
                         )}
                         <div ref={messagesEndRef} />
                     </div>
                 </div>
 
+                {/* ... (Keep Footer Input Area) */}
                 <div className="p-4 bg-white/80 backdrop-blur-md border-t border-gray-200">
                     <div className="max-w-3xl mx-auto">
                         <UploadBox file={file} onCancel={() => setFile(null)} />

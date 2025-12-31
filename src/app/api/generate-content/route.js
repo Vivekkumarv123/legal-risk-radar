@@ -11,13 +11,16 @@ const GUEST_DAILY_LIMIT = 3;
 export async function POST(req) {
   try {
     const body = await req.json();
-    let { documentText, message, userQuestion, userRole, docType, fileUrl, chatId } = body;
-
+    let { documentText, message, userRole, docType, fileUrl, chatId } = body;
+    console.log("Received Request Body:", body);
     // Validate Input
     if (!documentText && !message) {
       return NextResponse.json({ error: "Text or message required" }, { status: 400 });
     }
 
+    // ============================================================
+    // STEP 1 & 2: AUTHENTICATION & USAGE LIMITS
+    // ============================================================
     // ============================================================
     // STEP 1: IDENTIFY THE USER (Cookie OR Header)
     // ============================================================
@@ -66,51 +69,28 @@ export async function POST(req) {
       trackerId = `guest_${guestIdHeader}`;
     }
 
-    // ============================================================
-    // STEP 2: CHECK USAGE LIMITS (With Daily Reset Logic)
-    // ============================================================
+
+    // Check Limits
     const usageRef = db.collection("usage_limits").doc(trackerId);
     let currentCount = 0;
-
     if (isGuest) {
       const doc = await usageRef.get();
-      
       if (doc.exists) {
         const data = doc.data();
-        const lastUsed = data.lastUsed?.toDate ? data.lastUsed.toDate() : new Date(data.lastUsed || Date.now());
+        const last = data.lastUsed?.toDate ? data.lastUsed.toDate() : new Date();
         const today = new Date();
-
-        // ✅ Check if the last usage was on the same day as today
-        const isSameDay = lastUsed.getDate() === today.getDate() &&
-                          lastUsed.getMonth() === today.getMonth() &&
-                          lastUsed.getFullYear() === today.getFullYear();
-
-        if (isSameDay) {
-            // Same day: Keep the existing count
-            currentCount = data.count || 0;
-        } else {
-            // New day: Reset count to 0
-            currentCount = 0;
-        }
+        if (last.getDate() === today.getDate()) currentCount = data.count || 0;
       }
-
-      // Check limit *after* potential reset
-      if (currentCount >= GUEST_DAILY_LIMIT) {
-        return NextResponse.json({ 
-          error: "Free limit reached", 
-          isLimitReached: true, 
-          message: "You have used your free tries for today. Please create an account." 
-        }, { status: 403 });
-      }
+      if (currentCount >= GUEST_DAILY_LIMIT) return NextResponse.json({ error: "Limit reached", isLimitReached: true }, { status: 403 });
     }
 
     // ============================================================
-    // STEP 3: CONTEXT & MEMORY RETRIEVAL
+    // STEP 3: CONTEXT RETRIEVAL
     // ============================================================
     let contextToAnalyze = documentText || "";
     let currentChatId = chatId;
 
-    // Retrieve context only if it's a member and chatting in an existing thread
+    // Retrieve context from DB if this is a follow-up
     if (!isGuest && currentChatId && !documentText) {
         const chatDoc = await db.collection("chats").doc(currentChatId).get();
         if (chatDoc.exists && chatDoc.data().documentContext) {
@@ -119,144 +99,132 @@ export async function POST(req) {
     }
 
     // ============================================================
-    // STEP 4: PREPARE PROMPT
+    // ✅ STEP 4: INTELLIGENT INTENT DETECTION
     // ============================================================
-    const sanitizedDoc = (contextToAnalyze || "").replace(/"""/g, "'''");
-    const question = userQuestion || message || "Explain the risks.";
+    const userQuery = message || "Explain the risks.";
     const fileContext = fileUrl ? `(File URL provided: ${fileUrl})` : "";
+    
+    // LOGIC: It is a "Standard Analysis" (JSON) if:
+    // 1. It starts with the specific prefix we add in Frontend for new docs.
+    // 2. OR it explicitly says "Analyze".
+    const isStandardAnalysis = 
+        userQuery.startsWith("Analyze the following legal text") || 
+        userQuery.toLowerCase().startsWith("analyze this");
 
-    const prompt = `
-      You are a Legal Risk Explanation AI designed for NON-LAWYERS.
-      Your job is to explain legal risks in SIMPLE, EASY, EVERYDAY language.
+    // ✅ FIX: If analyzing but no separate documentText, the message IS the document.
+    if (isStandardAnalysis && !contextToAnalyze) {
+        const prefix = "Analyze the following legal text and identify risks/clauses:\n\n";
+        if (userQuery.startsWith(prefix)) {
+            contextToAnalyze = userQuery.replace(prefix, "");
+        } else {
+            contextToAnalyze = userQuery; // Fallback
+        }
+    }
 
-      ASSUME:
-      - The user is a normal person (student, freelancer, startup founder)
-      - They have NO legal background
-      - They want to understand risks, not legal theory
+    const sanitizedDoc = (contextToAnalyze || "").replace(/"""/g, "'''");
+    let prompt;
 
-      CONTEXT:
-      - Client Role: ${userRole || "Determine from context"}
-      - Document Type: ${docType || "General Contract"}
-      - Jurisdiction: General commercial understanding (no country-specific law unless mentioned)
+    if (isStandardAnalysis) {
+        // --- MODE A: ANALYST (Strict JSON) ---
+        prompt = `
+          You are a Legal Risk AI. Analyze this document for a Non-Lawyer.
+          
+          DOCUMENT:
+          """
+          ${sanitizedDoc}
+          ${fileContext}
+          """
 
-      WHAT YOU MUST DO:
-      1. Analyze the document ONLY from the client's point of view.
-      2. Highlight clauses that can cause:
-         - Money loss
-         - Legal trouble
-         - Unfair control by the other party
-      3. Identify important protections that are MISSING.
-      4. Explain EVERYTHING in simple language.
-
-      VERY IMPORTANT LANGUAGE RULES:
-      - Avoid legal jargon whenever possible.
-      - If legal terms are necessary, explain them immediately in brackets.
-        Example:
-        "Indemnity (you agree to pay for the other person's legal problems)"
-      - Use short sentences.
-      - Use examples where helpful.
-      - Write as if explaining to a friend.
-      
-      DOCUMENT:
-      """
-      ${sanitizedDoc}
-      ${fileContext}
-      """
-      
-      USER QUESTION:
-      "${question}"
-      
-      OUTPUT FORMAT (STRICT JSON ONLY):
-      {
-        "language": "detected language code (e.g. en, hi)",
-        "client_perspective": "Who this contract affects most (e.g., Freelancer, Employee, Buyer)",
-        "overall_risk_score": "1-10",
-        "summary": "Very simple overall explanation of why this contract is safe or dangerous",
-        "missing_clauses": [
-          "Clause name (simple explanation in brackets)"
-        ],
-        "clauses": [
+          OUTPUT FORMAT (STRICT JSON ONLY):
           {
-            "id": "1",
-            "clause_snippet": "Exact risky sentence from the document",
-            "risk_level": "CRITICAL | HIGH | MEDIUM | LOW | BENEFICIAL",
-            "explanation": "Simple explanation of what can go wrong for the client",
-            "recommendation": "What a normal person should ask to change"
+            "summary": "Simple summary",
+            "overall_risk_score": "1-10",
+            "missing_clauses": ["Missing protection 1"],
+            "clauses": [
+              {
+                "clause": "Original text snippet",
+                "risk_level": "HIGH/MEDIUM/LOW",
+                "explanation": "Simple explanation why it is risky"
+              }
+            ]
           }
-        ]
-      }
+        `;
+    } else {
+        // --- MODE B: CHAT COMPANION (Simple Text) ---
+        prompt = `
+          You are a helpful Legal Assistant. Answer the user's question based on the document.
+          
+          DOCUMENT:
+          """
+          ${sanitizedDoc}
+          ${fileContext}
+          """
 
-      SAFETY RULES:
-      - Do NOT give legal advice.
-      - Clearly state risks, not guarantees.
-      - Be neutral but protective of the client.
-      - Output RAW JSON only (no markdown, no explanations outside JSON).
-    `;
+          USER QUESTION:
+          "${userQuery}"
+
+          INSTRUCTIONS:
+          1. Answer directly and simply (No jargon).
+          2. If asked to translate, translate the answer fully.
+          3. Do NOT output JSON. Write a normal paragraph or bullet points.
+        `;
+    }
 
     // ============================================================
     // STEP 5: CALL GEMINI API
     // ============================================================
     const rawResult = await callGemini(prompt);
-    
     let parsedResult;
-    try {
-      const cleanedJsonString = rawResult.replace(/```json|```/g, '').trim();
-      parsedResult = JSON.parse(cleanedJsonString);
-    } catch (e) {
-      console.error("JSON Parse Error", e);
-      parsedResult = { summary: rawResult, clauses: [] };
+    
+    if (isStandardAnalysis) {
+        // Parse JSON for Cards
+        try {
+            const cleanedJson = rawResult.replace(/```json|```/g, '').trim();
+            parsedResult = JSON.parse(cleanedJson);
+        } catch (e) {
+            console.error("JSON Error", e);
+            parsedResult = { summary: rawResult, clauses: [] };
+        }
+    } else {
+        // Return Text for Chat Bubble
+        parsedResult = { 
+            response: rawResult, 
+            clauses: [] // Empty clauses = Frontend shows text bubble
+        };
     }
 
     // ============================================================
-    // STEP 6: SAVE TO FIRESTORE (Private History)
+    // STEP 6: SAVE TO FIRESTORE
     // ============================================================
-    
-    // A. Increment Usage Count
-    // If it was a new day, currentCount was 0, so we save 1.
-    // If it was same day, currentCount was N, so we save N + 1.
-    await usageRef.set({
-      count: isGuest ? currentCount + 1 : 0, 
-      lastUsed: FieldValue.serverTimestamp(), // Update time to NOW
-      type: isGuest ? "guest" : "user"
-    }, { merge: true });
+    await usageRef.set({ count: isGuest ? currentCount + 1 : 0, lastUsed: FieldValue.serverTimestamp(), type: isGuest ? "guest" : "user" }, { merge: true });
 
-    // B. Save Chat History (Only for Logged-in Users)
     if (!isGuest && userId) {
         const chatsRef = db.collection("chats");
+        // Ensure we save the context if we just extracted it
+        const contextToSave = documentText || contextToAnalyze || "";
 
         if (!currentChatId) {
-            // New Session
-            const newChat = await chatsRef.add({
-                userId,
-                title: message.substring(0, 30) + "...",
-                documentContext: documentText || "", 
-                createdAt: FieldValue.serverTimestamp(),
-                updatedAt: FieldValue.serverTimestamp(),
+            const newChat = await chatsRef.add({ 
+                userId, title: message.substring(0, 30) + "...", 
+                documentContext: contextToSave, 
+                createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() 
             });
             currentChatId = newChat.id;
         } else {
-            // Existing Session
             const updateData = { updatedAt: FieldValue.serverTimestamp() };
-            if (documentText) updateData.documentContext = documentText;
+            if (contextToSave) updateData.documentContext = contextToSave;
             await chatsRef.doc(currentChatId).update(updateData);
         }
 
         const messagesRef = chatsRef.doc(currentChatId).collection("messages");
-
-        // Save User Message
-        await messagesRef.add({
-            role: "user",
-            content: message,
-            attachmentUrl: fileUrl || null,
-            createdAt: FieldValue.serverTimestamp(),
-        });
-
-        // Save Assistant Message
-        await messagesRef.add({
-            role: "assistant",
-            content: parsedResult.summary,
-            analysisData: parsedResult,
-            createdAt: FieldValue.serverTimestamp(),
+        await messagesRef.add({ role: "user", content: message, attachmentUrl: fileUrl || null, createdAt: FieldValue.serverTimestamp() });
+        console.log("Saving assistant message:", parsedResult);
+        const assistantContent = isStandardAnalysis ? parsedResult.summary : parsedResult.response;
+        await messagesRef.add({ 
+            role: "assistant", 
+            content: assistantContent, 
+            analysisData: isStandardAnalysis ? parsedResult : null, 
+            createdAt: FieldValue.serverTimestamp() 
         });
     }
 
@@ -268,7 +236,7 @@ export async function POST(req) {
     });
 
   } catch (err) {
-    console.error("Legal AI Error:", err);
+    console.error("API Error:", err);
     return NextResponse.json({ error: "Processing failed", details: err.message }, { status: 500 });
   }
 }
