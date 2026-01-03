@@ -1,41 +1,47 @@
 import nodemailer from "nodemailer";
 
-// 👇 FIX: Use curly braces {} to accept an object
 export const sendEmail = async ({ to, subject, html, text }) => {
   if (!to) {
     console.error("❌ Email recipient missing");
     return;
   }
 
-  // Debug log
   console.log("📨 Sending to:", to);
 
   try {
     const transporter = nodemailer.createTransport({
+      service: "gmail",
       host: "smtp.gmail.com",
-      port: 587,
-      secure: true,
+      port: 465, // ✅ Use 465 for Vercel (SSL)
+      secure: true, // ✅ Must be true for port 465
       auth: {
         user: process.env.SMTP_EMAIL,
         pass: process.env.SMTP_PASS,
       },
-      tls: {
-        rejectUnauthorized: false,
-      },
     });
 
-    await transporter.sendMail({
-      from: `"Legal Advisor" <${process.env.SMTP_EMAIL}>`,
-      to,
-      subject,
-      text,
-      html,
+    // ✅ Wrap in Promise to ensure Vercel waits for completion
+    await new Promise((resolve, reject) => {
+      transporter.sendMail({
+        from: `"Legal Advisor" <${process.env.SMTP_EMAIL}>`,
+        to,
+        subject,
+        text,
+        html,
+      }, (err, info) => {
+        if (err) {
+          console.error("❌ SMTP Error:", err);
+          reject(err);
+        } else {
+          console.log("✅ Email sent:", info.response);
+          resolve(info);
+        }
+      });
     });
 
-    console.log("✅ Email sent successfully to:", to);
   } catch (error) {
     console.error("❌ Email sending failed:", error?.message || error);
-    throw error;
+    // We don't throw error here to prevent crashing the main thread
   }
 };
 
