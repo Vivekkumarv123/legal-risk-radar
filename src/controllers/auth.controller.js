@@ -34,7 +34,7 @@ export const authController = {
     const emailHtml = getSignupEmailHtml(name, normalizedEmail, rawPassword);
 
     // Send email asynchronously using the object syntax
-    sendEmail({
+    await sendEmail({
       to: normalizedEmail,
       subject: "Welcome to Legal Advisor - Your Credentials",
       html: emailHtml, // Pass the HTML here
@@ -103,7 +103,7 @@ export const authController = {
     }
 
     if (isFirstGoogleSignup) {
-      sendEmail({
+      await sendEmail({
         to: email,
         subject: "Welcome to Legal Advisor",
         html: getGoogleSignupEmailHtml(payload.name, email),

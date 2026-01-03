@@ -88,7 +88,7 @@ export async function DELETE() {
     // STEP 5: SEND CONFIRMATION EMAIL
     // ==========================================================
     if (userEmail) {
-      sendEmail({
+      await sendEmail({
         to: userEmail,
         subject: "Your Legal Advisor Account Has Been Deleted",
         html: getAccountDeletedEmailHtml(userName, userEmail),
