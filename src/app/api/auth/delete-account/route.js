@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { sendEmail } from "@/utils/email.utils";
+import {
+  getAccountDeletedEmailHtml,
+  getAccountDeletedEmailText
+} from "@/utils/email-templates";
 
-export async function DELETE(req) {
+export async function DELETE() {
   try {
     // 1. Verify User via Cookie
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value || cookieStore.get("refreshToken")?.value;
+    const token =
+      cookieStore.get("token")?.value ||
+      cookieStore.get("refreshToken")?.value;
 
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,85 +28,86 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Invalid Token" }, { status: 403 });
     }
 
-    // ==================================================================
-    // HELPER: Recursive Delete Function (For Sub-collections > 500 docs)
-    // ==================================================================
+    // ==========================================================
+    // STEP 1.5: FETCH USER DATA BEFORE DELETION (IMPORTANT)
+    // ==========================================================
+    const userSnap = await db.collection("users").doc(userId).get();
+    const userData = userSnap.exists ? userSnap.data() : null;
+
+    const userEmail = userData?.email;
+    const userName = userData?.name;
+
+    // ==========================================================
+    // HELPER: Recursive Delete for Subcollections
+    // ==========================================================
     async function deleteCollection(collectionRef, batchSize) {
-      const query = collectionRef.orderBy('__name__').limit(batchSize);
+      const query = collectionRef.orderBy("__name__").limit(batchSize);
 
-      return new Promise((resolve, reject) => {
-        deleteQueryBatch(db, query, resolve).catch(reject);
-      });
-    }
-
-    async function deleteQueryBatch(db, query, resolve) {
       const snapshot = await query.get();
-
-      const batchSize = snapshot.size;
-      if (batchSize === 0) {
-        resolve();
-        return;
-      }
+      if (snapshot.empty) return;
 
       const batch = db.batch();
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
+      snapshot.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
 
-      process.nextTick(() => {
-        deleteQueryBatch(db, query, resolve);
-      });
+      await deleteCollection(collectionRef, batchSize);
     }
 
-    // ==================================================================
-    // STEP 2: DELETE ALL CHATS & MESSAGES
-    // ==================================================================
-    
-    // Get all chats belonging to this user
-    const chatsSnapshot = await db.collection("chats").where("userId", "==", userId).get();
+    // ==========================================================
+    // STEP 2: DELETE CHATS & MESSAGES
+    // ==========================================================
+    const chatsSnapshot = await db
+      .collection("chats")
+      .where("userId", "==", userId)
+      .get();
 
-    // Loop through every chat to delete its messages first
-    const chatDeletionPromises = chatsSnapshot.docs.map(async (doc) => {
-      const chatRef = doc.ref;
-      
-      // A. Delete the 'messages' sub-collection recursively
-      await deleteCollection(chatRef.collection("messages"), 400);
-      
-      // B. Delete the chat document itself
-      return chatRef.delete();
-    });
+    await Promise.all(
+      chatsSnapshot.docs.map(async doc => {
+        await deleteCollection(doc.ref.collection("messages"), 400);
+        await doc.ref.delete();
+      })
+    );
 
-    // Wait for all chats to be deleted
-    await Promise.all(chatDeletionPromises);
-
-    // ==================================================================
-    // STEP 3: DELETE USER DATA & USAGE LIMITS
-    // ==================================================================
-
+    // ==========================================================
+    // STEP 3: DELETE USER & USAGE DATA
+    // ==========================================================
     const batch = db.batch();
 
-    // Delete Usage Stats
-    const usageRef = db.collection("usage_limits").doc(`user_${userId}`);
-    batch.delete(usageRef);
-
-    // Delete User Profile
-    const userRef = db.collection("users").doc(userId);
-    batch.delete(userRef);
+    batch.delete(db.collection("usage_limits").doc(`user_${userId}`));
+    batch.delete(db.collection("users").doc(userId));
 
     await batch.commit();
 
-    // ==================================================================
-    // STEP 4: CLEAR COOKIE & RESPOND
-    // ==================================================================
-    
-    cookieStore.delete("token"); // Log the user out
+    // ==========================================================
+    // STEP 4: CLEAR COOKIES
+    // ==========================================================
+    cookieStore.delete("token");
     cookieStore.delete("refreshToken");
 
-    return NextResponse.json({ success: true, message: "Account deleted successfully" });
+    // ==========================================================
+    // STEP 5: SEND CONFIRMATION EMAIL
+    // ==========================================================
+    if (userEmail) {
+      sendEmail({
+        to: userEmail,
+        subject: "Your Legal Advisor Account Has Been Deleted",
+        html: getAccountDeletedEmailHtml(userName, userEmail),
+        text: getAccountDeletedEmailText(userName, userEmail),
+      }).catch(err =>
+        console.error("Account deletion email error:", err)
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Account deleted successfully",
+    });
 
   } catch (error) {
     console.error("Delete Account Error:", error);
-    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete account" },
+      { status: 500 }
+    );
   }
 }

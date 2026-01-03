@@ -1,4 +1,4 @@
-import  {User}  from "@/models/user.model.js"; // Our new Firestore Model
+import { User } from "@/models/user.model.js"; // Our new Firestore Model
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -6,7 +6,7 @@ import { sendEmail } from "@/utils/email.utils";
 import { generatePassword } from "@/utils/password.utils";
 import { generateOTP } from "@/utils/otp.utils";
 import { generateAccessToken, generateRefreshToken } from "@/utils/token.utils";
-import { getSignupEmailHtml } from "@/utils/email-templates";
+import { getSignupEmailHtml, getGoogleSignupEmailHtml, getGoogleSignupEmailText } from "@/utils/email-templates";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
@@ -71,14 +71,17 @@ export const authController = {
       idToken,
       audience: process.env.GOOGLE_WEB_CLIENT_ID,
     });
-    const payload = ticket.getPayload();
 
-    if (!payload.email_verified) throw new Error("Email not verified by Google");
+    const payload = ticket.getPayload();
+    if (!payload.email_verified) {
+      throw new Error("Email not verified by Google");
+    }
 
     const email = payload.email.toLowerCase();
     let user = await User.findOne({ email });
-
+    let isFirstGoogleSignup = false;
     if (!user) {
+      // First-time Google user
       user = await User.create({
         name: payload.name,
         email,
@@ -86,16 +89,40 @@ export const authController = {
         provider: "google",
         role: "user",
       });
+      isFirstGoogleSignup = true;
+    } else {
+      // 🔑 LINK GOOGLE to existing account
+      if (!user.provider.includes("google")) {
+        await User.update(user.id, {
+          provider: user.provider === "local"
+            ? "local,google"
+            : "google",
+          avatar: payload.picture || user.avatar,
+        });
+      }
+    }
+
+    if (isFirstGoogleSignup) {
+      sendEmail({
+        to: email,
+        subject: "Welcome to Legal Advisor",
+        html: getGoogleSignupEmailHtml(payload.name, email),
+        text: getGoogleSignupEmailText(payload.name, email),
+      }).catch(err => console.error("Google signup email error:", err));
     }
 
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    // ✅ FIX 3: Use Model.update() here too
     await User.update(user.id, { refreshToken });
 
-    return { accessToken, refreshToken, message: "Google login successful" };
+    return {
+      accessToken,
+      refreshToken,
+      message: "Google login successful",
+    };
   },
+
 
   // 4. REFRESH TOKEN
   async refreshAccessToken(tokenFromCookie) {
@@ -107,7 +134,7 @@ export const authController = {
     try {
       const decoded = jwt.verify(tokenFromCookie, process.env.JWT_REFRESH_SECRET);
       if (!decoded.id) throw new Error("Invalid token payload");
-      
+
       const newAccessToken = generateAccessToken(decoded.id);
       return { accessToken: newAccessToken };
     } catch (err) {
@@ -128,7 +155,7 @@ export const authController = {
     if (!user) throw new Error("User not found");
 
     const otp = generateOTP();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); 
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await User.update(user.id, {
       resetOtp: otp,
@@ -165,7 +192,7 @@ export const authController = {
   // 8. GET PROFILE
   async getMyProfile(userId) {
     if (!userId) throw new Error("Not authenticated");
-    
+
     const user = await User.findById(userId);
     if (!user) throw new Error("User not found");
 
