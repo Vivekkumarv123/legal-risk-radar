@@ -54,53 +54,135 @@ export const getResetPasswordEmailHtml = (otp) => {
 export const getSignupEmailHtml = (name, email, password) => {
   return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to Legal Advisor</title>
   <style>
-    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
-    .header { background-color: #2563eb; padding: 30px; text-align: center; }
-    .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 1px; }
-    .content { padding: 40px; color: #334155; line-height: 1.6; }
-    .credentials-box { background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .label { font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px; display: block; }
-    .value { font-size: 16px; color: #1e293b; font-weight: 500; margin-bottom: 16px; font-family: monospace; }
-    .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
-    .btn { display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 10px; }
+    body { margin: 0; padding: 0; min-width: 100%; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; background-color: #0f172a; }
+    .btn:hover { background-color: #e2b866 !important; }
   </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Legal Advisor</h1>
-    </div>
-    
-    <div class="content">
-      <h2 style="margin-top: 0; color: #1e293b;">Welcome, ${name}! 🎉</h2>
-      <p>Your account has been successfully created. Below are your temporary login credentials.</p>
-      
-      <div class="credentials-box">
-        <span class="label">Email ID</span>
-        <div class="value">${email}</div>
-        
-        <span class="label">Temporary Password</span>
-        <div class="value" style="font-size: 18px; letter-spacing: 1px; color: #2563eb;">${password}</div>
-      </div>
-      
-      <p>Please log in and change your password immediately for security.</p>
-      
-      <div style="text-align: center; margin-top: 30px;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || '#'}" class="btn">Login to Account</a>
-      </div>
-    </div>
-    
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} Legal Advisor Inc. All rights reserved.</p>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #0f172a;">
+
+  <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+    Your secure login credentials for Legal Advisor are inside.
   </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0f172a; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width: 100%; max-width: 600px;">
+            <tr>
+                <td height="4" style="background-color: #c5a059; border-top-left-radius: 4px; border-top-right-radius: 4px;"></td>
+            </tr>
+        </table>
+
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; overflow: hidden; width: 100%; max-width: 600px;">
+          
+          <tr>
+            <td align="center" style="padding: 50px 40px 10px 40px;">
+               <p style="margin: 0; font-family: 'Times New Roman', Georgia, serif; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #c5a059; font-weight: bold;">
+                 Registration Successful
+               </p>
+               <h1 style="margin: 15px 0 0 0; font-family: 'Times New Roman', Georgia, serif; font-size: 36px; color: #0f172a; font-weight: 400; letter-spacing: -0.5px;">
+                 Legal Advisor
+               </h1>
+               <div style="width: 40px; height: 1px; background-color: #e2e8f0; margin: 20px auto;"></div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 10px 50px 30px 50px; text-align: center;">
+              <p style="margin: 0; font-size: 16px; line-height: 1.8; color: #475569;">
+                Welcome, <strong>${name}</strong>.
+              </p>
+              <p style="margin: 10px 0 0 0; font-size: 16px; line-height: 1.8; color: #475569;">
+                Your account has been provisioned. Below are your temporary credentials for initial access.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding: 0 40px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #1e293b; background-image: radial-gradient(circle at top right, #334155 0%, #1e293b 100%); border-radius: 12px; border: 1px solid #334155; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
+                    <tr>
+                        <td style="padding: 30px;">
+                            
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td style="padding-bottom: 5px;">
+                                        <p style="margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8;">
+                                            Access ID
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <p style="margin: 0; font-size: 16px; color: #ffffff; letter-spacing: 0.5px;">
+                                            ${email}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 20px;">
+                                <tr>
+                                    <td style="padding-bottom: 8px;">
+                                        <p style="margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #c5a059;">
+                                            Temporary Key
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="background-color: rgba(0,0,0,0.2); border: 1px dashed #c5a059; border-radius: 4px; padding: 12px; text-align: center;">
+                                            <span style="font-family: 'Courier New', monospace; font-size: 18px; color: #ffffff; letter-spacing: 2px; font-weight: bold;">
+                                                ${password}
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+                </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding: 40px 40px 50px 40px;">
+              <p style="margin: 0 0 25px 0; font-size: 13px; color: #94a3b8; line-height: 1.5;">
+                <strong>Security Notice:</strong> For your protection, please change this password immediately upon your first login.
+              </p>
+
+              <a href="https://legal-risk-radar.vercel.app/pages/login" class="btn" style="display: inline-block; padding: 16px 40px; background-color: #0f172a; color: #c5a059; text-decoration: none; border-radius: 2px; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #c5a059;">
+                Access Account
+              </a>
+            </td>
+          </tr>
+
+        </table>
+        
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td align="center" style="padding-top: 30px;">
+              <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b;">
+                Legal Advisor Inc.
+              </p>
+              <p style="margin: 10px 0 0 0; font-size: 12px; color: #475569;">
+                Privileged & Confidential Communication.
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
   `;
