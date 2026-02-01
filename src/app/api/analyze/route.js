@@ -31,22 +31,22 @@ export async function POST(req) {
 async function handleTextAnalysis(req) {
   const { text, source } = await req.json();
   
-  if (!text || text.trim().length < 20) {
+  if (!text || text.trim().length < 50) {
     return Response.json(
-      { error: "Text too short for analysis" },
+      { error: "Text too short for analysis (minimum 50 characters)" },
       { status: 400 }
     );
   }
 
   // For Chrome extension, we'll do basic analysis without authentication
-  if (source === 'chrome_extension') {
+  if (source === 'chrome_extension' || source === 'chrome_extension_pdf') {
     try {
       const analysis = await analyzeTextWithGemini(text, 'TEXT_INPUT');
       return Response.json({
         success: true,
         extraction: {
           type: 'TEXT_INPUT',
-          source: 'chrome_extension'
+          source: source
         },
         analysis
       });
@@ -57,26 +57,9 @@ async function handleTextAnalysis(req) {
         success: true,
         extraction: {
           type: 'TEXT_INPUT',
-          source: 'chrome_extension'
+          source: source
         },
-        analysis: {
-          language: "en",
-          client_perspective: "General user",
-          overall_risk_score: "5",
-          summary: "This text has been analyzed. For detailed analysis, please use the full web application with proper authentication.",
-          missing_clauses: [
-            "Detailed analysis requires full application access"
-          ],
-          clauses: [
-            {
-              id: "1",
-              clause_snippet: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-              risk_level: "MEDIUM",
-              explanation: "Chrome extension provides basic analysis. Use the full app for detailed legal risk assessment.",
-              recommendation: "Visit the full application for comprehensive analysis"
-            }
-          ]
-        }
+        analysis: createFallbackAnalysis(text)
       });
     }
   }
@@ -113,6 +96,80 @@ async function handleTextAnalysis(req) {
     },
     analysis
   });
+}
+
+// Create fallback analysis when AI fails
+function createFallbackAnalysis(text) {
+  const textLength = text.length;
+  const wordCount = text.split(/\s+/).length;
+  
+  // Simple keyword-based risk assessment
+  const highRiskKeywords = ['without compensation', 'no payment', 'exclusive property', 'prohibited from', 'strictly prohibited', 'under any circumstances', 'refrain from'];
+  const mediumRiskKeywords = ['intellectual property', 'confidential', 'non-disclosure', 'terminate', 'breach'];
+  
+  let riskScore = 3; // Default low-medium risk
+  let riskLevel = 'MEDIUM';
+  let foundRisks = [];
+  
+  // Check for high-risk keywords
+  highRiskKeywords.forEach(keyword => {
+    if (text.toLowerCase().includes(keyword.toLowerCase())) {
+      riskScore = Math.min(riskScore + 2, 9);
+      foundRisks.push({
+        keyword,
+        level: 'HIGH',
+        explanation: `Contains restrictive language: "${keyword}"`
+      });
+    }
+  });
+  
+  // Check for medium-risk keywords
+  mediumRiskKeywords.forEach(keyword => {
+    if (text.toLowerCase().includes(keyword.toLowerCase())) {
+      riskScore = Math.min(riskScore + 1, 8);
+      foundRisks.push({
+        keyword,
+        level: 'MEDIUM',
+        explanation: `Legal term requiring attention: "${keyword}"`
+      });
+    }
+  });
+  
+  if (riskScore >= 7) riskLevel = 'HIGH';
+  else if (riskScore >= 4) riskLevel = 'MEDIUM';
+  else riskLevel = 'LOW';
+
+  // Create brief summary for Chrome extension
+  let briefSummary = '';
+  if (riskScore >= 7) {
+    briefSummary = `⚠️ HIGH RISK detected in this clause. Contains restrictive terms that may limit your rights.`;
+  } else if (riskScore >= 4) {
+    briefSummary = `⚡ MEDIUM RISK found. Some terms need attention before signing.`;
+  } else {
+    briefSummary = `✅ LOW RISK detected. Appears to be standard legal language.`;
+  }
+  
+  return {
+    language: "en",
+    client_perspective: "Employee/Contractor",
+    overall_risk_score: riskScore.toString(),
+    summary: `${briefSummary} Open full app for detailed analysis and recommendations.`,
+    missing_clauses: [
+      "Open Legal Risk Radar app for comprehensive analysis",
+      "Get detailed explanations and legal recommendations"
+    ],
+    clauses: [
+      {
+        id: "1",
+        clause_snippet: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+        risk_level: riskLevel,
+        explanation: foundRisks.length > 0 
+          ? `${foundRisks.length} concern(s) found. Open app for full details.`
+          : "Quick scan complete. Open app for comprehensive legal analysis.",
+        recommendation: "Visit Legal Risk Radar app for detailed breakdown and expert recommendations"
+      }
+    ]
+  };
 }
 
 // Handle file upload analysis (existing functionality)

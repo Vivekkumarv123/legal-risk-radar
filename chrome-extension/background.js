@@ -21,6 +21,13 @@ function createContextMenus() {
             });
 
             chrome.contextMenus.create({
+                id: 'analyzePDFRisk',
+                title: 'Analyze PDF Legal Risk',
+                contexts: ['page'],
+                documentUrlPatterns: ['*://*/*.pdf', '*://*/*.pdf?*', '*://*/*.pdf#*']
+            });
+
+            chrome.contextMenus.create({
                 id: 'openLegalApp',
                 title: 'Open Legal Risk Radar',
                 contexts: ['page']
@@ -43,6 +50,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         } else {
             console.log('Legal Risk Radar: No text selected');
         }
+    } else if (info.menuItemId === 'analyzePDFRisk') {
+        // Trigger PDF analysis
+        chrome.tabs.sendMessage(tab.id, { action: 'analyzePDF' }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.log('Legal Risk Radar: Could not communicate with PDF analyzer');
+            }
+        });
     } else if (info.menuItemId === 'openLegalApp') {
         chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app' });
     }
@@ -157,6 +171,17 @@ async function analyzeText(text) {
 chrome.action.onClicked.addListener((tab) => {
     console.log('Legal Risk Radar: Extension icon clicked');
     // Popup will handle this, but this is a fallback
+});
+
+// Listen for tab updates to detect PDF pages
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        const isPDF = tab.url.toLowerCase().includes('.pdf');
+        if (isPDF) {
+            console.log('Legal Risk Radar: PDF page detected:', tab.url);
+            // PDF analyzer will be injected automatically via content scripts
+        }
+    }
 });
 
 console.log('Legal Risk Radar: Background script loaded successfully');

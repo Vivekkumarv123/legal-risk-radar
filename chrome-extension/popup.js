@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const contractCheck = document.getElementById('contractCheck');
     const legalGlossary = document.getElementById('legalGlossary');
     const complianceCheck = document.getElementById('complianceCheck');
+    const voiceAnalysis = document.getElementById('voiceAnalysis');
     const status = document.getElementById('status');
     const loading = document.getElementById('loading');
 
@@ -19,7 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Analyze selected text
+    // Check if current tab is a PDF
+    checkForPDF();
+
+    // Analyze selected text or PDF
     analyzeBtn.addEventListener('click', async function() {
         console.log('Legal Risk Radar: Analyze button clicked');
         showLoading(true);
@@ -36,56 +40,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Could not access current tab');
             }
 
-            console.log('Legal Risk Radar: Executing script to get selected text...');
-
-            // Execute script to get selected text
-            const results = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                function: getSelectedText
-            });
+            // Check if it's a PDF page
+            const isPDF = await checkIfPDFPage(tab.id);
             
-            const selectedText = results[0]?.result;
-            console.log('Legal Risk Radar: Selected text length:', selectedText?.length || 0);
-            
-            if (!selectedText || selectedText.trim().length < 20) {
-                showStatus('Please select at least 20 characters of text to analyze', 'error');
-                return;
+            if (isPDF) {
+                // Handle PDF analysis
+                await handlePDFAnalysis(tab.id);
+            } else {
+                // Handle regular text analysis
+                await handleTextAnalysis(tab.id);
             }
-            
-            console.log('Legal Risk Radar: Making API request...');
-
-            // Send to API for analysis
-            const response = await fetch('https://legal-risk-radar.vercel.app/api/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    text: selectedText.trim(),
-                    source: 'chrome_extension'
-                })
-            });
-            
-            console.log('Legal Risk Radar: API response status:', response.status);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Legal Risk Radar: API error:', errorText);
-                throw new Error(`Analysis failed (${response.status}). Please try again.`);
-            }
-            
-            const analysis = await response.json();
-            console.log('Legal Risk Radar: Analysis successful');
-            
-            // Store result
-            await chrome.storage.local.set({ 
-                lastAnalysis: {
-                    ...analysis,
-                    timestamp: Date.now()
-                }
-            });
-            
-            showStatus('Analysis complete! Check the full app for detailed results.', 'success');
             
         } catch (error) {
             console.error('Legal Risk Radar: Analysis error:', error);
@@ -94,6 +58,121 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading(false);
         }
     });
+
+    async function checkIfPDFPage(tabId) {
+        try {
+            const results = await chrome.scripting.executeScript({
+                target: { tabId },
+                function: () => {
+                    const url = window.location.href.toLowerCase();
+                    const contentType = document.contentType || '';
+                    return url.includes('.pdf') || contentType.includes('application/pdf');
+                }
+            });
+            return results[0]?.result || false;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async function handlePDFAnalysis(tabId) {
+        console.log('Legal Risk Radar: Handling PDF analysis');
+        
+        // Send message to PDF analyzer
+        const response = await chrome.tabs.sendMessage(tabId, { action: 'analyzePDF' });
+        
+        if (response && response.success) {
+            showStatus('PDF analysis started! Check the overlay on the page.', 'success');
+            // Close popup after a delay
+            setTimeout(() => window.close(), 2000);
+        } else {
+            throw new Error('Could not start PDF analysis. Please try selecting text manually.');
+        }
+    }
+
+    async function handleTextAnalysis(tabId) {
+        console.log('Legal Risk Radar: Executing script to get selected text...');
+
+        // Execute script to get selected text
+        const results = await chrome.scripting.executeScript({
+            target: { tabId },
+            function: getSelectedText
+        });
+        
+        const selectedText = results[0]?.result;
+        console.log('Legal Risk Radar: Selected text length:', selectedText?.length || 0);
+        
+        if (!selectedText || selectedText.trim().length < 50) {
+            showStatus('Please select at least 50 characters of text to analyze', 'error');
+            return;
+        }
+        
+        console.log('Legal Risk Radar: Making API request...');
+
+        // Send to API for analysis
+        const response = await fetch('https://legal-risk-radar.vercel.app/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                text: selectedText.trim(),
+                source: 'chrome_extension'
+            })
+        });
+        
+        console.log('Legal Risk Radar: API response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Legal Risk Radar: API error:', errorText);
+            throw new Error(`Analysis failed (${response.status}). Please try again.`);
+        }
+        
+        const analysis = await response.json();
+        console.log('Legal Risk Radar: Analysis successful');
+        
+        // Store result
+        await chrome.storage.local.set({ 
+            lastAnalysis: {
+                ...analysis,
+                timestamp: Date.now()
+            }
+        });
+        
+        // Show brief result with app promotion
+        const riskScore = analysis.analysis?.overall_risk_score || 'N/A';
+        const briefResult = getBriefAnalysisMessage(analysis.analysis);
+        showStatus(`${briefResult} Open app for full details!`, 'success');
+    }
+
+    async function checkForPDF() {
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab) return;
+
+            const isPDF = await checkIfPDFPage(tab.id);
+            
+            if (isPDF) {
+                // Update UI for PDF mode
+                analyzeBtn.innerHTML = `
+                    <span class="icon">📄</span>
+                    Analyze PDF Document
+                `;
+                
+                showStatus('PDF detected! Click to analyze the entire document.', 'info');
+                
+                // Check if PDF has already been analyzed
+                const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPDFAnalysis' });
+                if (response && response.analysis) {
+                    const riskScore = response.analysis.overall_risk_score || 'N/A';
+                    showStatus(`PDF analyzed! Risk Score: ${riskScore}/10`, 'success');
+                }
+            }
+        } catch (error) {
+            console.log('Legal Risk Radar: Could not check for PDF:', error);
+        }
+    }
 
     // Open full application
     openAppBtn.addEventListener('click', function() {
@@ -120,6 +199,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (complianceCheck) {
         complianceCheck.addEventListener('click', function() {
             chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/private-chat?mode=compliance' });
+            window.close();
+        });
+    }
+
+    if (voiceAnalysis) {
+        voiceAnalysis.addEventListener('click', function() {
+            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/private-chat?mode=voice' });
             window.close();
         });
     }
@@ -152,6 +238,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Legal Risk Radar: Popup script initialized successfully');
 });
+
+// Get brief analysis message based on risk score
+function getBriefAnalysisMessage(analysis) {
+    if (!analysis || !analysis.overall_risk_score) {
+        return '✅ Analysis complete!';
+    }
+    
+    const riskScore = parseInt(analysis.overall_risk_score);
+    
+    if (riskScore >= 7) {
+        return `⚠️ HIGH RISK (${riskScore}/10) detected!`;
+    } else if (riskScore >= 4) {
+        return `⚡ MEDIUM RISK (${riskScore}/10) found.`;
+    } else {
+        return `✅ LOW RISK (${riskScore}/10) detected.`;
+    }
+}
 
 // Function to be injected into the page to get selected text
 function getSelectedText() {
