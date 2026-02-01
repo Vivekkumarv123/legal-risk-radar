@@ -4,6 +4,7 @@ import { db } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 import { headers, cookies } from "next/headers"; 
 import jwt from "jsonwebtoken";
+import { checkUsageLimit, trackUsage } from "@/middleware/usage.middleware";
 
 // CONFIGURATION
 const GUEST_DAILY_LIMIT = 3; 
@@ -73,6 +74,7 @@ export async function POST(req) {
     // Check Limits
     const usageRef = db.collection("usage_limits").doc(trackerId);
     let currentCount = 0;
+    
     if (isGuest) {
       const doc = await usageRef.get();
       if (doc.exists) {
@@ -81,7 +83,26 @@ export async function POST(req) {
         const today = new Date();
         if (last.getDate() === today.getDate()) currentCount = data.count || 0;
       }
-      if (currentCount >= GUEST_DAILY_LIMIT) return NextResponse.json({ error: "Limit reached", isLimitReached: true }, { status: 403 });
+      if (currentCount >= GUEST_DAILY_LIMIT) {
+        return NextResponse.json({ 
+          error: "Daily limit reached", 
+          isLimitReached: true,
+          limitType: 'guest_limit'
+        }, { status: 403 });
+      }
+    } else {
+      // Check authenticated user limits
+      const usageCheck = await checkUsageLimit(userId, 'ai_query');
+      if (!usageCheck.allowed) {
+        return NextResponse.json({ 
+          error: usageCheck.message,
+          isLimitReached: true,
+          upgradeRequired: usageCheck.upgradeRequired,
+          currentUsage: usageCheck.currentUsage,
+          limit: usageCheck.limit,
+          limitType: usageCheck.limitType || 'ai_query'
+        }, { status: 403 });
+      }
     }
 
     // ============================================================
@@ -194,9 +215,14 @@ export async function POST(req) {
     }
 
     // ============================================================
-    // STEP 6: SAVE TO FIRESTORE
+    // STEP 6: SAVE TO FIRESTORE & TRACK USAGE
     // ============================================================
     await usageRef.set({ count: isGuest ? currentCount + 1 : 0, lastUsed: FieldValue.serverTimestamp(), type: isGuest ? "guest" : "user" }, { merge: true });
+
+    // Track usage for authenticated users
+    if (!isGuest) {
+      await trackUsage(userId, 'ai_query', 1);
+    }
 
     if (!isGuest && userId) {
         const chatsRef = db.collection("chats");

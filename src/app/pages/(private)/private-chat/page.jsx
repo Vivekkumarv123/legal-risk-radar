@@ -6,11 +6,13 @@ import ReactMarkdown from 'react-markdown';
 import {
     Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield,
     Menu, LogOut, MessageSquare, BrainCircuit , Plus, AlertTriangle,
-    Loader2, Clock, Trash2, UserX, Volume2, StopCircle, Phone
+    Loader2, Clock, Trash2, UserX, Volume2, StopCircle, Phone, Share2, Crown
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler";
+import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
+import UsageLimitModal from "@/components/subscription/UsageLimitModal";
 
 // ==========================================
 // SUB-COMPONENTS
@@ -215,6 +217,11 @@ export default function Home() {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [chatToDelete, setChatToDelete] = useState(null);
     const [isDeletingChat, setIsDeletingChat] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [showUsageLimitModal, setShowUsageLimitModal] = useState(false);
+    const [usageLimitInfo, setUsageLimitInfo] = useState(null);
+    const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+    const [userUsageInfo, setUserUsageInfo] = useState(null);
 
     // REFS
     const messagesEndRef = useRef(null);
@@ -258,6 +265,39 @@ export default function Home() {
         };
         checkAuth();
     }, []);
+
+    // Check user usage info on load
+    useEffect(() => {
+        const checkUsageInfo = async () => {
+            if (user) {
+                try {
+                    const token = localStorage.getItem('accessToken');
+                    const response = await fetch('/api/subscription', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setUserUsageInfo(data);
+                        
+                        // Show upgrade prompt if user is close to limits
+                        if (data.usage && data.planDetails) {
+                            const { usage, planDetails } = data;
+                            const dailyLimit = planDetails.features.aiQueries;
+                            if (dailyLimit > 0 && usage.aiQueries >= dailyLimit - 1) {
+                                setShowUpgradePrompt(true);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to check usage info:', error);
+                }
+            }
+        };
+        
+        checkUsageInfo();
+    }, [user]);
 
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading, isGenerating]);
     useEffect(() => { if (textareaRef.current) textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`; }, [inputText]);
@@ -454,6 +494,23 @@ export default function Home() {
             const aiRes = await fetch("/api/generate-content", {
                 method: "POST", headers: { "Content-Type": "application/json", "x-guest-id": guestId }, body: JSON.stringify(apiBody),
             });
+            
+            // Handle usage limit reached
+            if (aiRes.status === 403) {
+                const errorData = await aiRes.json();
+                if (errorData.upgradeRequired) {
+                    setUsageLimitInfo({
+                        limitType: errorData.limitType || 'ai_query',
+                        currentUsage: errorData.currentUsage || 0,
+                        limit: errorData.limit || 5
+                    });
+                    setShowUsageLimitModal(true);
+                    setLoading(false);
+                    return;
+                }
+                throw new Error(errorData.error || "Usage limit reached");
+            }
+            
             if (!aiRes.ok) throw new Error("AI Failed");
             const aiData = await aiRes.json();
             if (aiData.chatId) { setChatId(aiData.chatId); if (isNewConversation) fetchChats(); }
@@ -481,6 +538,21 @@ export default function Home() {
             <LogoutModal isOpen={showLogoutModal} onClose={() => !isLoggingOut && setShowLogoutModal(false)} onConfirm={performLogout} isLoading={isLoggingOut} />
             <DeleteAccountModal isOpen={showDeleteModal} onClose={() => !isDeletingAccount && setShowDeleteModal(false)} onConfirm={performDeleteAccount} isLoading={isDeletingAccount} />
             <DeleteChatModal isOpen={!!chatToDelete} onClose={() => !isDeletingChat && setChatToDelete(null)} onConfirm={handleDeleteChat} isLoading={isDeletingChat} />
+            <ShareChatModal 
+                isOpen={showShareModal} 
+                onClose={() => setShowShareModal(false)} 
+                chatId={chatId} 
+                chatTitle={chatHistory.find(chat => chat.id === chatId)?.title || 'Legal Consultation'} 
+            />
+            
+            <UsageLimitModal
+                isOpen={showUsageLimitModal}
+                onClose={() => setShowUsageLimitModal(false)}
+                limitType={usageLimitInfo?.limitType}
+                currentPlan="basic"
+                usageCount={usageLimitInfo?.currentUsage}
+                limit={usageLimitInfo?.limit}
+            />
 
             {/* ✅ LIVE MODE */}
             {isLiveMode && (
@@ -516,17 +588,45 @@ export default function Home() {
                 <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
                     <button onClick={handleNewChat} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-4 font-medium"><Plus className="w-5 h-5" /> New Analysis</button>
                     {/* ✅ LIVE BUTTON */}
-                    <button onClick={() => setIsLiveMode(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium"><BrainCircuit  className="w-5 h-5 animate-pulse" /> Live Chat</button>
+                    <button onClick={() => setIsLiveMode(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-4 font-medium"><BrainCircuit  className="w-5 h-5 animate-pulse" /> Live Chat</button>
+                    
+                    {/* ✅ UPGRADE BUTTON - Always show for authenticated users */}
+                    <button 
+                        onClick={() => {
+                            sessionStorage.setItem('returnAfterUpgrade', window.location.pathname);
+                            router.push('/pages/subscription?upgrade=true');
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium relative overflow-hidden group"
+                        title="Upgrade to unlock unlimited queries and premium features"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                        <Crown className="w-5 h-5 relative z-10" /> 
+                        <span className="relative z-10">Upgrade to Pro</span>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+                    </button>
 
                     <div className="space-y-1">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3 flex justify-between items-center">History {isLoadingHistory && <Loader2 className="w-3 h-3 animate-spin" />}</p>
                         {chatHistory.length > 0 ? chatHistory.map((chat) => (
                             <div key={chat.id} className="group relative">
-                                <button onClick={() => handleLoadChat(chat.id)} className={`w-full flex items-start gap-3 px-3 py-3 rounded-xl text-sm text-left transition-colors pr-10 group ${chatId === chat.id ? "bg-blue-50 border border-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-50 border border-transparent"}`}>
+                                <button onClick={() => handleLoadChat(chat.id)} className={`w-full flex items-start gap-3 px-3 py-3 rounded-xl text-sm text-left transition-colors pr-16 group ${chatId === chat.id ? "bg-blue-50 border border-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-50 border border-transparent"}`}>
                                     <MessageSquare className={`w-4 h-4 shrink-0 mt-0.5 ${chatId === chat.id ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
                                     <div className="min-w-0 flex-1"><div className="font-medium truncate">{chat.title || "Untitled Conversation"}</div><div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(chat.updatedAt).toLocaleDateString()}</div></div>
                                 </button>
-                                <button onClick={(e) => confirmDeleteChat(e, chat.id)} className="absolute right-2 top-3 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 z-10"><Trash2 className="w-4 h-4" /></button>
+                                <div className="absolute right-2 top-3 flex items-center gap-1">
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setChatId(chat.id);
+                                            setShowShareModal(true);
+                                        }} 
+                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Share Chat"
+                                    >
+                                        <Share2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={(e) => confirmDeleteChat(e, chat.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Chat"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
                             </div>
                         )) : <div className="text-center py-8 text-gray-400 text-sm italic">No active chats</div>}
                     </div>
@@ -547,7 +647,49 @@ export default function Home() {
                         <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-gray-600 rounded-lg active:bg-gray-100"><Menu className="w-6 h-6" /></button>
                         <span className="font-bold text-gray-900">Legal Advisor</span>
                     </div>
+                    {messages.length > 0 && chatId && (
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Share Chat"
+                        >
+                            <Share2 className="w-5 h-5" />
+                        </button>
+                    )}
                 </header>
+                
+                {/* Upgrade Prompt Banner */}
+                {showUpgradePrompt && userUsageInfo?.planDetails?.id === 'basic' && (
+                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                                <Crown className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-sm">Almost at your daily limit!</p>
+                                <p className="text-xs text-blue-100">Upgrade to Pro for unlimited queries</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    sessionStorage.setItem('returnAfterUpgrade', window.location.pathname);
+                                    router.push('/pages/subscription?upgrade=true');
+                                }}
+                                className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors"
+                            >
+                                Upgrade Now
+                            </button>
+                            <button
+                                onClick={() => setShowUpgradePrompt(false)}
+                                className="p-1 hover:bg-white/20 rounded"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="max-w-4xl mx-auto px-4 py-8">
                         {messages.length === 0 ? (

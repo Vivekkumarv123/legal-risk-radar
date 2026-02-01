@@ -3,10 +3,11 @@ import { useState, useRef, useEffect } from "react";
 import { TypeAnimation } from "react-type-animation";
 import { 
     Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
-    Menu, LogOut, MessageSquare, User, Plus, Lock, ArrowRight 
+    Menu, LogOut, MessageSquare, User, Plus, Lock, ArrowRight, Share2
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
 
 // ============================================
 // UTILITY: Guest ID Generator
@@ -225,6 +226,7 @@ export default function Try() {
     
     // NEW: Limit State
     const [showLimitModal, setShowLimitModal] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -328,7 +330,13 @@ export default function Try() {
 
             // Handle Free Limit
             if (aiRes.status === 403) {
-                setShowLimitModal(true);
+                const errorData = await aiRes.json();
+                if (errorData.limitType === 'guest_limit') {
+                    setShowLimitModal(true);
+                } else {
+                    // This shouldn't happen in public chat, but handle gracefully
+                    toast.error("Usage limit reached. Please create an account.");
+                }
                 setLoading(false);
                 return;
             }
@@ -384,6 +392,14 @@ export default function Try() {
             
             {/* LIMIT REACHED MODAL */}
             <LimitModal isOpen={showLimitModal} router={router} />
+            
+            {/* SHARE CHAT MODAL */}
+            <ShareChatModal 
+                isOpen={showShareModal} 
+                onClose={() => setShowShareModal(false)} 
+                chatId="guest-chat" 
+                chatTitle="Legal Consultation (Guest)" 
+            />
 
             {/* Header */}
             <header className="border-b border-gray-200 sticky top-0 z-10 bg-white/80 backdrop-blur-md">
@@ -393,6 +409,16 @@ export default function Try() {
                         <h1 className="text-xl font-bold text-gray-900">Legal Advisor <span className="text-blue-600 text-sm font-normal bg-blue-50 px-2 py-0.5 rounded-full ml-2">Free Trial</span></h1>
                     </div>
                     <div className="flex gap-3">
+                        {messages.length > 0 && (
+                            <button
+                                onClick={() => setShowShareModal(true)}
+                                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+                                title="Share Chat"
+                            >
+                                <Share2 size={16} />
+                                <span className="hidden sm:inline">Share</span>
+                            </button>
+                        )}
                         <button onClick={() => router.push('/')} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Log In</button>
                         <button onClick={() => router.push('/pages/signup')} className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">Sign Up Free</button>
                     </div>

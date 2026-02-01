@@ -24,9 +24,9 @@ function getClient() {
   return client;
 }
 
-// 📌 Models required by hackathon
-const CHAT_MODEL = "gemini-3-flash-preview";
-const LIVE_MODEL = "gemini-2.5-flash-lite";
+// 📌 Correct Gemini model names
+const CHAT_MODEL = "gemini-1.5-flash";
+const LIVE_MODEL = "gemini-1.5-flash";
 
 // --------------------
 // Normal Chat
@@ -34,12 +34,14 @@ const LIVE_MODEL = "gemini-2.5-flash-lite";
 export async function callGemini(prompt) {
   const ai = getClient();
 
-  const response = await ai.models.generateContent({
-    model: CHAT_MODEL,
-    contents: prompt,
-  });
-
-  return response.text;
+  try {
+    const model = ai.getGenerativeModel({ model: CHAT_MODEL });
+    const response = await model.generateContent(prompt);
+    return response.response.text();
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    throw new Error(`Gemini API failed: ${error.message}`);
+  }
 }
 
 // --------------------
@@ -49,12 +51,9 @@ export async function callLiveGemini(prompt) {
   const ai = getClient();
 
   try {
-    const response = await ai.models.generateContent({
-      model: LIVE_MODEL,
-      contents: prompt,
-    });
-
-    return response.text;
+    const model = ai.getGenerativeModel({ model: LIVE_MODEL });
+    const response = await model.generateContent(prompt);
+    return response.response.text();
   } catch (error) {
     console.error("Gemini Live Error:", error);
     throw new Error("Failed to generate content");

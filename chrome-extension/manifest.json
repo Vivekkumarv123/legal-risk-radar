@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Legal Risk Radar",
+  "version": "1.0.1",
+  "description": "Instant legal analysis for contracts and documents on any webpage",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "scripting"
+  ],
+  "optional_permissions": [
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://legal-risk-radar.vercel.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Legal Risk Radar"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "content.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

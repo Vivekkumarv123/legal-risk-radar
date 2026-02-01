@@ -1,21 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { useState, useEffect } from "react";
 import {
     ShieldCheck, FileText, MessageCircle, Clock,
-    Check, X, Zap, Scale, Briefcase, ChevronRight, Star
+    Check, X, Briefcase, ChevronRight, Star
 } from "lucide-react";
-
 
 export default function PricingAndFeatures() {
     const [isAnnual, setIsAnnual] = useState(true);
     const router = useRouter();
-    const toggleBilling = () => setIsAnnual(!isAnnual);
 
-    // Pricing Data
+    // Pricing Data with updated features
     const plans = [
         {
+            id: "basic",
             name: "Basic",
             desc: "Essential legal guidance for individuals.",
             price: 0,
@@ -29,11 +28,19 @@ export default function PricingAndFeatures() {
                 "Deep Risk Analysis",
                 "Contract Drafting",
                 "Priority Support",
+                "Voice Queries",
+                "PDF Reports",
+                "Contract Comparison"
             ],
             cta: "Get Started Free",
             popular: false,
+            limits: {
+                dailyQueries: 5,
+                monthlyDocuments: 0,
+            }
         },
         {
+            id: "pro",
             name: "Pro Advisor",
             desc: "For freelancers and proactive professionals.",
             price: isAnnual ? 499 : 699,
@@ -43,15 +50,24 @@ export default function PricingAndFeatures() {
                 "Voice-to-Text Queries",
                 "Export Analysis to PDF",
                 "Priority Email Support",
+                "Contract Comparison Tool",
+                "Chrome Extension Access",
+                "Legal Glossary Pop-ups"
             ],
             missing: [
                 "API Access",
+                "Team Collaboration",
                 "White-label Reports",
             ],
             cta: "Upgrade to Pro",
             popular: true,
+            limits: {
+                dailyQueries: -1, // Unlimited
+                monthlyDocuments: 50,
+            }
         },
         {
+            id: "enterprise",
             name: "Enterprise",
             desc: "For small firms and legal teams.",
             price: isAnnual ? 2499 : 2999,
@@ -61,12 +77,36 @@ export default function PricingAndFeatures() {
                 "API Access for Workflow",
                 "Dedicated Account Manager",
                 "Custom Legal Templates",
+                "Unlimited Documents",
+                "Advanced Analytics",
+                "White-label Reports"
             ],
             missing: [],
             cta: "Contact Sales",
             popular: false,
+            limits: {
+                dailyQueries: -1, // Unlimited
+                monthlyDocuments: -1, // Unlimited
+            }
         },
     ];
+
+    useEffect(() => {
+        // Pricing page is view-only, no need to check user subscription
+    }, []);
+
+    const handlePlanSelect = (plan) => {
+        // Pricing page is view-only, redirect to login for purchasing
+        if (plan.id === 'basic') {
+            router.push('/pages/signup');
+        } else {
+            router.push('/pages/login');
+        }
+    };
+
+    const handlePaymentSuccess = (subscription) => {
+        // This function is not needed in view-only pricing page
+    };
 
     const features = [
         {
@@ -240,12 +280,14 @@ export default function PricingAndFeatures() {
                                 </div>
 
                                 <button
-                                    className={`w-full py-4 rounded-xl font-bold transition-all mb-8 ${plan.popular
+                                    onClick={() => handlePlanSelect(plan)}
+                                    className={`w-full py-4 rounded-xl font-bold transition-all mb-8 ${
+                                        plan.popular
                                             ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/50"
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-900"
                                         }`}
                                 >
-                                    {plan.cta}
+                                    {plan.id === 'basic' ? 'Get Started Free' : 'Login to Purchase'}
                                 </button>
 
                                 <div className="space-y-5">
@@ -299,6 +341,8 @@ export default function PricingAndFeatures() {
                     </div>
                 </div>
             </section>
+
+            {/* Payment Modal - Not needed in view-only pricing page */}
         </div>
     );
 }

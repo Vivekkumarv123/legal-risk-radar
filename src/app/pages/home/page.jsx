@@ -45,9 +45,10 @@ export default function HomePage() {
                     {/* Desktop Nav */}
                     <nav className="hidden md:flex items-center gap-8 font-medium text-slate-600">
                         <Link href="#how-it-works" className="hover:text-blue-600 transition">How it Works</Link>
-                        <Link href="/pages/pricing" className="hover:text-blue-600 transition">Features & Pricing</Link>
+                        <Link href="/pages/features" className="hover:text-blue-600 transition">Features</Link>
+                        <Link href="/pages/pricing" className="hover:text-blue-600 transition">Pricing</Link>
                         <div className="h-6 w-px bg-slate-200"></div>
-                                                <Link href="/pages/feedback" className="hover:text-blue-600 transition">FeedBack</Link>
+                        <Link href="/pages/feedback" className="hover:text-blue-600 transition">FeedBack</Link>
                         <Link href="/pages/login" className="hover:text-blue-600 transition">Login</Link>
                         <Link href="/pages/signup" className="bg-slate-900 text-white px-5 py-2.5 rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-900/20">
                             Get Started
@@ -63,7 +64,7 @@ export default function HomePage() {
                 {/* Mobile Menu Dropdown */}
                 {mobileMenuOpen && (
                     <div className="absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl p-6 flex flex-col gap-4 md:hidden animate-fade-in-down">
-                        <Link href="#features" className="text-lg font-medium text-slate-700">Features</Link>
+                        <Link href="/pages/features" className="text-lg font-medium text-slate-700">Features</Link>
                         <Link href="/pages/pricing" className="text-lg font-medium text-slate-700">Pricing</Link>
                         <Link href="/pages/login" className="text-lg font-medium text-slate-700">Login</Link>
                         <Link href="/pages/signup" className="bg-blue-600 text-white text-center py-3 rounded-xl font-bold">Get Started Free</Link>
