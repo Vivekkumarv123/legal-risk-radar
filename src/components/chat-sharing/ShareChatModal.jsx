@@ -14,6 +14,7 @@ import {
     ExternalLink
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/utils/auth.utils";
 
 export default function ShareChatModal({ isOpen, onClose, chatId, chatTitle }) {
     const [sharing, setSharing] = useState(false);
@@ -28,10 +29,10 @@ export default function ShareChatModal({ isOpen, onClose, chatId, chatTitle }) {
     const handleShare = async () => {
         setSharing(true);
         try {
-            const response = await fetch('/api/share-chat', {
+            const response = await authenticatedFetch('/api/share-chat', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     chatId,
@@ -50,7 +51,11 @@ export default function ShareChatModal({ isOpen, onClose, chatId, chatTitle }) {
             }
         } catch (error) {
             console.error('Share error:', error);
-            toast.error('Failed to share chat');
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to share chats');
+            } else {
+                toast.error('Failed to share chat');
+            }
         } finally {
             setSharing(false);
         }
@@ -81,8 +86,8 @@ export default function ShareChatModal({ isOpen, onClose, chatId, chatTitle }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between p-6 border-b">
                     <div className="flex items-center gap-3">
                         <Share2 className="text-blue-600" size={24} />
@@ -250,7 +255,7 @@ export default function ShareChatModal({ isOpen, onClose, chatId, chatTitle }) {
                                         type="text"
                                         value={shareData.shareUrl}
                                         readOnly
-                                        className="flex-1 p-2 bg-white border border-gray-200 rounded text-sm"
+                                        className="flex-1 p-2 bg-white text-black border border-gray-200 rounded text-sm"
                                     />
                                     <button
                                         onClick={() => copyToClipboard(shareData.shareUrl)}

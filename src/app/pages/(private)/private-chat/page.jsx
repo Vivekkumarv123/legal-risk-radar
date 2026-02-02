@@ -1,12 +1,14 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import Avatar from "@/components/ui/Avatar";
 import toast from "react-hot-toast";
 import { TypeAnimation } from "react-type-animation";
 import ReactMarkdown from 'react-markdown';
 import {
     Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield,
-    Menu, LogOut, MessageSquare, BrainCircuit , Plus, AlertTriangle,
-    Loader2, Clock, Trash2, UserX, Volume2, StopCircle, Phone, Share2, Crown
+    Menu, LogOut, MessageSquare, BrainCircuit, Plus, AlertTriangle,
+    Loader2, Clock, Trash2, UserX, Volume2, StopCircle, Phone,
+    Share2, Crown, Sparkles // ✅ Added Sparkles to imports
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -208,6 +210,7 @@ export default function Home() {
     const [guestId, setGuestId] = useState("");
     const [isLiveMode, setIsLiveMode] = useState(false);
     const [liveStatus, setLiveStatus] = useState("idle");
+    const [speechLanguage, setSpeechLanguage] = useState('hi-IN'); // Default to Hindi
     const [availableVoices, setAvailableVoices] = useState([]);
 
     // Account & Chat Management
@@ -280,7 +283,7 @@ export default function Home() {
                     if (response.ok) {
                         const data = await response.json();
                         setUserUsageInfo(data);
-                        
+
                         // Show upgrade prompt if user is close to limits
                         if (data.usage && data.planDetails) {
                             const { usage, planDetails } = data;
@@ -295,7 +298,7 @@ export default function Home() {
                 }
             }
         };
-        
+
         checkUsageInfo();
     }, [user]);
 
@@ -379,9 +382,17 @@ export default function Home() {
         try {
             const res = await fetch("/api/live-conversation", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-guest-id": guestId },
+                headers: { 
+                    "Content-Type": "application/json",
+                    // Remove guest ID, use proper authentication
+                },
+                credentials: 'include', // Include cookies for authentication
                 body: JSON.stringify({ message: transcript }),
             });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
 
             const data = await res.json();
             const reply = data.data?.response || "I didn't catch that.";
@@ -392,7 +403,11 @@ export default function Home() {
                 setTimeout(() => startLiveLoop(), 500);
             }
         } catch (e) {
-            console.error(e);
+            console.error("Live conversation error:", e);
+            const errorMessage = speechLanguage.startsWith('hi') 
+                ? "क्षमा करें, मुझे समझने में कठिनाई हो रही है। कृपया फिर से कोशिश करें।"
+                : "Sorry, I'm having trouble understanding. Please try again.";
+            await speakTextPromise(errorMessage);
             setLiveStatus("idle");
         }
     };
@@ -402,26 +417,76 @@ export default function Home() {
         if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
+            
+            // Enhanced configuration for better Hindi support
             recognition.continuous = false;
-            recognition.interimResults = false;
-
+            recognition.interimResults = true; // Enable interim results for better feedback
+            recognition.maxAlternatives = 3; // Get multiple alternatives
+            
+            // Set language based on user preference
+            recognition.lang = speechLanguage;
+            
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                if (isLiveMode) {
-                    handleLiveInput(transcript);
-                } else {
-                    setInputText(transcript);
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                // Process all results
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                // Use final transcript if available, otherwise interim
+                const bestTranscript = finalTranscript || interimTranscript;
+                
+                if (bestTranscript.trim()) {
+                    if (isLiveMode) {
+                        handleLiveInput(bestTranscript);
+                    } else {
+                        setInputText(bestTranscript);
+                    }
                 }
             };
 
-            recognition.onerror = () => {
-                if (isLiveMode) setLiveStatus("idle");
-                else setIsRecording(false);
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                
+                // If current language fails, try English as fallback
+                if (event.error === 'language-not-supported' && recognition.lang !== 'en-IN') {
+                    console.log(`${recognition.lang} not supported, falling back to English`);
+                    recognition.lang = 'en-IN';
+                    return;
+                }
+                
+                if (isLiveMode) {
+                    setLiveStatus("idle");
+                    // Provide user feedback in selected language
+                    const errorMessage = speechLanguage.startsWith('hi') 
+                        ? "मुझे समझने में कठिनाई हो रही है। कृपया फिर से कोशिश करें।" 
+                        : "I'm having trouble understanding. Please try again.";
+                    speakText(errorMessage);
+                } else {
+                    setIsRecording(false);
+                }
+            };
+
+            recognition.onnomatch = () => {
+                console.log('No speech was recognized');
+                if (isLiveMode) {
+                    const noSpeechMessage = speechLanguage.startsWith('hi') 
+                        ? "मैंने कुछ नहीं सुना। कृपया फिर से बोलें।" 
+                        : "I didn't hear anything. Please speak again.";
+                    speakText(noSpeechMessage);
+                }
             };
 
             recognitionRef.current = recognition;
         }
-    }, [isLiveMode, guestId]);
+    }, [isLiveMode, speechLanguage]); // Re-initialize when language changes
 
     useEffect(() => {
         return () => {
@@ -492,9 +557,12 @@ export default function Home() {
 
             setProcessingStage(1);
             const aiRes = await fetch("/api/generate-content", {
-                method: "POST", headers: { "Content-Type": "application/json", "x-guest-id": guestId }, body: JSON.stringify(apiBody),
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                credentials: 'include', // Use proper authentication instead of guest ID
+                body: JSON.stringify(apiBody),
             });
-            
+
             // Handle usage limit reached
             if (aiRes.status === 403) {
                 const errorData = await aiRes.json();
@@ -510,7 +578,7 @@ export default function Home() {
                 }
                 throw new Error(errorData.error || "Usage limit reached");
             }
-            
+
             if (!aiRes.ok) throw new Error("AI Failed");
             const aiData = await aiRes.json();
             if (aiData.chatId) { setChatId(aiData.chatId); if (isNewConversation) fetchChats(); }
@@ -538,13 +606,13 @@ export default function Home() {
             <LogoutModal isOpen={showLogoutModal} onClose={() => !isLoggingOut && setShowLogoutModal(false)} onConfirm={performLogout} isLoading={isLoggingOut} />
             <DeleteAccountModal isOpen={showDeleteModal} onClose={() => !isDeletingAccount && setShowDeleteModal(false)} onConfirm={performDeleteAccount} isLoading={isDeletingAccount} />
             <DeleteChatModal isOpen={!!chatToDelete} onClose={() => !isDeletingChat && setChatToDelete(null)} onConfirm={handleDeleteChat} isLoading={isDeletingChat} />
-            <ShareChatModal 
-                isOpen={showShareModal} 
-                onClose={() => setShowShareModal(false)} 
-                chatId={chatId} 
-                chatTitle={chatHistory.find(chat => chat.id === chatId)?.title || 'Legal Consultation'} 
+            <ShareChatModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                chatId={chatId}
+                chatTitle={chatHistory.find(chat => chat.id === chatId)?.title || 'Legal Consultation'}
             />
-            
+
             <UsageLimitModal
                 isOpen={showUsageLimitModal}
                 onClose={() => setShowUsageLimitModal(false)}
@@ -569,6 +637,35 @@ export default function Home() {
                             <h2 className="text-2xl font-bold text-gray-900">{liveStatus === 'listening' ? "I'm listening..." : liveStatus === 'speaking' ? "Speaking..." : liveStatus === 'thinking' ? "Thinking..." : "Tap to Speak"}</h2>
                             <p className="text-gray-500">Live Conversation Mode</p>
                         </div>
+                        
+                        {/* Language Selector */}
+                        {liveStatus === 'idle' && (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <label className="text-sm font-medium text-gray-700">Language:</label>
+                                    <select
+                                        value={speechLanguage}
+                                        onChange={(e) => setSpeechLanguage(e.target.value)}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    >
+                                        <option value="hi-IN">🇮🇳 Hindi</option>
+                                        <option value="en-IN">🇮🇳 English (India)</option>
+                                        <option value="bn-IN">🇮🇳 Bengali</option>
+                                        <option value="te-IN">🇮🇳 Telugu</option>
+                                        <option value="mr-IN">🇮🇳 Marathi</option>
+                                        <option value="ta-IN">🇮🇳 Tamil</option>
+                                        <option value="gu-IN">🇮🇳 Gujarati</option>
+                                        <option value="kn-IN">🇮🇳 Kannada</option>
+                                        <option value="ml-IN">🇮🇳 Malayalam</option>
+                                        <option value="pa-IN">🇮🇳 Punjabi</option>
+                                    </select>
+                                </div>
+                                <p className="text-xs text-gray-400 text-center max-w-md">
+                                    Speak in your preferred language. The AI will respond in the same language.
+                                </p>
+                            </div>
+                        )}
+                        
                         <div className="flex gap-6">
                             {liveStatus === 'idle' && <button onClick={startLiveLoop} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-lg shadow-lg hover:bg-blue-700 hover:scale-105 transition-all">Start Talking</button>}
                             {liveStatus !== 'idle' && <button onClick={() => { recognitionRef.current?.stop(); window.speechSynthesis.cancel(); setLiveStatus("idle"); }} className="px-8 py-4 bg-red-100 text-red-600 rounded-full font-bold text-lg hover:bg-red-200 transition-all">Stop</button>}
@@ -588,19 +685,19 @@ export default function Home() {
                 <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
                     <button onClick={handleNewChat} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-4 font-medium"><Plus className="w-5 h-5" /> New Analysis</button>
                     {/* ✅ LIVE BUTTON */}
-                    <button onClick={() => setIsLiveMode(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-4 font-medium"><BrainCircuit  className="w-5 h-5 animate-pulse" /> Live Chat</button>
-                    
-                    {/* ✅ UPGRADE BUTTON - Always show for authenticated users */}
-                    <button 
+                    <button onClick={() => setIsLiveMode(true)} className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-4 font-medium"><BrainCircuit className="w-5 h-5 animate-pulse" /> Live Chat</button>
+
+                    {/* ✅ UPGRADE BUTTON - Sidebar Version (kept as a secondary access point) */}
+                    <button
                         onClick={() => {
                             sessionStorage.setItem('returnAfterUpgrade', window.location.pathname);
                             router.push('/pages/subscription?upgrade=true');
                         }}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium relative overflow-hidden group"
+                        className="w-full lg:hidden flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 mb-8 font-medium relative overflow-hidden group"
                         title="Upgrade to unlock unlimited queries and premium features"
                     >
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                        <Crown className="w-5 h-5 relative z-10" /> 
+                        <Crown className="w-5 h-5 relative z-10" />
                         <span className="relative z-10">Upgrade to Pro</span>
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
                     </button>
@@ -614,12 +711,12 @@ export default function Home() {
                                     <div className="min-w-0 flex-1"><div className="font-medium truncate">{chat.title || "Untitled Conversation"}</div><div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(chat.updatedAt).toLocaleDateString()}</div></div>
                                 </button>
                                 <div className="absolute right-2 top-3 flex items-center gap-1">
-                                    <button 
+                                    <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setChatId(chat.id);
                                             setShowShareModal(true);
-                                        }} 
+                                        }}
                                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                         title="Share Chat"
                                     >
@@ -633,7 +730,12 @@ export default function Home() {
                 </div>
                 <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                     <div className="flex items-center gap-3 mb-4 px-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-gray-200 group">
-                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border border-white shadow-sm">{user?.avatar ? (<img src={user.avatar} alt="User" className="w-full h-full object-cover" />) : (<span className="font-bold text-sm">{user?.name?.charAt(0) || "U"}</span>)}</div>
+                        <Avatar
+                            src={user?.avatar}
+                            alt={user?.name || "User"}
+                            fallback={user?.name?.charAt(0) || "U"}
+                            size="md"
+                        />
                         <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-900 truncate">{user?.name || "User"}</p><p className="text-xs text-gray-500 truncate">{user?.email}</p></div>
                         <button onClick={(e) => { e.stopPropagation(); setShowDeleteModal(true); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"><UserX className="w-5 h-5" /></button>
                     </div>
@@ -642,22 +744,70 @@ export default function Home() {
             </aside>
 
             <main className="flex-1 flex flex-col h-full w-full relative bg-gray-50/50">
+                {/* ================================================
+                ✅ NEW DESKTOP HEADER (Upgrade & Share)
+                ================================================
+                */}
+                <div className="hidden md:flex absolute top-0 left-0 right-0 p-4 justify-between items-start z-20 pointer-events-none">
+                    {/* Spacer for alignment */}
+                    <div className="flex-1"></div>
+
+                    {/* CENTER: Upgrade Button (Pill Style like Free Offer) */}
+                    <div className="pointer-events-auto">
+                        <button
+                            onClick={() => {
+                                sessionStorage.setItem('returnAfterUpgrade', window.location.pathname);
+                                router.push('/pages/subscription?upgrade=true');
+                            }}
+                            className="hidden md:flex items-center gap-2 px-5 py-2.5
+                            bg-linear-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70
+                            backdrop-blur-md text-white rounded-full text-sm font-semibold
+                            shadow-lg hover:shadow-xl hover:cursor-pointer transition-all hover:scale-105 active:scale-95"
+                        >
+                            <Sparkles className="w-4 h-4 fill-white/20" />
+                            <span>Upgrade Plan</span>
+                        </button>
+                    </div>
+
+                    {/* RIGHT: Share Button (Top Right Corner) */}
+                    <div className="flex-1 flex justify-end gap-2 pointer-events-auto">
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="p-2.5 bg-white hover:bg-gray-100 text-gray-600 rounded-xl shadow-sm border border-gray-200 transition-colors"
+                            title="Share Chat"
+                        >
+                            <Share2 className="w-5 h-5" />
+                        </button>
+                        {/* Optional: User Avatar duplicate for header if desired, currently sticking to Share only as requested */}
+                    </div>
+                </div>
+
                 <header className="md:hidden bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-gray-600 rounded-lg active:bg-gray-100"><Menu className="w-6 h-6" /></button>
                         <span className="font-bold text-gray-900">Legal Advisor</span>
                     </div>
-                    {messages.length > 0 && chatId && (
+                    {/* Share Button for Mobile */}
+                    <div className="flex gap-2">
+                        {messages.length > 0 && chatId && (
+                            <button
+                                onClick={() => setShowShareModal(true)}
+                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                title="Share Chat"
+                            >
+                                <Share2 className="w-5 h-5" />
+                            </button>
+                        )}
                         <button
-                            onClick={() => setShowShareModal(true)}
-                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                            title="Share Chat"
+                            onClick={() => router.push('/pages/subscription?upgrade=true')}
+                            className="p-2 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-all"
+                            title="Upgrade"
                         >
-                            <Share2 className="w-5 h-5" />
+                            <Sparkles className="w-5 h-5" />
                         </button>
-                    )}
+                    </div>
                 </header>
-                
+
                 {/* Upgrade Prompt Banner */}
                 {showUpgradePrompt && userUsageInfo?.planDetails?.id === 'basic' && (
                     <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 flex items-center justify-between">
@@ -689,9 +839,9 @@ export default function Home() {
                         </div>
                     </div>
                 )}
-                
+
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="max-w-4xl mx-auto px-4 py-8">
+                    <div className="max-w-4xl mx-auto px-4 py-8 pt-16 md:pt-20"> {/* Added pt-16/20 for space for new top bar */}
                         {messages.length === 0 ? (
                             <div className="flex flex-col items-center justify-center min-h-[60vh] mt-4">
                                 <div className="relative mb-8 group">
@@ -725,7 +875,7 @@ export default function Home() {
                                                         <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
                                                         <div className="flex gap-2 ml-2 mt-1">
                                                             <button onClick={() => speakText(msg.analysis.summary)} className="self-start flex items-center gap-2 text-xs text-gray-500 hover:text-blue-600 transition-colors ml-2">
-                                                                <Volume2 className="w-5 h-5" placeholder="Listen to Summary" /> 
+                                                                <Volume2 className="w-5 h-5" placeholder="Listen to Summary" />
                                                             </button>
                                                             {isSpeaking && <button onClick={stopSpeaking} className="p-1.5 text-red-400 hover:text-red-600 rounded-full transition-colors animate-pulse" title="Stop Speaking"><StopCircle className="w-5 h-5" /></button>}
                                                         </div>
@@ -758,7 +908,15 @@ export default function Home() {
                                             )}
                                             <span className="text-[10px] text-gray-400 px-1">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        {msg.role === 'user' && (<div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0 mt-1 border border-white shadow-sm">{user?.avatar ? (<img src={user.avatar} alt="Me" className="w-full h-full object-cover" />) : (<div className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-bold">ME</div>)}</div>)}
+                                        {msg.role === 'user' && (
+                                            <Avatar
+                                                src={user?.avatar}
+                                                alt="Me"
+                                                fallback="ME"
+                                                size="sm"
+                                                className="shrink-0 mt-1"
+                                            />
+                                        )}
                                     </div>
                                 ))}
                                 {loading && (<div className="flex gap-4"><div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-md"><Loader2 className="w-4 h-4 text-white animate-spin" /></div><div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-6 py-4 shadow-sm w-full max-w-md"><ProcessingLoader stage={processingStage} /></div></div>)}
@@ -768,7 +926,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* ... (Keep Footer Input Area) */}
                 <div className="p-4 bg-white/80 backdrop-blur-md border-t border-gray-200">
                     <div className="max-w-3xl mx-auto">
                         <UploadBox file={file} onCancel={() => setFile(null)} />

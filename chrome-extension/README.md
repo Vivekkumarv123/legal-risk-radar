@@ -1,143 +1,108 @@
 # Legal Risk Radar Chrome Extension
 
-A powerful Chrome extension that provides instant legal analysis for contracts and documents on any webpage.
+## Installation & Testing
 
-## 🚀 Features
+### 1. Load the Extension in Chrome
 
-- **Right-click Analysis**: Select text on any webpage and analyze it instantly
-- **Context Menu Integration**: Quick access to legal analysis tools
-- **Background Processing**: Automatic analysis with notifications
-- **Production Ready**: Fully integrated with Vercel deployment
-- **Cross-Platform**: Works on all websites and platforms
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable "Developer mode" (toggle in top right)
+3. Click "Load unpacked"
+4. Select the `chrome-extension` folder
+5. The extension should now appear in your extensions list
 
-## 📦 Installation
+### 2. Test the Extension
 
-1. **Download Extension Files**
-   - Download all files from the `chrome-extension/` folder
-   - Ensure you have: `manifest.json`, `popup.html`, `popup.js`, `content.js`, `content.css`, `background.js`
+1. The extension is configured to use the deployed server at `https://legal-risk-radar.vercel.app`
+2. Open any webpage or the test page: `chrome-extension://[extension-id]/test.html`
+3. Select some text on the page (at least 10 characters)
+4. Click the Legal Risk Radar extension icon in the toolbar
+5. Click "Analyze Selected Text" in the popup
+6. Check the browser console for any errors
 
-2. **Load Extension in Chrome**
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in top right)
-   - Click "Load unpacked"
-   - Select the `chrome-extension` folder
-   - Extension should appear in your extensions list
+### 3. Troubleshooting
 
-3. **Pin Extension**
-   - Click the puzzle piece icon in Chrome toolbar
-   - Find "Legal Risk Radar" and click the pin icon
-   - Extension icon will appear in toolbar
+#### Extension Not Visible
+- Check if the extension is enabled in `chrome://extensions/`
+- Look for any error messages in the extensions page
+- Try reloading the extension
 
-## 🎯 How to Use
+#### Popup Not Working
+- Right-click the extension icon and select "Inspect popup" to see console errors
+- Check if all required files are present in the extension folder
+- Verify the manifest.json is valid
 
-### Method 1: Right-Click Analysis
-1. **Select Text**: Highlight any legal text on a webpage
-2. **Right-Click**: Choose "Analyze Legal Risk" from context menu
-3. **Get Results**: Analysis runs in background, notification appears when complete
-4. **View Details**: Click extension icon to see full results
+#### API Errors
+- The extension uses the deployed server at `https://legal-risk-radar.vercel.app`
+- Check the browser console for network errors
+- If requests are pending, check your internet connection
 
-### Method 2: Extension Popup
-1. **Click Extension Icon**: Open the popup interface
-2. **Select Text**: Highlight text on the current page
-3. **Click Analyze**: Use the "Analyze Selected Text" button
-4. **View Results**: Results appear in popup with option to open full app
+#### Text Selection Issues
+- Make sure you're selecting text before clicking the extension
+- Try selecting different amounts of text (minimum 10 characters recommended)
+- Check the browser console for selection-related errors
 
-### Method 3: Quick Actions
-- **Contract Check**: Direct link to contract analysis mode
-- **Legal Glossary**: Access legal term definitions
-- **Compliance Check**: Quick compliance analysis
-- **Open Full App**: Launch the complete web application
+### 4. Features
 
-## 🔧 Technical Details
+- **Text Analysis**: Select any text on a webpage and get instant legal risk analysis
+- **PDF Support**: Analyze PDF documents directly in the browser
+- **Quick Actions**: Access different analysis modes and features
+- **Integration**: Seamlessly connects to the main Legal Risk Radar application
 
-### Permissions Required
-- `activeTab`: Access current tab content
-- `storage`: Store analysis results locally
-- `contextMenus`: Add right-click menu options
-- `alarms`: Periodic cleanup of stored data
-- `notifications`: Show analysis completion alerts
+### 5. Development
 
-### API Integration
-- **Production Endpoint**: `https://legal-risk-radar.vercel.app/api/analyze`
-- **Authentication**: Chrome extension requests bypass authentication for basic analysis
-- **Rate Limiting**: Reasonable use policy applies
-- **Data Storage**: Results stored locally in Chrome storage
-
-### Files Structure
+#### File Structure
 ```
 chrome-extension/
-├── manifest.json       # Extension configuration
-├── popup.html         # Extension popup interface
-├── popup.js          # Popup functionality
-├── content.js        # Page content interaction
-├── content.css       # Styling for injected elements
-├── background.js     # Background service worker
-└── README.md         # This documentation
+├── manifest.json          # Extension configuration
+├── popup.html            # Extension popup UI
+├── popup.js              # Popup functionality
+├── content.js            # Content script for webpage interaction
+├── content.css           # Styles for content script
+├── background.js         # Background service worker
+├── pdf-analyzer.js       # PDF analysis functionality
+├── pdf-overlay.css       # PDF overlay styles
+├── test.html            # Test page for development
+└── README.md            # This file
 ```
 
-## 🌐 Production Configuration
+#### Making Changes
+1. Edit the relevant files
+2. Go to `chrome://extensions/`
+3. Click the refresh icon on the Legal Risk Radar extension
+4. Test your changes
 
-The extension is configured to work with the production deployment:
+### 6. Common Issues
 
-- **Main App**: `https://legal-risk-radar.vercel.app`
-- **API Endpoint**: `https://legal-risk-radar.vercel.app/api/analyze`
-- **Host Permissions**: Includes both localhost (development) and Vercel (production)
+**"Permission was denied for this request to access the `loopback` address space"**
+- This is a Chrome security feature that blocks requests to localhost from external websites
+- The extension automatically uses background script as a fallback
+- If server is not accessible, extension provides offline analysis
 
-## 🔒 Privacy & Security
+**"Required Chrome APIs not available"**
+- The extension needs to be properly loaded and have the right permissions
+- Check the manifest.json permissions
 
-- **Local Storage**: Analysis results stored locally in your browser
-- **No Personal Data**: Extension doesn't collect personal information
-- **Secure API**: All communication encrypted via HTTPS
-- **Automatic Cleanup**: Old analysis results automatically removed after 7 days
+**"Could not access current tab"**
+- Make sure you're on a regular webpage (not chrome:// pages)
+- Some pages may block extension access
 
-## 🐛 Troubleshooting
+**"Analysis failed (404)"**
+- The deployed server may be experiencing issues
+- Extension will provide offline analysis as fallback
+- Check if `https://legal-risk-radar.vercel.app` is accessible
 
-### Common Issues
+**Requests stuck in "Pending"**
+- Check your internet connection
+- The deployed server may be slow to respond
+- Extension will timeout and provide offline analysis after 30 seconds
 
-1. **Extension Won't Load**
-   - Ensure all files are in the same folder
-   - Check that manifest.json is valid
-   - Try reloading the extension in chrome://extensions/
+### 7. Production Configuration
 
-2. **Analysis Not Working**
-   - Check internet connection
-   - Ensure text is selected before right-clicking
-   - Try refreshing the webpage and extension
+The extension is configured to use the deployed server at `https://legal-risk-radar.vercel.app`. This provides:
 
-3. **No Notifications**
-   - Check Chrome notification settings
-   - Ensure notifications are enabled for extensions
-   - Try clicking the extension icon to see results
+1. **No CORS Issues**: Works from any website without cross-origin restrictions
+2. **Always Available**: No need to run a local server
+3. **Full AI Analysis**: Access to the complete Gemini AI analysis
+4. **Offline Fallback**: Basic analysis when network is unavailable
 
-4. **Service Worker Errors**
-   - Go to chrome://extensions/
-   - Click "Details" on Legal Risk Radar
-   - Check "Inspect views: service worker" for errors
-   - Reload extension if needed
-
-### Error Messages
-
-- **"Text too short for analysis"**: Select more text (minimum 20 characters)
-- **"Analysis request failed"**: Check internet connection and try again
-- **"Processing failed"**: Server issue, try again in a few minutes
-
-## 🔄 Updates
-
-The extension automatically works with the latest version of the web application. No manual updates required for API compatibility.
-
-## 📞 Support
-
-For issues or questions:
-- **Web App**: Visit https://legal-risk-radar.vercel.app
-- **Email**: Contact through the web application
-- **Documentation**: Check the main project README
-
-## ⚠️ Legal Disclaimer
-
-This extension provides legal risk analysis for educational purposes only. It does not constitute legal advice. Always consult qualified legal professionals for important legal decisions.
-
----
-
-**Version**: 1.0.0  
-**Last Updated**: February 2026  
-**Compatible**: Chrome 88+ (Manifest V3)
+The extension automatically handles network issues and provides offline analysis when the server is not reachable.

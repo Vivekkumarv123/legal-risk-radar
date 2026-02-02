@@ -7,26 +7,33 @@ import { nanoid } from 'nanoid';
 // Create a shared chat
 export async function POST(request) {
     try {
+        
         const authResult = await verifyToken(request);
+        
+        
         if (!authResult.success) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ error: authResult.error || 'Unauthorized' }, { status: 401 });
         }
 
-        const { chatId, title, settings = {} } = await request.json();
+        const body = await request.json();
+        
+        const { chatId, title, settings = {} } = body;
 
         if (!chatId) {
             return NextResponse.json({ error: 'Chat ID is required' }, { status: 400 });
         }
 
+        
         // Verify the chat belongs to the user
         const chat = await Chat.findById(chatId);
+        
         if (!chat || chat.userId !== authResult.user.uid) {
             return NextResponse.json({ error: 'Chat not found or unauthorized' }, { status: 404 });
         }
 
         // Generate unique share ID
         const shareId = nanoid(12);
-
+        
         // Create shared chat record
         const sharedChatData = {
             originalChatId: chatId,
@@ -39,8 +46,10 @@ export async function POST(request) {
             viewCount: 0
         };
 
-        const sharedChat = await SharedChat.create(sharedChatData);
+        // console.log('Share chat API - Creating shared chat with data:', sharedChatData);
 
+        const sharedChat = await SharedChat.create(sharedChatData);
+        
         return NextResponse.json({
             success: true,
             shareId,
@@ -50,7 +59,7 @@ export async function POST(request) {
 
     } catch (error) {
         console.error('Share chat error:', error);
-        return NextResponse.json({ error: 'Failed to share chat' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to share chat: ' + error.message }, { status: 500 });
     }
 }
 

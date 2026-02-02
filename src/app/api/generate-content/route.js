@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callGemini } from "@/lib/gemini";
+import { callGemini, generateChatTitle } from "@/lib/gemini";
 import { db } from "@/lib/firebaseAdmin"; 
 import { FieldValue } from "firebase-admin/firestore";
 import { headers, cookies } from "next/headers"; 
@@ -106,16 +106,37 @@ export async function POST(req) {
     }
 
     // ============================================================
-    // STEP 3: CONTEXT RETRIEVAL
+    // STEP 3: CONTEXT RETRIEVAL & CHAT MEMORY
     // ============================================================
     let contextToAnalyze = documentText || "";
     let currentChatId = chatId;
+    let chatHistory = [];
 
-    // Retrieve context from DB if this is a follow-up
+    // Retrieve context and chat history from DB if this is a follow-up
     if (!isGuest && currentChatId && !documentText) {
         const chatDoc = await db.collection("chats").doc(currentChatId).get();
         if (chatDoc.exists && chatDoc.data().documentContext) {
             contextToAnalyze = chatDoc.data().documentContext; 
+        }
+        
+        // Get recent chat history for context (last 10 messages)
+        const messagesSnapshot = await db.collection("chats")
+            .doc(currentChatId)
+            .collection("messages")
+            .orderBy("createdAt", "desc")
+            .limit(10)
+            .get();
+        
+        if (!messagesSnapshot.empty) {
+            chatHistory = messagesSnapshot.docs
+                .map(doc => {
+                    const data = doc.data();
+                    return data;
+                })
+                .reverse() // Reverse to get chronological order
+                .filter(msg => msg.content) // Filter out messages without content
+                .map(msg => `${msg.role}: ${msg.content}`)
+                .join('\n');
         }
     }
 
@@ -172,22 +193,33 @@ export async function POST(req) {
         `;
     } else {
         // --- MODE B: CHAT COMPANION (Simple Text) ---
+        const chatHistoryContext = chatHistory ? `
+          PREVIOUS CONVERSATION:
+          """
+          ${chatHistory}
+          """
+        ` : "";
+        
         prompt = `
-          You are a helpful Legal Assistant. Answer the user's question based on the document.
+          You are a helpful Legal Assistant. Answer the user's question based on the document and conversation history.
           
           DOCUMENT:
           """
           ${sanitizedDoc}
           ${fileContext}
           """
+          ${chatHistoryContext}
 
           USER QUESTION:
           "${userQuery}"
 
           INSTRUCTIONS:
           1. Answer directly and simply (No jargon).
-          2. If asked to translate, translate the answer fully.
-          3. Do NOT output JSON. Write a normal paragraph or bullet points.
+          2. If asked to translate or explain in a specific language, respond in that language.
+          3. Use the conversation history to provide contextual answers.
+          4. If the user asks to explain something in Hindi/other language, explain the previous analysis in that language.
+          5. Do NOT output JSON. Write a normal paragraph or bullet points.
+          6. Remember what was discussed before and build upon it.
         `;
     }
 
@@ -230,10 +262,15 @@ export async function POST(req) {
         const contextToSave = documentText || contextToAnalyze || "";
 
         if (!currentChatId) {
+            // Generate intelligent title based on content
+            const chatTitle = await generateChatTitle(message, contextToSave);
+            
             const newChat = await chatsRef.add({ 
-                userId, title: message.substring(0, 30) + "...", 
+                userId, 
+                title: chatTitle, 
                 documentContext: contextToSave, 
-                createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() 
+                createdAt: FieldValue.serverTimestamp(), 
+                updatedAt: FieldValue.serverTimestamp() 
             });
             currentChatId = newChat.id;
         } else {
@@ -244,14 +281,31 @@ export async function POST(req) {
 
         const messagesRef = chatsRef.doc(currentChatId).collection("messages");
         await messagesRef.add({ role: "user", content: message, attachmentUrl: fileUrl || null, createdAt: FieldValue.serverTimestamp() });
-        console.log("Saving assistant message:", parsedResult);
-        const assistantContent = isStandardAnalysis ? parsedResult.summary : parsedResult.response;
-        await messagesRef.add({ 
-            role: "assistant", 
-            content: assistantContent, 
-            analysisData: isStandardAnalysis ? parsedResult : null, 
-            createdAt: FieldValue.serverTimestamp() 
-        });
+        
+        // Save the appropriate content based on response type
+        let assistantContent;
+        if (isStandardAnalysis) {
+            // For analysis, save both summary and full analysis for context
+            assistantContent = parsedResult.summary;
+            // Also save a more detailed version for context retrieval
+            const detailedContent = `Analysis Summary: ${parsedResult.summary}\n\nRisk Score: ${parsedResult.overall_risk_score}\n\nKey Issues: ${parsedResult.clauses?.map(c => c.explanation).join('; ') || 'None'}`;
+            
+            await messagesRef.add({ 
+                role: "assistant", 
+                content: detailedContent, // Save detailed content for better context
+                displayContent: assistantContent, // What to show in UI
+                analysisData: parsedResult, 
+                createdAt: FieldValue.serverTimestamp() 
+            });
+        } else {
+            assistantContent = parsedResult.response;
+            await messagesRef.add({ 
+                role: "assistant", 
+                content: assistantContent, 
+                analysisData: null, 
+                createdAt: FieldValue.serverTimestamp() 
+            });
+        }
     }
 
     return NextResponse.json({
@@ -263,6 +317,36 @@ export async function POST(req) {
 
   } catch (err) {
     console.error("API Error:", err);
-    return NextResponse.json({ error: "Processing failed", details: err.message }, { status: 500 });
+    
+    // Provide user-friendly error messages based on error type
+    if (err.message.includes('503') || err.message.includes('overloaded')) {
+      return NextResponse.json({ 
+        error: "AI service is temporarily overloaded. Please try again in a few moments.", 
+        details: "The AI model is experiencing high traffic. This usually resolves within 1-2 minutes.",
+        retryAfter: 60000 // Suggest retry after 1 minute
+      }, { status: 503 });
+    }
+    
+    if (err.message.includes('quota exceeded') || err.message.includes('rate limit')) {
+      return NextResponse.json({ 
+        error: "API quota exceeded. Please try again later.", 
+        details: "Daily API limit reached. Please upgrade your plan or try again tomorrow.",
+        upgradeRequired: true
+      }, { status: 429 });
+    }
+    
+    if (err.message.includes('authentication') || err.message.includes('API key')) {
+      return NextResponse.json({ 
+        error: "Service configuration error. Please contact support.", 
+        details: "There's an issue with the AI service configuration."
+      }, { status: 500 });
+    }
+    
+    // Generic error for other cases
+    return NextResponse.json({ 
+      error: "Processing failed. Please try again.", 
+      details: err.message,
+      canRetry: true
+    }, { status: 500 });
   }
 }

@@ -64,10 +64,27 @@ const ALL_GREETINGS = Object.values(GREETINGS).flat();
 
 export const isGreeting = (text) => {
   const normalized = normalizeText(text);
+  
+  // Exclude common false positives
+  const falsePositives = ['hindi', 'history', 'this', 'think', 'thing'];
+  if (falsePositives.some(fp => normalized.includes(fp))) {
+    return false;
+  }
+  
+  // More precise matching - check for word boundaries
+  const isMatch = ALL_GREETINGS.some(greet => {
+    // For single words like "hi", "hello", check if it's the whole message or at word boundaries
+    if (greet.length <= 3) {
+      // Short greetings should match exactly or be at the start/end with word boundaries
+      const regex = new RegExp(`\\b${greet}\\b`, 'i');
+      return regex.test(normalized) && normalized.length <= 20; // Limit to short messages
+    } else {
+      // Longer greetings can use includes
+      return normalized === greet || normalized.includes(greet);
+    }
+  });
 
-  return ALL_GREETINGS.some(greet =>
-    normalized === greet || normalized.includes(greet)
-  );
+  return isMatch;
 };
 
 export const getGreetingResponse = (text) => {

@@ -11,7 +11,7 @@ export default function PricingAndFeatures() {
     const [isAnnual, setIsAnnual] = useState(true);
     const router = useRouter();
 
-    // Pricing Data with updated features
+    // Pricing Data with ONLY implemented features
     const plans = [
         {
             id: "basic",
@@ -20,17 +20,21 @@ export default function PricingAndFeatures() {
             price: 0,
             features: [
                 "5 AI Legal Queries / day",
-                "Basic Document Summary",
+                "Basic Document Analysis",
                 "Access to IPC/CrPC Context",
                 "Community Support",
+                "Chat History Storage"
             ],
             missing: [
-                "Deep Risk Analysis",
-                "Contract Drafting",
-                "Priority Support",
+                "Unlimited Queries",
+                "Document Upload & OCR",
                 "Voice Queries",
                 "PDF Reports",
-                "Contract Comparison"
+                "Contract Comparison",
+                "Chrome Extension",
+                "Legal Glossary",
+                "Chat Sharing",
+                "Priority Support"
             ],
             cta: "Get Started Free",
             popular: false,
@@ -46,18 +50,20 @@ export default function PricingAndFeatures() {
             price: isAnnual ? 499 : 699,
             features: [
                 "Unlimited AI Legal Chat",
-                "Deep Contract Risk Analysis",
-                "Voice-to-Text Queries",
-                "Export Analysis to PDF",
-                "Priority Email Support",
+                "Document Upload & OCR Analysis",
+                "Voice-to-Text Queries (12+ Languages)",
+                "Export Analysis to PDF Reports",
                 "Contract Comparison Tool",
                 "Chrome Extension Access",
-                "Legal Glossary Pop-ups"
+                "Legal Glossary with Pop-ups",
+                "Chat Sharing with Public URLs",
+                "Priority Email Support"
             ],
             missing: [
                 "API Access",
                 "Team Collaboration",
                 "White-label Reports",
+                "Custom Templates"
             ],
             cta: "Upgrade to Pro",
             popular: true,
@@ -73,15 +79,18 @@ export default function PricingAndFeatures() {
             price: isAnnual ? 2499 : 2999,
             features: [
                 "Everything in Pro",
-                "Team Collaboration (5 Users)",
-                "API Access for Workflow",
+                "Unlimited Document Analysis",
+                "Advanced Analytics Dashboard",
+                "Usage Tracking & Reports",
                 "Dedicated Account Manager",
+                "Priority Support"
+            ],
+            missing: [
+                "Team Collaboration (5 Users)",
+                "API Access for Workflows",
                 "Custom Legal Templates",
-                "Unlimited Documents",
-                "Advanced Analytics",
                 "White-label Reports"
             ],
-            missing: [],
             cta: "Contact Sales",
             popular: false,
             limits: {
@@ -104,34 +113,30 @@ export default function PricingAndFeatures() {
         }
     };
 
-    const handlePaymentSuccess = (subscription) => {
-        // This function is not needed in view-only pricing page
-    };
-
     const features = [
         {
             icon: <MessageCircle className="text-white" size={24} />,
             color: "bg-blue-600",
-            title: "Contextual AI Chat",
-            desc: "Ask complex questions about Indian Law (IPC, Contract Act) and get instant, simplified answers.",
+            title: "AI Legal Chat",
+            desc: "Ask complex questions about Indian Law (IPC, BNS, Contract Act) and get instant, simplified answers with chat history.",
         },
         {
             icon: <FileText className="text-white" size={24} />,
             color: "bg-purple-600",
-            title: "Document Risk Radar",
-            desc: "Upload NDAs, rental agreements, or employment contracts. We highlight risky clauses in seconds.",
+            title: "Document Analysis & OCR",
+            desc: "Upload PDFs or images of contracts, NDAs, agreements. Advanced OCR extracts text and AI highlights risky clauses.",
         },
         {
             icon: <ShieldCheck className="text-white" size={24} />,
             color: "bg-emerald-600",
-            title: "Enterprise-Grade Privacy",
-            desc: "Your documents are processed in memory and encrypted. We do not use your data to train public models.",
+            title: "Voice & Multi-Language",
+            desc: "Voice-to-text queries in 12+ Indian languages. Text-to-speech responses. Complete voice interface for hands-free use.",
         },
         {
             icon: <Clock className="text-white" size={24} />,
             color: "bg-orange-600",
-            title: "Instant Turnaround",
-            desc: "No waiting for appointments. Get preliminary legal insights 24/7, right from your device.",
+            title: "Advanced Features",
+            desc: "PDF reports, contract comparison, Chrome extension, legal glossary, chat sharing, and comprehensive analytics.",
         },
     ];
 

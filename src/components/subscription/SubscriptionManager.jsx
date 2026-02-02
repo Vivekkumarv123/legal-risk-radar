@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import PaymentModal from "./PaymentModal";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/utils/auth.utils";
 
 export default function SubscriptionManager() {
     const [subscription, setSubscription] = useState(null);
@@ -30,7 +31,7 @@ export default function SubscriptionManager() {
 
     const fetchSubscriptionData = async () => {
         try {
-            const response = await fetch('/api/subscription');
+            const response = await authenticatedFetch('/api/subscription');
             const result = await response.json();
             
             if (result.success) {
@@ -42,7 +43,11 @@ export default function SubscriptionManager() {
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            toast.error('Failed to load subscription data');
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to view subscription data');
+            } else {
+                toast.error('Failed to load subscription data');
+            }
         } finally {
             setLoading(false);
         }
@@ -76,7 +81,7 @@ export default function SubscriptionManager() {
         }
 
         try {
-            const response = await fetch('/api/subscription', {
+            const response = await authenticatedFetch('/api/subscription', {
                 method: 'DELETE'
             });
             
@@ -90,7 +95,11 @@ export default function SubscriptionManager() {
             }
         } catch (error) {
             console.error('Cancel error:', error);
-            toast.error('Failed to cancel subscription');
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to cancel subscription');
+            } else {
+                toast.error('Failed to cancel subscription');
+            }
         }
     };
 
@@ -100,6 +109,25 @@ export default function SubscriptionManager() {
             month: 'long',
             day: 'numeric'
         });
+    };
+
+    const getDaysRemaining = (endDate) => {
+        if (!endDate) return null; // Basic plan or no expiry
+        const now = new Date();
+        const end = new Date(endDate);
+        const diffTime = end - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 0;
+    };
+
+    const formatDaysRemaining = (days) => {
+        if (days === null) return 'No expiry';
+        if (days === 0) return 'Expires today';
+        if (days === 1) return '1 day remaining';
+        if (days <= 7) return `${days} days remaining`;
+        if (days <= 30) return `${days} days remaining`;
+        const weeks = Math.floor(days / 7);
+        return `${weeks} week${weeks > 1 ? 's' : ''} remaining`;
     };
 
     const getUsagePercentage = (used, limit) => {
@@ -177,6 +205,28 @@ export default function SubscriptionManager() {
                                 )}
                             </div>
 
+                            {/* Plan Status and Expiry */}
+                            <div className="mb-4">
+                                {subscription.endDate && (
+                                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                                        getDaysRemaining(subscription.endDate) <= 7 
+                                            ? 'bg-red-100 text-red-800' 
+                                            : getDaysRemaining(subscription.endDate) <= 30
+                                            ? 'bg-yellow-100 text-yellow-800'
+                                            : 'bg-green-100 text-green-800'
+                                    }`}>
+                                        <Calendar size={14} />
+                                        {formatDaysRemaining(getDaysRemaining(subscription.endDate))}
+                                    </div>
+                                )}
+                                {!subscription.endDate && subscription.planId === 'basic' && (
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                                        <Shield size={14} />
+                                        Free Plan - No expiry
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid md:grid-cols-2 gap-4 text-sm">
                                 <div className="flex items-center gap-2">
                                     <Calendar size={16} className="text-gray-500" />
@@ -188,7 +238,7 @@ export default function SubscriptionManager() {
                                     <div className="flex items-center gap-2">
                                         <Calendar size={16} className="text-gray-500" />
                                         <span>
-                                            Renews: {formatDate(subscription.endDate)}
+                                            {getDaysRemaining(subscription.endDate) > 0 ? 'Renews' : 'Expired'}: {formatDate(subscription.endDate)}
                                         </span>
                                     </div>
                                 )}
@@ -305,6 +355,22 @@ export default function SubscriptionManager() {
                                         {plan.price > 0 && <span className="text-sm font-normal text-gray-500">/month</span>}
                                     </div>
                                     <p className="text-gray-600 text-sm">{plan.description}</p>
+                                    
+                                    {/* Show savings or upgrade info */}
+                                    {subscription?.planId !== plan.id && plan.price > 0 && (
+                                        <div className="mt-2">
+                                            {subscription?.planId === 'basic' && (
+                                                <p className="text-blue-600 text-xs font-medium">
+                                                    Upgrade from Free Plan
+                                                </p>
+                                            )}
+                                            {subscription?.planId === 'pro' && plan.id === 'enterprise' && (
+                                                <p className="text-purple-600 text-xs font-medium">
+                                                    Upgrade from Pro Plan
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <ul className="space-y-3 mb-6">

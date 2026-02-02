@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { FileText, Upload, ArrowRight, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/utils/auth.utils";
 
 export default function ClauseComparison() {
     const [contracts, setContracts] = useState({ contract1: null, contract2: null });
@@ -21,7 +23,7 @@ export default function ClauseComparison() {
         formData.append('contract2', contracts.contract2);
 
         try {
-            const response = await fetch('/api/compare-contracts', {
+            const response = await authenticatedFetch('/api/compare-contracts', {
                 method: 'POST',
                 body: formData
             });
@@ -29,6 +31,11 @@ export default function ClauseComparison() {
             setComparison(result);
         } catch (error) {
             console.error('Comparison failed:', error);
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to compare contracts');
+            } else {
+                toast.error('Failed to compare contracts');
+            }
         } finally {
             setLoading(false);
         }

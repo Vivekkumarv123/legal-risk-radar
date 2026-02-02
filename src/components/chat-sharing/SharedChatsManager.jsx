@@ -14,6 +14,7 @@ import {
     Settings
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/utils/auth.utils";
 
 export default function SharedChatsManager() {
     const [sharedChats, setSharedChats] = useState([]);
@@ -26,7 +27,7 @@ export default function SharedChatsManager() {
 
     const fetchSharedChats = async () => {
         try {
-            const response = await fetch('/api/share-chat');
+            const response = await authenticatedFetch('/api/share-chat');
             const result = await response.json();
             
             if (result.success) {
@@ -36,7 +37,11 @@ export default function SharedChatsManager() {
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            toast.error('Failed to load shared chats');
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to view shared chats');
+            } else {
+                toast.error('Failed to load shared chats');
+            }
         } finally {
             setLoading(false);
         }
@@ -59,7 +64,7 @@ export default function SharedChatsManager() {
         }
 
         try {
-            const response = await fetch(`/api/share-chat?shareId=${shareId}`, {
+            const response = await authenticatedFetch(`/api/share-chat?shareId=${shareId}`, {
                 method: 'DELETE'
             });
             
@@ -73,16 +78,20 @@ export default function SharedChatsManager() {
             }
         } catch (error) {
             console.error('Delete error:', error);
-            toast.error('Failed to delete shared chat');
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to delete shared chats');
+            } else {
+                toast.error('Failed to delete shared chat');
+            }
         }
     };
 
     const toggleVisibility = async (shareId, currentVisibility) => {
         try {
-            const response = await fetch('/api/share-chat', {
+            const response = await authenticatedFetch('/api/share-chat', {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     shareId,
@@ -106,7 +115,11 @@ export default function SharedChatsManager() {
             }
         } catch (error) {
             console.error('Update error:', error);
-            toast.error('Failed to update visibility');
+            if (error.message === 'Authentication required') {
+                toast.error('Please log in to update shared chats');
+            } else {
+                toast.error('Failed to update visibility');
+            }
         }
     };
 

@@ -1,4 +1,5 @@
 // Content script for Legal Risk Radar Chrome Extension
+console.log('Legal Risk Radar Content Script v2.0 - Registration Flow Loaded');
 
 class LegalRiskRadarExtension {
     constructor() {
@@ -129,21 +130,41 @@ class LegalRiskRadarExtension {
             // Show loading indicator
             this.showNotification('Analyzing text...', 'info');
             
-            // Send message to background script
-            chrome.runtime.sendMessage({
-                action: 'analyzeText',
-                text: text
-            }, (response) => {
-                if (response.success) {
-                    this.showNotification('Analysis complete! Check extension popup for details.', 'success');
-                } else {
-                    this.showNotification('Analysis failed. Please try again.', 'error');
+            // Use background script for all requests to avoid CORS/loopback restrictions
+            const analysis = await new Promise((resolve, reject) => {
+                if (!chrome.runtime || !chrome.runtime.sendMessage) {
+                    reject(new Error('Chrome extension runtime not available'));
+                    return;
                 }
+                
+                chrome.runtime.sendMessage({
+                    action: 'analyzeText',
+                    text: text.trim()
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        reject(new Error(chrome.runtime.lastError.message));
+                    } else if (response && response.success) {
+                        resolve(response.result);
+                    } else {
+                        reject(new Error(response?.error || 'Analysis failed'));
+                    }
+                });
             });
             
+            // Show the analysis results in a popup
+            this.showAnalysisResults(analysis);
+            
         } catch (error) {
-            this.showNotification('Analysis failed. Please try again.', 'error');
             console.error('Analysis error:', error);
+            
+            // Show appropriate error message
+            if (error.message.includes('runtime not available')) {
+                this.showNotification('❌ Extension error. Please reload the extension.', 'error');
+            } else if (error.message.includes('loopback') || error.message.includes('CORS')) {
+                this.showNotification('❌ Cannot connect to server. Please check your internet connection.', 'error');
+            } else {
+                this.showNotification(`❌ Analysis failed: ${error.message}`, 'error');
+            }
         }
     }
 
@@ -161,7 +182,7 @@ class LegalRiskRadarExtension {
                     <p>Select text on this page to analyze legal risks, or use these quick actions:</p>
                     <div class="lrr-quick-actions">
                         <button id="lrr-scan-page">🔍 Scan Entire Page</button>
-                        <button id="lrr-open-app">🚀 Open Full App</button>
+                        <button id="lrr-open-app">🚀 Register for Full Access</button>
                     </div>
                 </div>
             </div>
@@ -254,7 +275,11 @@ class LegalRiskRadarExtension {
         });
 
         modal.querySelector('#lrr-open-app').addEventListener('click', () => {
-            window.open('https://legal-risk-radar.vercel.app', '_blank');
+            const confirmMessage = `Legal Risk Radar offers powerful AI-driven legal analysis tools.\n\nRegister for free to access:\n• Detailed document analysis\n• Risk assessment reports\n• Legal recommendations\n• Document comparison\n• Save & share features\n\nContinue to registration?`;
+            
+            if (confirm(confirmMessage)) {
+                window.open('https://legal-risk-radar.vercel.app/pages/signup', '_blank');
+            }
             modal.remove();
             style.remove();
         });
@@ -270,8 +295,467 @@ class LegalRiskRadarExtension {
     }
 
     scanEntirePage() {
-        const pageText = document.body.innerText;
-        this.analyzeSelectedText(pageText.substring(0, 5000)); // Limit to first 5000 chars
+        // Get all text content from the page, excluding script and style elements
+        const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    // Skip script, style, and other non-content elements
+                    const parent = node.parentElement;
+                    if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    // Skip very short text nodes
+                    if (node.textContent.trim().length < 10) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+
+        let pageText = '';
+        let node;
+        while (node = walker.nextNode()) {
+            pageText += node.textContent.trim() + ' ';
+        }
+
+        // Limit to first 8000 characters for analysis
+        const textToAnalyze = pageText.substring(0, 8000).trim();
+        
+        if (textToAnalyze.length < 50) {
+            this.showNotification('Not enough text content found on this page to analyze', 'error');
+            return;
+        }
+
+        this.showNotification(`Analyzing ${textToAnalyze.length} characters from this page...`, 'info');
+        this.analyzeSelectedText(textToAnalyze);
+    }
+
+    showAnalysisResults(analysis) {
+        console.log('Legal Risk Radar: Creating analysis popup with registration flow');
+        
+        // Remove any existing analysis popup
+        const existing = document.getElementById('lrr-analysis-popup');
+        if (existing) {
+            existing.remove();
+        }
+
+        const popup = document.createElement('div');
+        popup.id = 'lrr-analysis-popup';
+        
+        // Extract analysis data
+        const analysisData = analysis.analysis || {};
+        const riskScore = analysisData.overall_risk_score || 'N/A';
+        const summary = analysisData.summary || 'Analysis completed';
+        const clauses = analysisData.clauses || [];
+        const missingProtections = analysisData.missing_protections || analysisData.missing_clauses || [];
+
+        popup.innerHTML = `
+            <div class="lrr-popup-content">
+                <div class="lrr-popup-header">
+                    <div class="lrr-popup-title">
+                        <span class="lrr-popup-icon">⚖️</span>
+                        Legal Risk Analysis
+                    </div>
+                    <button id="lrr-close-analysis" class="lrr-close-btn">×</button>
+                </div>
+                <div class="lrr-popup-body">
+                    <div class="lrr-risk-score">
+                        <div class="lrr-score-circle ${this.getRiskClass(riskScore)}">
+                            <span class="lrr-score-number">${riskScore}</span>
+                            <span class="lrr-score-label">/10</span>
+                        </div>
+                        <div class="lrr-risk-level">${this.getRiskLevel(riskScore)} Risk</div>
+                    </div>
+                    
+                    <div class="lrr-summary">
+                        <h4>Summary</h4>
+                        <p>${summary}</p>
+                    </div>
+                    
+                    ${clauses.length > 0 ? `
+                        <div class="lrr-clauses">
+                            <h4>Key Issues Found</h4>
+                            ${clauses.slice(0, 3).map(clause => `
+                                <div class="lrr-clause-item ${this.getRiskClass(clause.risk_level)}">
+                                    <div class="lrr-clause-risk">${clause.risk_level || 'Medium'} Risk</div>
+                                    <div class="lrr-clause-text">${clause.clause || clause.issue || 'Issue identified'}</div>
+                                </div>
+                            `).join('')}
+                            ${clauses.length > 3 ? `<p class="lrr-more-issues">+${clauses.length - 3} more issues found</p>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${missingProtections.length > 0 ? `
+                        <div class="lrr-missing">
+                            <h4>Missing Protections</h4>
+                            <ul>
+                                ${missingProtections.slice(0, 3).map(protection => `
+                                    <li>${protection}</li>
+                                `).join('')}
+                                ${missingProtections.length > 3 ? `<li>+${missingProtections.length - 3} more protections needed</li>` : ''}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="lrr-actions">
+                        <button id="lrr-full-analysis" class="lrr-btn-primary">
+                            🚀 Get Full Analysis - Register Free
+                        </button>
+                        <button id="lrr-close-results" class="lrr-btn-secondary">
+                            Close
+                        </button>
+                    </div>
+                    
+                    <div class="lrr-upgrade-note">
+                        <p><strong>🎯 Want More?</strong> Register for free to get:</p>
+                        <ul>
+                            <li>✅ Detailed AI-powered risk analysis</li>
+                            <li>✅ Clause-by-clause breakdown</li>
+                            <li>✅ Legal recommendations</li>
+                            <li>✅ Document comparison tools</li>
+                            <li>✅ Save and share analyses</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add styles
+        const style = document.createElement('style');
+        style.id = 'lrr-analysis-styles';
+        style.textContent = `
+            #lrr-analysis-popup {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(4px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10004;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                animation: lrr-fadeIn 0.3s ease;
+            }
+            
+            @keyframes lrr-fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            .lrr-popup-content {
+                background: white;
+                border-radius: 16px;
+                width: 90%;
+                max-width: 500px;
+                max-height: 80vh;
+                overflow: hidden;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                animation: lrr-slideUp 0.3s ease;
+            }
+            
+            @keyframes lrr-slideUp {
+                from { transform: translateY(30px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            
+            .lrr-popup-header {
+                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                color: white;
+                padding: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .lrr-popup-title {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 18px;
+                font-weight: 600;
+            }
+            
+            .lrr-popup-icon {
+                font-size: 20px;
+            }
+            
+            .lrr-close-btn {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 24px;
+                cursor: pointer;
+                padding: 0;
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+            }
+            
+            .lrr-close-btn:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+            
+            .lrr-popup-body {
+                padding: 20px;
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+            
+            .lrr-risk-score {
+                text-align: center;
+                margin-bottom: 24px;
+            }
+            
+            .lrr-score-circle {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 8px;
+                border: 4px solid;
+                font-weight: bold;
+            }
+            
+            .lrr-score-circle.low-risk {
+                border-color: #10b981;
+                background: rgba(16, 185, 129, 0.1);
+                color: #10b981;
+            }
+            
+            .lrr-score-circle.medium-risk {
+                border-color: #f59e0b;
+                background: rgba(245, 158, 11, 0.1);
+                color: #f59e0b;
+            }
+            
+            .lrr-score-circle.high-risk {
+                border-color: #ef4444;
+                background: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+            }
+            
+            .lrr-score-number {
+                font-size: 24px;
+                line-height: 1;
+            }
+            
+            .lrr-score-label {
+                font-size: 12px;
+                opacity: 0.8;
+            }
+            
+            .lrr-risk-level {
+                font-size: 14px;
+                font-weight: 600;
+                color: #6b7280;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .lrr-summary, .lrr-clauses, .lrr-missing {
+                margin-bottom: 20px;
+            }
+            
+            .lrr-summary h4, .lrr-clauses h4, .lrr-missing h4 {
+                margin: 0 0 12px 0;
+                font-size: 16px;
+                font-weight: 600;
+                color: #1f2937;
+            }
+            
+            .lrr-summary p {
+                margin: 0;
+                color: #4b5563;
+                line-height: 1.5;
+            }
+            
+            .lrr-clause-item {
+                margin-bottom: 12px;
+                padding: 12px;
+                border-radius: 8px;
+                border-left: 4px solid;
+            }
+            
+            .lrr-clause-item.low-risk {
+                background: rgba(16, 185, 129, 0.05);
+                border-left-color: #10b981;
+            }
+            
+            .lrr-clause-item.medium-risk {
+                background: rgba(245, 158, 11, 0.05);
+                border-left-color: #f59e0b;
+            }
+            
+            .lrr-clause-item.high-risk {
+                background: rgba(239, 68, 68, 0.05);
+                border-left-color: #ef4444;
+            }
+            
+            .lrr-clause-risk {
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+                color: #6b7280;
+            }
+            
+            .lrr-clause-text {
+                font-size: 14px;
+                color: #374151;
+                line-height: 1.4;
+            }
+            
+            .lrr-more-issues {
+                font-size: 12px;
+                color: #6b7280;
+                font-style: italic;
+                margin: 8px 0 0 0;
+            }
+            
+            .lrr-missing ul {
+                margin: 0;
+                padding-left: 20px;
+                color: #4b5563;
+            }
+            
+            .lrr-missing li {
+                margin-bottom: 4px;
+                font-size: 14px;
+            }
+            
+            .lrr-actions {
+                display: flex;
+                gap: 12px;
+                margin-top: 24px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e7eb;
+            }
+            
+            .lrr-btn-primary, .lrr-btn-secondary {
+                flex: 1;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: none;
+            }
+            
+            .lrr-btn-primary {
+                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                color: white;
+            }
+            
+            .lrr-btn-primary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            }
+            
+            .lrr-btn-secondary {
+                background: #f9fafb;
+                color: #374151;
+                border: 1px solid #d1d5db;
+            }
+            
+            .lrr-btn-secondary:hover {
+                background: #f3f4f6;
+            }
+            
+            .lrr-upgrade-note {
+                margin-top: 20px;
+                padding: 16px;
+                background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+                border: 1px solid #0ea5e9;
+                border-radius: 8px;
+                font-size: 13px;
+            }
+            
+            .lrr-upgrade-note p {
+                margin: 0 0 8px 0;
+                color: #0c4a6e;
+                font-weight: 600;
+            }
+            
+            .lrr-upgrade-note ul {
+                margin: 0;
+                padding-left: 16px;
+                color: #0369a1;
+            }
+            
+            .lrr-upgrade-note li {
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+        `;
+
+        if (!document.getElementById('lrr-analysis-styles')) {
+            document.head.appendChild(style);
+        }
+
+        // Event listeners
+        popup.querySelector('#lrr-close-analysis').addEventListener('click', () => {
+            popup.remove();
+        });
+
+        popup.querySelector('#lrr-close-results').addEventListener('click', () => {
+            popup.remove();
+        });
+
+        popup.querySelector('#lrr-full-analysis').addEventListener('click', () => {
+            // Show registration prompt before redirecting
+            const confirmMessage = `To access the full analysis with detailed insights, risk assessments, and AI-powered recommendations, please register on our platform.\n\nWould you like to continue to Legal Risk Radar?`;
+            
+            if (confirm(confirmMessage)) {
+                window.open('https://legal-risk-radar.vercel.app/pages/signup', '_blank');
+            }
+            popup.remove();
+        });
+
+        popup.addEventListener('click', (e) => {
+            if (e.target === popup) {
+                popup.remove();
+            }
+        });
+
+        document.body.appendChild(popup);
+        
+        // Show success notification
+        this.showNotification('Analysis complete! 🎉', 'success');
+    }
+
+    getRiskClass(riskLevel) {
+        if (typeof riskLevel === 'string') {
+            const level = riskLevel.toLowerCase();
+            if (level.includes('high') || level.includes('critical')) return 'high-risk';
+            if (level.includes('medium') || level.includes('moderate')) return 'medium-risk';
+            return 'low-risk';
+        }
+        
+        const score = parseInt(riskLevel);
+        if (score >= 7) return 'high-risk';
+        if (score >= 4) return 'medium-risk';
+        return 'low-risk';
+    }
+
+    getRiskLevel(riskScore) {
+        const score = parseInt(riskScore);
+        if (score >= 7) return 'High';
+        if (score >= 4) return 'Medium';
+        return 'Low';
     }
 
     showNotification(message, type) {
@@ -290,13 +774,28 @@ class LegalRiskRadarExtension {
             font-weight: 600;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             max-width: 300px;
+            animation: lrr-slideInRight 0.3s ease;
         `;
         notification.textContent = message;
+
+        // Add slide-in animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes lrr-slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        if (!document.querySelector('style[data-lrr-notifications]')) {
+            style.setAttribute('data-lrr-notifications', 'true');
+            document.head.appendChild(style);
+        }
 
         document.body.appendChild(notification);
 
         setTimeout(() => {
-            notification.remove();
+            notification.style.animation = 'lrr-slideInRight 0.3s ease reverse';
+            setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
 

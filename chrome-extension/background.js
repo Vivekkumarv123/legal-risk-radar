@@ -133,8 +133,8 @@ async function analyzeSelectedText(text, tabId) {
 async function analyzeText(text) {
     console.log('Legal Risk Radar: Making API call...');
     
-    if (!text || text.trim().length < 20) {
-        throw new Error('Text too short for analysis (minimum 20 characters)');
+    if (!text || text.trim().length < 10) {
+        throw new Error('Text too short for analysis (minimum 10 characters)');
     }
 
     try {
@@ -154,6 +154,13 @@ async function analyzeText(text) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Legal Risk Radar: API error response:', errorText);
+            
+            // Return a fallback analysis if API fails
+            if (response.status >= 500 || response.status === 0) {
+                console.log('Legal Risk Radar: Server error, returning fallback analysis');
+                return createFallbackAnalysis(text);
+            }
+            
             throw new Error(`API request failed: ${response.status} - ${errorText}`);
         }
 
@@ -163,8 +170,69 @@ async function analyzeText(text) {
 
     } catch (error) {
         console.error('Legal Risk Radar: API call failed:', error);
+        
+        // If it's a network error, return fallback analysis
+        if (error.name === 'TypeError' || error.message.includes('fetch')) {
+            console.log('Legal Risk Radar: Network error, returning fallback analysis');
+            return createFallbackAnalysis(text);
+        }
+        
         throw new Error(`Analysis failed: ${error.message}`);
     }
+}
+
+// Create a fallback analysis when the API is not available
+function createFallbackAnalysis(text) {
+    const wordCount = text.split(' ').length;
+    const hasRiskyTerms = /waive|disclaim|not liable|no warranty|as is|without limitation|sole discretion/i.test(text);
+    const hasLegalTerms = /agreement|contract|terms|conditions|liability|damages|breach|terminate/i.test(text);
+    
+    let riskScore = 3; // Default medium-low risk
+    let summary = "Basic analysis completed offline.";
+    let clauses = [];
+    let missingProtections = [];
+    
+    if (hasRiskyTerms) {
+        riskScore = 7;
+        summary = "High-risk terms detected. This text contains clauses that may limit your rights or protections.";
+        clauses.push({
+            clause: "Risk-limiting language found",
+            risk_level: "High",
+            issue: "Contains terms that may waive rights or limit liability"
+        });
+        missingProtections.push("Clear dispute resolution process");
+        missingProtections.push("Balanced liability terms");
+    } else if (hasLegalTerms) {
+        riskScore = 5;
+        summary = "Legal document detected with moderate complexity.";
+        clauses.push({
+            clause: "Standard legal language",
+            risk_level: "Medium",
+            issue: "Contains legal terms that should be reviewed carefully"
+        });
+        missingProtections.push("Clear termination procedures");
+    } else {
+        summary = "Text appears to be general content with low legal risk.";
+        clauses.push({
+            clause: "General content",
+            risk_level: "Low",
+            issue: "No significant legal risks identified"
+        });
+    }
+    
+    return {
+        success: true,
+        analysis: {
+            overall_risk_score: riskScore,
+            summary: summary + " Note: This is an offline analysis. Connect to the server for detailed AI analysis.",
+            clauses: clauses,
+            missing_protections: missingProtections
+        },
+        extraction: {
+            type: 'TEXT_INPUT',
+            source: 'chrome_extension_offline'
+        }
+    };
 }
 
 // Handle extension icon click (when no popup is defined)

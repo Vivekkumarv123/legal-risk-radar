@@ -32,19 +32,42 @@ export const protect = (req, res, next) => {
 // Next.js API route compatible auth verification
 export const verifyToken = async (request) => {
   try {
+    let token = null;
+    
+    // First try Authorization header
     const authHeader = request.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+    
+    // If no Bearer token, try cookies
+    if (!token) {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      token = cookieStore.get("token")?.value || 
+             cookieStore.get("accessToken")?.value || 
+             cookieStore.get("refreshToken")?.value;
+    }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return { success: false, error: 'Access token missing' };
     }
 
-    const token = authHeader.split(' ')[1];
-
-    if (!token) {
-      return { success: false, error: 'Token not found' };
+    // Try with main secret first, then refresh secret
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      if (process.env.JWT_REFRESH_SECRET) {
+        try {
+          decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+        } catch (refreshError) {
+          throw error; // Throw original error
+        }
+      } else {
+        throw error;
+      }
     }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decoded.id) {
       return { success: false, error: 'User ID missing in token' };
@@ -59,7 +82,12 @@ export const verifyToken = async (request) => {
     };
 
   } catch (error) {
-    console.error('JWT verification error:', error);
+    console.error('JWT verification error:', error.message);
+    if (error.name === 'TokenExpiredError') {
+      return { success: false, error: 'Token expired' };
+    } else if (error.name === 'JsonWebTokenError') {
+      return { success: false, error: 'Invalid token format' };
+    }
     return { success: false, error: 'Invalid or expired token' };
   }
 };

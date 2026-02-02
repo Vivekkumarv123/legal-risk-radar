@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import pdf2json from 'pdf2json';
-import { promisify } from 'util';
+import { verifyToken } from '@/middleware/auth.middleware';
+import { checkUsageLimit, trackUsage } from '@/middleware/usage.middleware';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -25,6 +26,25 @@ async function extractTextFromPDF(buffer) {
 
 export async function POST(request) {
     try {
+        // Verify authentication
+        const authResult = await verifyToken(request);
+        if (!authResult.success) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userId = authResult.user.uid;
+
+        // Check if user has access to contract comparison feature
+        const usageCheck = await checkUsageLimit(userId, 'contract_comparison');
+        if (!usageCheck.allowed) {
+            return NextResponse.json({ 
+                error: usageCheck.message,
+                upgradeMessage: usageCheck.upgradeMessage,
+                upgradeRequired: usageCheck.upgradeRequired,
+                limitType: usageCheck.limitType
+            }, { status: 403 });
+        }
+
         const formData = await request.formData();
         const contract1 = formData.get('contract1');
         const contract2 = formData.get('contract2');
@@ -41,7 +61,7 @@ export async function POST(request) {
         const text2 = await extractTextFromPDF(buffer2);
 
         // Use Gemini to compare contracts
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         
         const prompt = `
         Compare these two contracts and identify:
@@ -66,7 +86,7 @@ export async function POST(request) {
         `;
 
         const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const response = result.response;
         const text = response.text();
         
         // Parse the JSON response
@@ -76,8 +96,12 @@ export async function POST(request) {
         }
         
         const comparison = JSON.parse(jsonMatch[0]);
+
+        // Track usage after successful comparison
+        await trackUsage(userId, 'contract_comparison');
         
         return NextResponse.json({
+            success: true,
             missing: [...(comparison.missing_in_contract1 || []), ...(comparison.missing_in_contract2 || [])],
             differences: comparison.differences || [],
             similar: comparison.similar || []

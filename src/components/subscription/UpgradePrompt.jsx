@@ -9,6 +9,7 @@ export default function UpgradePrompt({
     onClose, 
     feature, 
     currentPlan = "basic",
+    currentPlanExpiry = null,
     message,
     upgradeMessage 
 }) {
@@ -52,6 +53,23 @@ export default function UpgradePrompt({
         }
     };
 
+    const getDaysRemaining = (endDate) => {
+        if (!endDate) return null;
+        const now = new Date();
+        const end = new Date(endDate);
+        const diffTime = end - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 0;
+    };
+
+    const formatDaysRemaining = (days) => {
+        if (days === null) return null;
+        if (days === 0) return 'expires today';
+        if (days === 1) return 'expires in 1 day';
+        if (days <= 7) return `expires in ${days} days`;
+        return `${days} days remaining`;
+    };
+
     const proFeatures = [
         'Unlimited AI queries',
         'Document analysis',
@@ -88,6 +106,21 @@ export default function UpgradePrompt({
                     <p className="text-gray-600 text-sm">
                         {message || `${getFeatureName(feature)} is not available in your current plan`}
                     </p>
+                    
+                    {/* Current Plan Status */}
+                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-xs">
+                        <span className="font-medium text-gray-700">
+                            Current: {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} Plan
+                        </span>
+                        {currentPlanExpiry && formatDaysRemaining(getDaysRemaining(currentPlanExpiry)) && (
+                            <>
+                                <span className="text-gray-400">•</span>
+                                <span className="text-gray-600">
+                                    {formatDaysRemaining(getDaysRemaining(currentPlanExpiry))}
+                                </span>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Content */}

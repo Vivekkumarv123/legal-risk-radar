@@ -4,7 +4,7 @@ import { SharedChat } from '@/models/sharedChat.model';
 
 export async function GET(request, { params }) {
     try {
-        const { shareId } = params;
+        const { shareId } = await params;
 
         if (!shareId) {
             return NextResponse.json({ error: 'Share ID is required' }, { status: 400 });

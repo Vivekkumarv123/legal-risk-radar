@@ -93,57 +93,62 @@ document.addEventListener('DOMContentLoaded', function() {
     async function handleTextAnalysis(tabId) {
         console.log('Legal Risk Radar: Executing script to get selected text...');
 
-        // Execute script to get selected text
-        const results = await chrome.scripting.executeScript({
-            target: { tabId },
-            function: getSelectedText
-        });
-        
-        const selectedText = results[0]?.result;
-        console.log('Legal Risk Radar: Selected text length:', selectedText?.length || 0);
-        
-        if (!selectedText || selectedText.trim().length < 50) {
-            showStatus('Please select at least 50 characters of text to analyze', 'error');
-            return;
-        }
-        
-        console.log('Legal Risk Radar: Making API request...');
-
-        // Send to API for analysis
-        const response = await fetch('https://legal-risk-radar.vercel.app/api/analyze', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                text: selectedText.trim(),
-                source: 'chrome_extension'
-            })
-        });
-        
-        console.log('Legal Risk Radar: API response status:', response.status);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Legal Risk Radar: API error:', errorText);
-            throw new Error(`Analysis failed (${response.status}). Please try again.`);
-        }
-        
-        const analysis = await response.json();
-        console.log('Legal Risk Radar: Analysis successful');
-        
-        // Store result
-        await chrome.storage.local.set({ 
-            lastAnalysis: {
-                ...analysis,
-                timestamp: Date.now()
+        try {
+            // Execute script to get selected text
+            const results = await chrome.scripting.executeScript({
+                target: { tabId },
+                function: getSelectedText
+            });
+            
+            const selectedText = results[0]?.result;
+            console.log('Legal Risk Radar: Selected text length:', selectedText?.length || 0);
+            
+            if (!selectedText || selectedText.trim().length < 10) {
+                showStatus('Please select some text to analyze (at least 10 characters)', 'error');
+                return;
             }
-        });
-        
-        // Show brief result with app promotion
-        const riskScore = analysis.analysis?.overall_risk_score || 'N/A';
-        const briefResult = getBriefAnalysisMessage(analysis.analysis);
-        showStatus(`${briefResult} Open app for full details!`, 'success');
+            
+            if (selectedText.trim().length < 50) {
+                showStatus('For better analysis, select at least 50 characters of text', 'info');
+            }
+            
+            console.log('Legal Risk Radar: Using background script for analysis...');
+
+            // Use background script instead of direct fetch to avoid loopback restrictions
+            const analysis = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage({
+                    action: 'analyzeText',
+                    text: selectedText.trim()
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        reject(new Error(chrome.runtime.lastError.message));
+                    } else if (response && response.success) {
+                        resolve(response.result);
+                    } else {
+                        reject(new Error(response?.error || 'Analysis failed'));
+                    }
+                });
+            });
+            
+            console.log('Legal Risk Radar: Analysis successful');
+            
+            // Store result
+            await chrome.storage.local.set({ 
+                lastAnalysis: {
+                    ...analysis,
+                    timestamp: Date.now()
+                }
+            });
+            
+            // Show brief result with app promotion
+            const riskScore = analysis.analysis?.overall_risk_score || 'N/A';
+            const briefResult = getBriefAnalysisMessage(analysis.analysis);
+            showStatus(`${briefResult} Register for detailed analysis and advanced features!`, 'success');
+            
+        } catch (error) {
+            console.error('Legal Risk Radar: Text analysis error:', error);
+            throw error;
+        }
     }
 
     async function checkForPDF() {
@@ -176,36 +181,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Open full application
     openAppBtn.addEventListener('click', function() {
-        console.log('Legal Risk Radar: Opening full app');
-        chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app' });
+        console.log('Legal Risk Radar: Opening registration page');
+        const confirmMessage = `Get the most out of Legal Risk Radar!\n\nRegister for free to unlock:\n• Advanced AI analysis\n• Detailed risk reports\n• Document comparison\n• Legal recommendations\n• Save & share analyses\n\nContinue to registration?`;
+        
+        if (confirm(confirmMessage)) {
+            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/signup' });
+        }
         window.close();
     });
 
     // Quick actions
     if (contractCheck) {
         contractCheck.addEventListener('click', function() {
-            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/private-chat?mode=contract' });
+            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/signup?feature=contract' });
             window.close();
         });
     }
 
     if (legalGlossary) {
         legalGlossary.addEventListener('click', function() {
-            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/pricing' });
+            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/signup?feature=glossary' });
             window.close();
         });
     }
 
     if (complianceCheck) {
         complianceCheck.addEventListener('click', function() {
-            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/private-chat?mode=compliance' });
+            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/signup?feature=compliance' });
             window.close();
         });
     }
 
     if (voiceAnalysis) {
         voiceAnalysis.addEventListener('click', function() {
-            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/private-chat?mode=voice' });
+            chrome.tabs.create({ url: 'https://legal-risk-radar.vercel.app/pages/signup?feature=voice' });
             window.close();
         });
     }
@@ -214,15 +223,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function showStatus(message, type) {
         console.log('Legal Risk Radar: Status:', type, message);
         status.innerHTML = `<div class="status ${type}">${message}</div>`;
-        setTimeout(() => {
-            status.innerHTML = '';
-        }, 5000);
+        
+        // Auto-hide status after 5 seconds, except for success messages
+        if (type !== 'success') {
+            setTimeout(() => {
+                if (status.innerHTML.includes(message)) {
+                    status.innerHTML = '';
+                }
+            }, 5000);
+        }
     }
 
     function showLoading(show) {
         if (loading && document.querySelector('.action-buttons')) {
             loading.style.display = show ? 'block' : 'none';
-            document.querySelector('.action-buttons').style.display = show ? 'none' : 'block';
+            document.querySelector('.action-buttons').style.display = show ? 'none' : 'flex';
+            document.querySelector('.quick-actions').style.display = show ? 'none' : 'grid';
         }
     }
 
@@ -231,9 +247,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (result.lastAnalysis && result.lastAnalysis.timestamp) {
             const analysisTime = new Date(result.lastAnalysis.timestamp).toLocaleTimeString();
             showStatus(`Last analysis: ${analysisTime}`, 'info');
+        } else {
+            // Show welcome message for first-time users
+            showStatus('Select text on any webpage, then click Analyze', 'info');
         }
     }).catch((error) => {
         console.log('Legal Risk Radar: No previous analysis found');
+        showStatus('Ready to analyze legal text!', 'info');
     });
 
     console.log('Legal Risk Radar: Popup script initialized successfully');

@@ -1,21 +1,30 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { verifyToken } from '@/middleware/auth.middleware';
+import { checkUsageLimit, trackUsage } from '@/middleware/usage.middleware';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(request) {
     try {
+        // Verify authentication
+        const authResult = await verifyToken(request);
+        if (!authResult.success) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userId = authResult.user.uid;
         const { action, data } = await request.json();
 
         switch (action) {
             case 'voice_analysis':
-                return await handleVoiceAnalysis(data);
+                return await handleVoiceAnalysis(data, userId);
             case 'glossary_lookup':
-                return await handleGlossaryLookup(data);
+                return await handleGlossaryLookup(data, userId);
             case 'generate_pdf_data':
-                return await handlePDFDataGeneration(data);
+                return await handlePDFDataGeneration(data, userId);
             case 'multi_language_response':
-                return await handleMultiLanguageResponse(data);
+                return await handleMultiLanguageResponse(data, userId);
             default:
                 return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
         }
@@ -25,7 +34,18 @@ export async function POST(request) {
     }
 }
 
-async function handleVoiceAnalysis(data) {
+async function handleVoiceAnalysis(data, userId) {
+    // Check if user has access to voice queries
+    const usageCheck = await checkUsageLimit(userId, 'voice_query');
+    if (!usageCheck.allowed) {
+        return NextResponse.json({ 
+            error: usageCheck.message,
+            upgradeMessage: usageCheck.upgradeMessage,
+            upgradeRequired: usageCheck.upgradeRequired,
+            limitType: usageCheck.limitType
+        }, { status: 403 });
+    }
+
     const { transcript, language = 'en-IN' } = data;
     
     if (!transcript) {
@@ -56,7 +76,7 @@ async function handleVoiceAnalysis(data) {
     `;
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
     
     try {
@@ -67,6 +87,9 @@ async function handleVoiceAnalysis(data) {
             suggestions: [],
             language: language
         };
+        
+        // Track usage after successful voice analysis
+        await trackUsage(userId, 'voice_query');
         
         return NextResponse.json(analysisResult);
     } catch (parseError) {
@@ -79,7 +102,8 @@ async function handleVoiceAnalysis(data) {
     }
 }
 
-async function handleGlossaryLookup(data) {
+async function handleGlossaryLookup(data, userId) {
+    // Legal glossary is available to all authenticated users
     const { term, context = '' } = data;
     
     if (!term) {
@@ -111,7 +135,7 @@ async function handleGlossaryLookup(data) {
     `;
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
     
     try {
@@ -138,7 +162,18 @@ async function handleGlossaryLookup(data) {
     }
 }
 
-async function handlePDFDataGeneration(data) {
+async function handlePDFDataGeneration(data, userId) {
+    // Check if user has access to PDF reports
+    const usageCheck = await checkUsageLimit(userId, 'pdf_report');
+    if (!usageCheck.allowed) {
+        return NextResponse.json({ 
+            error: usageCheck.message,
+            upgradeMessage: usageCheck.upgradeMessage,
+            upgradeRequired: usageCheck.upgradeRequired,
+            limitType: usageCheck.limitType
+        }, { status: 403 });
+    }
+
     const { analysisText, documentType = 'contract' } = data;
     
     if (!analysisText) {
@@ -184,7 +219,7 @@ async function handlePDFDataGeneration(data) {
     `;
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
     
     try {
@@ -196,6 +231,9 @@ async function handlePDFDataGeneration(data) {
             recommendations: [],
             complianceItems: []
         };
+        
+        // Track usage after successful PDF generation
+        await trackUsage(userId, 'pdf_report');
         
         return NextResponse.json(pdfData);
     } catch (parseError) {
@@ -209,7 +247,8 @@ async function handlePDFDataGeneration(data) {
     }
 }
 
-async function handleMultiLanguageResponse(data) {
+async function handleMultiLanguageResponse(data, userId) {
+    // Multi-language response is available to all authenticated users
     const { text, targetLanguage, sourceLanguage = 'en' } = data;
     
     if (!text || !targetLanguage) {
@@ -250,7 +289,7 @@ async function handleMultiLanguageResponse(data) {
     `;
 
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const translatedText = response.text();
     
     return NextResponse.json({
@@ -290,7 +329,7 @@ export async function GET(request) {
                 features: {
                     clauseComparison: { status: 'active', version: '1.0' },
                     pdfReports: { status: 'active', version: '1.0' },
-                    chromeExtension: { status: 'beta', version: '0.9' },
+                    chromeExtension: { status: 'active', version: '1.1' },
                     legalGlossary: { status: 'active', version: '1.0' },
                     voiceInterface: { status: 'active', version: '1.0' }
                 }

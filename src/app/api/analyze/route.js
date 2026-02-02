@@ -12,7 +12,19 @@ export async function POST(req) {
     
     // Handle JSON text analysis (from Chrome extension)
     if (contentType?.includes('application/json')) {
-      return await handleTextAnalysis(req);
+      const response = await handleTextAnalysis(req);
+      
+      // Add CORS headers for Chrome extension
+      const headers = new Headers(response.headers);
+      headers.set('Access-Control-Allow-Origin', '*');
+      headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      headers.set('Access-Control-Allow-Headers', 'Content-Type');
+      
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
     }
     
     // Handle file upload analysis (from web app)
@@ -20,11 +32,35 @@ export async function POST(req) {
     
   } catch (err) {
     console.error("Analyze Error:", err);
-    return Response.json(
+    const response = Response.json(
       { error: "Processing failed", details: err.message },
       { status: 500 }
     );
+    
+    // Add CORS headers even for errors
+    const headers = new Headers(response.headers);
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    });
   }
+}
+
+// Handle OPTIONS preflight requests
+export async function OPTIONS(req) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
 
 // Handle direct text analysis (Chrome extension)
@@ -34,12 +70,19 @@ async function handleTextAnalysis(req) {
   if (!text || text.trim().length < 50) {
     return Response.json(
       { error: "Text too short for analysis (minimum 50 characters)" },
-      { status: 400 }
+      { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
+      }
     );
   }
 
   // For Chrome extension, we'll do basic analysis without authentication
-  if (source === 'chrome_extension' || source === 'chrome_extension_pdf') {
+  if (source === 'chrome_extension' || source === 'chrome_extension_pdf' || source === 'chrome_extension_content') {
     try {
       const analysis = await analyzeTextWithGemini(text, 'TEXT_INPUT');
       return Response.json({
@@ -49,6 +92,12 @@ async function handleTextAnalysis(req) {
           source: source
         },
         analysis
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
       });
     } catch (error) {
       console.error('Chrome extension analysis error:', error);
@@ -60,6 +109,12 @@ async function handleTextAnalysis(req) {
           source: source
         },
         analysis: createFallbackAnalysis(text)
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
       });
     }
   }
