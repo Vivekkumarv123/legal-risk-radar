@@ -11,16 +11,38 @@ if (API_KEYS.length === 0) {
   throw new Error("No Gemini API keys configured");
 }
 
-// 🤖 Create one client per key
-const clients = API_KEYS.map(
-  (key) => new GoogleGenerativeAI(key)
-);
+// 🤖 Create one client per key with validation
+const clients = API_KEYS.map((key, index) => {
+  try {
+    const client = new GoogleGenerativeAI(key);
+    console.log(`✅ Initialized Gemini client ${index + 1}/${API_KEYS.length}`);
+    return client;
+  } catch (error) {
+    console.error(`❌ Failed to initialize Gemini client ${index + 1}:`, error.message);
+    return null;
+  }
+}).filter(Boolean); // Remove null clients
 
-// 🔄 Round-robin rotation
+if (clients.length === 0) {
+  throw new Error("Failed to initialize any Gemini API clients. Check your API keys.");
+}
+
+console.log(`🚀 Successfully initialized ${clients.length}/${API_KEYS.length} Gemini clients`);
+
+// 🔄 Round-robin rotation with validation
 let index = 0;
 function getClient() {
+  if (clients.length === 0) {
+    throw new Error("No valid Gemini API clients available");
+  }
   const client = clients[index];
   index = (index + 1) % clients.length;
+  
+  // Validate client has required methods
+  if (!client || typeof client.getGenerativeModel !== 'function') {
+    throw new Error("Invalid Gemini API client - missing getGenerativeModel method");
+  }
+  
   return client;
 }
 
@@ -67,6 +89,12 @@ async function callWithFallback(primaryModel, prompt, maxRetries = 2) {
     
     try {
       const ai = getClient();
+      
+      // Validate client before using
+      if (!ai || typeof ai.getGenerativeModel !== 'function') {
+        throw new Error("Invalid Gemini client - getGenerativeModel method not available");
+      }
+      
       const model = ai.getGenerativeModel({ model: modelName });
       const response = await model.generateContent(prompt);
       
@@ -113,35 +141,65 @@ export async function callLiveGemini(prompt) {
 export async function generateChatTitle(userMessage, documentContext = "") {
   return await retryWithBackoff(async () => {
     try {
+      // Extract key information for better title generation
+      const content = documentContext || userMessage;
+      const isContract = /contract|agreement|terms|conditions/i.test(content);
+      const isNDA = /non.?disclosure|confidentiality|nda/i.test(content);
+      const isEmployment = /employment|job|salary|work|employee/i.test(content);
+      const isLease = /lease|rent|property|landlord|tenant/i.test(content);
+      const isLegal = /legal|law|clause|liability|indemnity/i.test(content);
+      
+      let titleHint = "";
+      if (isNDA) titleHint = "Focus on NDA/confidentiality aspects";
+      else if (isEmployment) titleHint = "Focus on employment/work aspects";
+      else if (isLease) titleHint = "Focus on lease/rental aspects";
+      else if (isContract) titleHint = "Focus on contract type";
+      else if (isLegal) titleHint = "Focus on legal document type";
+
       const prompt = `
-        Generate a concise, descriptive title (max 4-6 words) for this chat based on the user's message and document context.
+        Generate a concise, descriptive title (max 4-6 words) for this legal consultation.
         
-        User Message: "${userMessage}"
-        Document Context: "${documentContext.substring(0, 200)}..."
+        User Message: "${userMessage.substring(0, 150)}"
+        Document Context: "${content.substring(0, 300)}..."
+        ${titleHint ? `Hint: ${titleHint}` : ""}
         
         Rules:
-        1. Keep it under 25 characters
+        1. Keep it under 30 characters
         2. Make it specific and descriptive
         3. Use title case
-        4. Focus on the main topic/document type
-        5. Examples: "Employment Contract Review", "NDA Risk Analysis", "Lease Agreement Questions"
+        4. Focus on the main legal topic/document type
+        5. Examples: "Employment Contract Review", "NDA Risk Analysis", "Lease Agreement Help", "Contract Terms Query", "Legal Clause Question"
         
         Return ONLY the title, nothing else.
       `;
 
       const result = await callWithFallback(CHAT_MODEL, prompt);
-      const title = result.trim();
+      let title = result.trim().replace(/['"]/g, ''); // Remove quotes
+      
+      // Clean up common AI response patterns
+      title = title.replace(/^(Title:|Chat Title:|Here's the title:)/i, '').trim();
       
       // Fallback if title is too long or empty
-      if (!title || title.length > 50) {
-        return userMessage.substring(0, 30) + "...";
+      if (!title || title.length > 35) {
+        // Generate smart fallback based on content
+        if (isNDA) return "NDA Review";
+        if (isEmployment) return "Employment Contract";
+        if (isLease) return "Lease Agreement";
+        if (isContract) return "Contract Analysis";
+        if (isLegal) return "Legal Document";
+        return userMessage.substring(0, 25) + "...";
       }
       
       return title;
     } catch (error) {
       console.error("Title generation error:", error);
-      // Fallback to truncated user message
-      return userMessage.substring(0, 30) + "...";
+      // Smart fallback based on content analysis
+      const content = (documentContext || userMessage).toLowerCase();
+      if (content.includes('nda') || content.includes('confidential')) return "NDA Review";
+      if (content.includes('employment') || content.includes('job')) return "Employment Contract";
+      if (content.includes('lease') || content.includes('rent')) return "Lease Agreement";
+      if (content.includes('contract') || content.includes('agreement')) return "Contract Analysis";
+      return userMessage.substring(0, 25) + "...";
     }
   }, 2, 1000); // Fewer retries for title generation since it's not critical
 }

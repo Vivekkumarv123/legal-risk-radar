@@ -119,12 +119,12 @@ export async function POST(req) {
             contextToAnalyze = chatDoc.data().documentContext; 
         }
         
-        // Get recent chat history for context (last 10 messages)
+        // Get recent chat history for context (last 5 messages instead of 10)
         const messagesSnapshot = await db.collection("chats")
             .doc(currentChatId)
             .collection("messages")
             .orderBy("createdAt", "desc")
-            .limit(10)
+            .limit(5) // Reduced from 10 to 5
             .get();
         
         if (!messagesSnapshot.empty) {
@@ -169,24 +169,20 @@ export async function POST(req) {
     if (isStandardAnalysis) {
         // --- MODE A: ANALYST (Strict JSON) ---
         prompt = `
-          You are a Legal Risk AI. Analyze this document for a Non-Lawyer.
+          Legal Risk AI - Analyze for non-lawyers:
           
-          DOCUMENT:
-          """
-          ${sanitizedDoc}
-          ${fileContext}
-          """
+          DOCUMENT: """${sanitizedDoc}${fileContext}"""
 
-          OUTPUT FORMAT (STRICT JSON ONLY):
+          OUTPUT (JSON ONLY):
           {
-            "summary": "Simple summary",
+            "summary": "Brief summary",
             "overall_risk_score": "1-10",
-            "missing_clauses": ["Missing protection 1"],
+            "missing_clauses": ["Missing item"],
             "clauses": [
               {
-                "clause": "Original text snippet",
+                "clause": "Text snippet",
                 "risk_level": "HIGH/MEDIUM/LOW",
-                "explanation": "Simple explanation why it is risky"
+                "explanation": "Why risky"
               }
             ]
           }
@@ -201,25 +197,18 @@ export async function POST(req) {
         ` : "";
         
         prompt = `
-          You are a helpful Legal Assistant. Answer the user's question based on the document and conversation history.
+          Legal Assistant - Answer based on document and conversation.
           
-          DOCUMENT:
-          """
-          ${sanitizedDoc}
-          ${fileContext}
-          """
+          DOCUMENT: """${sanitizedDoc}${fileContext}"""
           ${chatHistoryContext}
 
-          USER QUESTION:
-          "${userQuery}"
+          USER: "${userQuery}"
 
-          INSTRUCTIONS:
-          1. Answer directly and simply (No jargon).
-          2. If asked to translate or explain in a specific language, respond in that language.
-          3. Use the conversation history to provide contextual answers.
-          4. If the user asks to explain something in Hindi/other language, explain the previous analysis in that language.
-          5. Do NOT output JSON. Write a normal paragraph or bullet points.
-          6. Remember what was discussed before and build upon it.
+          RULES:
+          1. Answer directly, no jargon
+          2. If asked in specific language, respond in that language
+          3. Use conversation history for context
+          4. No JSON, just text/bullets
         `;
     }
 

@@ -510,7 +510,7 @@ export default function Home() {
     const confirmDeleteChat = (e, id) => { e.stopPropagation(); setChatToDelete(id); };
     const handleDeleteChat = async () => { if (!chatToDelete) return; setIsDeletingChat(true); try { const res = await fetch(`/api/chats/delete?chatId=${chatToDelete}`, { method: "DELETE" }); const data = await res.json(); if (res.ok) { toast.success("Chat deleted"); setChatHistory(prev => prev.filter(chat => chat.id !== chatToDelete)); if (chatId === chatToDelete) handleNewChat(); } else { throw new Error(data.error || "Failed to delete"); } } catch (error) { toast.error("Failed to delete chat"); } finally { setIsDeletingChat(false); setChatToDelete(null); } };
     const performDeleteAccount = async () => { setIsDeletingAccount(true); try { const res = await fetch('/api/auth/delete-account', { method: 'DELETE' }); if (res.ok) { toast.success("Account deleted successfully"); setTimeout(() => { setShowDeleteModal(false); router.push('/'); }, 1000); } else { throw new Error("Failed to delete account"); } } catch (error) { toast.error("Could not delete account"); setIsDeletingAccount(false); } };
-    const animateAssistantContent = (fullText) => { setIsGenerating(true); setMessages(prev => [...prev, { role: 'assistant', content: '' }]); let charIndex = 0; const interval = setInterval(() => { charIndex += 3; if (charIndex >= fullText.length) { clearInterval(interval); setIsGenerating(false); setMessages(prev => { const newArr = [...prev]; newArr[newArr.length - 1].content = fullText; return newArr; }); } else { setMessages(prev => { const newArr = [...prev]; newArr[newArr.length - 1].content = fullText.slice(0, charIndex); return newArr; }); } }, 10); };
+    const animateAssistantContent = (fullText) => { setIsGenerating(true); setMessages(prev => [...prev, { role: 'assistant', content: '' }]); let charIndex = 0; const interval = setInterval(() => { charIndex += 5; if (charIndex >= fullText.length) { clearInterval(interval); setIsGenerating(false); setMessages(prev => { const newArr = [...prev]; newArr[newArr.length - 1].content = fullText; return newArr; }); } else { setMessages(prev => { const newArr = [...prev]; newArr[newArr.length - 1].content = fullText.slice(0, charIndex); return newArr; }); } }, 8); }; // Faster animation: 5 chars per 8ms instead of 3 chars per 10ms
 
     const handleLoadChat = async (id) => { if (id === chatId) return; setLoading(true); setSidebarOpen(false); try { const res = await fetch(`/api/chats/${id}`); const data = await res.json(); if (data.success) { setChatId(id); setDocumentContext(data.documentContext || ""); const formattedMessages = data.messages.map(msg => { let analysis = null; if (msg.analysisData) { analysis = { summary: msg.analysisData.summary, overall_risk_score: msg.analysisData.overall_risk_score, missing_protections: msg.analysisData.missing_clauses || [], clauses: Array.isArray(msg.analysisData.clauses) ? msg.analysisData.clauses.map(c => ({ ...c, clause: c.clause_snippet || c.clause })) : [] }; } else if (msg.analysis) { analysis = msg.analysis; } return { role: msg.role || 'user', content: msg.content, analysis: analysis, file: msg.file || null, createdAt: msg.createdAt }; }); setMessages(formattedMessages); } else { toast.error("Failed to load chat"); } } catch (error) { toast.error("Error loading chat"); } finally { setLoading(false); } };
     const scrollToClause = (riskLevel) => { const element = document.getElementById(`clause-${riskLevel}-0`); element?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
@@ -532,6 +532,12 @@ export default function Home() {
             if (!file) {
                 textToSend = `Analyze the following legal text and identify risks/clauses:\n\n${rawInput}`;
                 setDocumentContext(rawInput);
+            } else {
+                // When uploading a file, ensure we trigger structured analysis
+                textToSend = rawInput.trim() || "Analyze the following legal text and identify risks/clauses";
+                if (!textToSend.startsWith("Analyze the following legal text")) {
+                    textToSend = `Analyze the following legal text and identify risks/clauses:\n\n${textToSend}`;
+                }
             }
         } else {
             textToSend = rawInput;
@@ -539,7 +545,7 @@ export default function Home() {
 
         if (!isNewDocument && !documentContext && isHello) {
             setMessages(prev => [...prev, { role: "user", content: rawInput }]); setInputText(""); setIsGenerating(true);
-            setTimeout(() => { const reply = getGreetingResponse(rawInput); setMessages(prev => [...prev, { role: "assistant", content: reply, createdAt: new Date().toISOString() }]); setIsGenerating(false); if (wasVoiceInput) speakText(reply); setWasVoiceInput(false); }, 600); return;
+            setTimeout(() => { const reply = getGreetingResponse(rawInput); setMessages(prev => [...prev, { role: "assistant", content: reply, createdAt: new Date().toISOString() }]); setIsGenerating(false); if (wasVoiceInput) speakText(reply); setWasVoiceInput(false); }, 200); return; // Reduced from 600ms to 200ms
         }
 
         const userMsg = { role: "user", content: rawInput || "Analyze this document", file: file?.name };
@@ -553,14 +559,26 @@ export default function Home() {
                 apiBody.documentText = documentContext;
             }
 
-            if (file) { setProcessingStage(0); const formData = new FormData(); formData.append("file", file); const ocrRes = await fetch("/api/ocr", { method: "POST", body: formData }); if (!ocrRes.ok) throw new Error("OCR Failed"); const ocrData = await ocrRes.json(); apiBody.documentText = ocrData.text; setDocumentContext(ocrData.text); }
+            if (file) { 
+                setProcessingStage(0); 
+                const formData = new FormData(); 
+                formData.append("file", file); 
+                
+                // Start OCR processing
+                const ocrRes = await fetch("/api/ocr", { method: "POST", body: formData }); 
+                if (!ocrRes.ok) throw new Error("OCR Failed"); 
+                const ocrData = await ocrRes.json(); 
+                apiBody.documentText = ocrData.text; 
+                setDocumentContext(ocrData.text); 
+            }
 
             setProcessingStage(1);
             const aiRes = await fetch("/api/generate-content", {
                 method: "POST", 
                 headers: { "Content-Type": "application/json" }, 
-                credentials: 'include', // Use proper authentication instead of guest ID
+                credentials: 'include',
                 body: JSON.stringify(apiBody),
+                signal: AbortSignal.timeout(30000) // 30 second timeout
             });
 
             // Handle usage limit reached
@@ -595,7 +613,7 @@ export default function Home() {
                     if (wasVoiceInput) speakText(textResponse);
                 }
                 setWasVoiceInput(false);
-            }, 600);
+            }, 300); // Reduced from 600ms to 300ms
         } catch (error) { toast.error("Error"); setMessages(prev => [...prev, { role: "assistant", content: "Error processing request." }]); setLoading(false); setWasVoiceInput(false); }
     };
 
