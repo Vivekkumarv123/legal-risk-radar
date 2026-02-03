@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
     CreditCard, 
@@ -23,7 +23,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function PaymentPage() {
+// Separate component that uses useSearchParams
+function PaymentContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const planId = searchParams.get('plan');
@@ -638,5 +639,26 @@ export default function PaymentPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Loading component for Suspense fallback
+function PaymentPageLoading() {
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+            <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600">Loading payment page...</p>
+            </div>
+        </div>
+    );
+}
+
+// Main component with Suspense boundary
+export default function PaymentPage() {
+    return (
+        <Suspense fallback={<PaymentPageLoading />}>
+            <PaymentContent />
+        </Suspense>
     );
 }
