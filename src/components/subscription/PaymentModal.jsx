@@ -5,13 +5,28 @@ import {
     CreditCard, 
     X, 
     Lock, 
-    Check, 
+    CheckCircle2,
     AlertCircle,
-    Loader2
+    Loader2,
+    Shield,
+    Sparkles,
+    Crown,
+    Info,
+    ArrowRight
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function PaymentModal({ isOpen, onClose, plan, onSuccess }) {
+    const router = useRouter();
+    const [useFullCheckout, setUseFullCheckout] = useState(false);
+
+    // If user wants full checkout experience, redirect to payment page
+    if (useFullCheckout && plan) {
+        router.push(`/pages/payment?plan=${plan.id}&billing=annual`);
+        return null;
+    }
+
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         cardNumber: '',
@@ -69,6 +84,14 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }) {
         return v;
     };
 
+    const getCardType = (number) => {
+        const sanitized = number.replace(/\s/g, '');
+        if (/^4/.test(sanitized)) return 'visa';
+        if (/^5[1-5]/.test(sanitized)) return 'mastercard';
+        if (/^3[47]/.test(sanitized)) return 'amex';
+        return null;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -114,124 +137,186 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }) {
 
     if (!isOpen || !plan) return null;
 
+    const planIcons = {
+        pro: Sparkles,
+        enterprise: Crown
+    };
+
+    const PlanIcon = planIcons[plan.id] || CreditCard;
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-6 border-b">
-                    <div className="flex items-center gap-3">
-                        <CreditCard className="text-blue-600" size={24} />
-                        <h2 className="text-xl font-bold text-gray-900">Complete Payment</h2>
-                    </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                
+                {/* Header */}
+                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-6">
                     <button
                         onClick={onClose}
                         disabled={loading}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all"
                     >
-                        <X size={24} />
+                        <X size={20} />
                     </button>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
+                            <PlanIcon className="w-7 h-7 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Upgrade to {plan.name}</h2>
+                            <p className="text-blue-100 text-sm">Complete your subscription</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="p-6">
+                <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
                     {/* Plan Summary */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-blue-900">{plan.name} Plan</h3>
-                            <span className="text-2xl font-bold text-blue-600">
-                                ₹{plan.price}
-                                <span className="text-sm font-normal text-blue-500">/month</span>
-                            </span>
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold text-gray-900 mb-1">{plan.name} Plan</h3>
+                                <p className="text-sm text-gray-600">{plan.description}</p>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                    ₹{plan.price}
+                                </div>
+                                <span className="text-sm text-gray-600">/month</span>
+                            </div>
                         </div>
-                        <p className="text-sm text-blue-700">{plan.description}</p>
                     </div>
 
                     {/* Payment Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                        
+                        {/* Quick Checkout Option */}
+                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                            <div className="flex items-start gap-3">
+                                <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <p className="text-sm text-blue-900 mb-2">
+                                        Want a more detailed checkout experience?
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setUseFullCheckout(true)}
+                                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    >
+                                        Use Full Checkout
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Card Information */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Card Number
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="1234 5678 9012 3456"
-                                value={formData.cardNumber}
-                                onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
-                                maxLength={19}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Expiry Date
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Card Number
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="1234 5678 9012 3456"
+                                        value={formData.cardNumber}
+                                        onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
+                                        maxLength={19}
+                                        className="w-full px-4 py-3 pl-11 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
+                                        required
+                                    />
+                                    <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    
+                                    {getCardType(formData.cardNumber) && (
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            <div className={`px-2 py-1 rounded text-xs font-bold text-white ${
+                                                getCardType(formData.cardNumber) === 'visa' ? 'bg-blue-600' :
+                                                getCardType(formData.cardNumber) === 'mastercard' ? 'bg-red-600' :
+                                                'bg-blue-700'
+                                            }`}>
+                                                {getCardType(formData.cardNumber).toUpperCase()}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Expiry Date
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="MM/YY"
+                                        value={formData.expiryDate}
+                                        onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
+                                        maxLength={5}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        CVV
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="123"
+                                        value={formData.cvv}
+                                        onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                        maxLength={4}
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Cardholder Name
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder="MM/YY"
-                                    value={formData.expiryDate}
-                                    onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
-                                    maxLength={5}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="John Doe"
+                                    value={formData.cardholderName}
+                                    onChange={(e) => handleInputChange('cardholderName', e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
                                     required
                                 />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    CVV
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Email Address
                                 </label>
                                 <input
-                                    type="text"
-                                    placeholder="123"
-                                    value={formData.cvv}
-                                    onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                    maxLength={4}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    type="email"
+                                    placeholder="john@example.com"
+                                    value={formData.email}
+                                    onChange={(e) => handleInputChange('email', e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
                                     required
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Cardholder Name
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="John Doe"
-                                value={formData.cardholderName}
-                                onChange={(e) => handleInputChange('cardholderName', e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Address
-                            </label>
-                            <input
-                                type="email"
-                                placeholder="john@example.com"
-                                value={formData.email}
-                                onChange={(e) => handleInputChange('email', e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                required
-                            />
-                        </div>
-
-                        {/* Billing Address */}
-                        <div className="border-t pt-4">
-                            <h4 className="font-medium text-gray-900 mb-3">Billing Address</h4>
+                        {/* Billing Address (Collapsed) */}
+                        <details className="group">
+                            <summary className="cursor-pointer list-none">
+                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all">
+                                    <span className="font-semibold text-gray-700">Billing Address</span>
+                                    <ChevronRight className="w-5 h-5 text-gray-400 group-open:rotate-90 transition-transform" />
+                                </div>
+                            </summary>
                             
-                            <div className="space-y-3">
+                            <div className="mt-4 space-y-3 p-4 bg-gray-50 rounded-xl">
                                 <input
                                     type="text"
                                     placeholder="Street Address"
                                     value={formData.billingAddress.street}
                                     onChange={(e) => handleInputChange('billingAddress.street', e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white"
                                     required
                                 />
                                 
@@ -241,7 +326,7 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }) {
                                         placeholder="City"
                                         value={formData.billingAddress.city}
                                         onChange={(e) => handleInputChange('billingAddress.city', e.target.value)}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white"
                                         required
                                     />
                                     <input
@@ -249,44 +334,45 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }) {
                                         placeholder="State"
                                         value={formData.billingAddress.state}
                                         onChange={(e) => handleInputChange('billingAddress.state', e.target.value)}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white"
                                         required
                                     />
                                 </div>
                                 
                                 <input
                                     type="text"
-                                    placeholder="ZIP Code"
+                                    placeholder="PIN Code"
                                     value={formData.billingAddress.zipCode}
                                     onChange={(e) => handleInputChange('billingAddress.zipCode', e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white"
                                     required
                                 />
                             </div>
-                        </div>
+                        </details>
 
-                        {/* Security Notice */}
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <div className="flex items-start gap-3">
-                                <Lock className="text-green-600 mt-0.5" size={16} />
-                                <div>
-                                    <h4 className="font-medium text-gray-900 text-sm">Secure Payment</h4>
-                                    <p className="text-xs text-gray-600 mt-1">
-                                        Your payment information is encrypted and secure. We don't store your card details.
-                                    </p>
+                        {/* Security & Demo Notices */}
+                        <div className="space-y-3">
+                            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-3">
+                                <div className="flex items-start gap-3">
+                                    <Shield className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="font-semibold text-green-900 text-sm mb-1">Secure Payment</h4>
+                                        <p className="text-xs text-green-700">
+                                            Your payment is encrypted and secure. Card details are never stored.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Demo Notice */}
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div className="flex items-start gap-3">
-                                <AlertCircle className="text-yellow-600 mt-0.5" size={16} />
-                                <div>
-                                    <h4 className="font-medium text-yellow-900 text-sm">Demo Payment</h4>
-                                    <p className="text-xs text-yellow-700 mt-1">
-                                        This is a demo payment system. Use any card number for testing. No real charges will be made.
-                                    </p>
+                            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-3">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="font-semibold text-amber-900 text-sm mb-1">Demo Mode</h4>
+                                        <p className="text-xs text-amber-700">
+                                            This is a test environment. Use any card number. No real charges apply.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -295,23 +381,36 @@ export default function PaymentModal({ isOpen, onClose, plan, onSuccess }) {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-6 rounded-xl font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    Processing Payment...
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Processing...
                                 </>
                             ) : (
                                 <>
-                                    <Lock size={16} />
+                                    <Lock className="w-5 h-5" />
                                     Pay ₹{plan.price}
                                 </>
                             )}
                         </button>
+
+                        <p className="text-center text-xs text-gray-500">
+                            By subscribing, you agree to our Terms & Privacy Policy
+                        </p>
                     </form>
                 </div>
             </div>
         </div>
+    );
+}
+
+// Helper component for missing import
+function ChevronRight({ className }) {
+    return (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
     );
 }
