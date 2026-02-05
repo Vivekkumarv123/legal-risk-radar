@@ -13,7 +13,6 @@ export async function POST(req) {
   try {
     const body = await req.json();
     let { documentText, message, userRole, docType, fileUrl, chatId } = body;
-    console.log("Received Request Body:", body);
     // Validate Input
     if (!documentText && !message) {
       return NextResponse.json({ error: "Text or message required" }, { status: 400 });
@@ -58,7 +57,7 @@ export async function POST(req) {
           trackerId = `user_${userId}`;
         }
       } catch (e) {
-        console.log("Token invalid/expired, treating as guest");
+        // Token invalid/expired, treating as guest
       }
     }
 

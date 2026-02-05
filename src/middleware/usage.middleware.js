@@ -121,7 +121,6 @@ export async function trackUsage(userId, action, amount = 1) {
 
         const field = fieldMap[action];
         if (!field) {
-            console.log(`Unknown action for tracking: ${action}`);
             return { success: true };
         }
 

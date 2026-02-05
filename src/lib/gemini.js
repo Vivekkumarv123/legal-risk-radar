@@ -15,7 +15,6 @@ if (API_KEYS.length === 0) {
 const clients = API_KEYS.map((key, index) => {
   try {
     const client = new GoogleGenerativeAI(key);
-    console.log(`✅ Initialized Gemini client ${index + 1}/${API_KEYS.length}`);
     return client;
   } catch (error) {
     console.error(`❌ Failed to initialize Gemini client ${index + 1}:`, error.message);
@@ -26,8 +25,6 @@ const clients = API_KEYS.map((key, index) => {
 if (clients.length === 0) {
   throw new Error("Failed to initialize any Gemini API clients. Check your API keys.");
 }
-
-console.log(`🚀 Successfully initialized ${clients.length}/${API_KEYS.length} Gemini clients`);
 
 // 🔄 Round-robin rotation with validation
 let index = 0;
@@ -72,7 +69,6 @@ async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
       }
 
       const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
-      console.log(`Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -97,10 +93,6 @@ async function callWithFallback(primaryModel, prompt, maxRetries = 2) {
       
       const model = ai.getGenerativeModel({ model: modelName });
       const response = await model.generateContent(prompt);
-      
-      if (i > 0) {
-        console.log(`✅ Successfully used fallback model: ${modelName}`);
-      }
       
       return response.response.text();
     } catch (error) {

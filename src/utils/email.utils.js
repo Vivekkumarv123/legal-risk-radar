@@ -6,8 +6,6 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     return;
   }
 
-  console.log("📨 Sending to:", to);
-
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -33,7 +31,6 @@ export const sendEmail = async ({ to, subject, html, text }) => {
           console.error("❌ SMTP Error:", err);
           reject(err);
         } else {
-          console.log("✅ Email sent:", info.response);
           resolve(info);
         }
       });
