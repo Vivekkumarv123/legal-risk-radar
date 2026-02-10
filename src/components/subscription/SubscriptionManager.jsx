@@ -132,7 +132,12 @@ export default function SubscriptionManager() {
 
     const getUsagePercentage = (used, limit) => {
         if (limit === -1) return 0; // Unlimited
+        if (!limit || limit <= 0) return 0;
         return Math.min((used / limit) * 100, 100);
+    };
+
+    const getPlanLimits = (planId) => {
+        return availablePlans.find(plan => plan.id === planId)?.limits || {};
     };
 
     const getPlanIcon = (planId) => {
@@ -279,15 +284,19 @@ export default function SubscriptionManager() {
                             <div className="bg-green-50 p-4 rounded-lg">
                                 <h4 className="font-semibold text-green-900 mb-2">Documents</h4>
                                 <p className="text-2xl font-bold text-green-600">{usage.documentsAnalyzed || 0}</p>
-                                {subscription?.features?.documentAnalysis && subscription.planId === 'pro' && (
+                                {subscription?.features?.documentAnalysis && (
                                     <div className="mt-2">
                                         <div className="bg-green-200 rounded-full h-2">
                                             <div 
                                                 className="bg-green-600 h-2 rounded-full transition-all"
-                                                style={{ width: `${getUsagePercentage(usage.documentsAnalyzed || 0, 50)}%` }}
+                                                style={{ width: `${getUsagePercentage(usage.documentsAnalyzed || 0, getPlanLimits(subscription.planId).monthlyDocuments || 0)}%` }}
                                             ></div>
                                         </div>
-                                        <p className="text-xs text-green-700 mt-1">50 per month limit</p>
+                                        {getPlanLimits(subscription.planId).monthlyDocuments > -1 && (
+                                            <p className="text-xs text-green-700 mt-1">
+                                                {getPlanLimits(subscription.planId).monthlyDocuments} per month limit
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -303,9 +312,25 @@ export default function SubscriptionManager() {
                             <div className="bg-orange-50 p-4 rounded-lg">
                                 <h4 className="font-semibold text-orange-900 mb-2">PDF Reports</h4>
                                 <p className="text-2xl font-bold text-orange-600">{usage.pdfReportsGenerated || 0}</p>
-                                <p className="text-xs text-orange-700 mt-1">
-                                    {subscription?.features?.pdfReports ? 'Unlimited' : 'Not available'}
-                                </p>
+                                {subscription?.features?.pdfReports ? (
+                                    <div className="mt-2">
+                                        <div className="bg-orange-200 rounded-full h-2">
+                                            <div 
+                                                className="bg-orange-600 h-2 rounded-full transition-all"
+                                                style={{ width: `${getUsagePercentage(usage.pdfReportsGenerated || 0, getPlanLimits(subscription.planId).pdfReportsMonthly || 0)}%` }}
+                                            ></div>
+                                        </div>
+                                        {getPlanLimits(subscription.planId).pdfReportsMonthly > -1 ? (
+                                            <p className="text-xs text-orange-700 mt-1">
+                                                {getPlanLimits(subscription.planId).pdfReportsMonthly} per month limit
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-orange-700 mt-1">Unlimited</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-orange-700 mt-1">Not available</p>
+                                )}
                             </div>
                         </div>
                     </div>

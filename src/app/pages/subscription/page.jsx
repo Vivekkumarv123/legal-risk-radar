@@ -5,9 +5,10 @@ import { useState, useEffect } from "react";
 import {
     ShieldCheck, FileText, MessageCircle, Clock,
     Check, X, Briefcase, ChevronRight, Star, Crown, Zap, ArrowLeft,
-    Users, TrendingUp, Lock, Sparkles, CheckCircle2, Award, BarChart3
+    Users, TrendingUp, Lock, Sparkles, CheckCircle2, Award, BarChart3, AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { getDaysUntilExpiry } from "@/utils/subscription.utils";
 
 export default function SubscriptionPage() {
     const [isAnnual, setIsAnnual] = useState(true);
@@ -90,12 +91,68 @@ export default function SubscriptionPage() {
         checkUserSubscription();
         
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // Handle successful payment
+        if (urlParams.get('success') === 'true') {
+            const sessionId = urlParams.get('session_id');
+            const planId = urlParams.get('plan');
+            const billingCycle = urlParams.get('billing');
+            
+            if (sessionId && planId && billingCycle) {
+                // Verify and activate subscription
+                verifyPayment(sessionId, planId, billingCycle);
+            } else {
+                toast.success('Payment successful! Your subscription is now active.');
+                // Refresh subscription data after a short delay
+                setTimeout(() => {
+                    checkUserSubscription();
+                }, 2000);
+            }
+            
+            // Clean up URL
+            window.history.replaceState({}, '', '/pages/subscription');
+        }
+        
+        // Handle cancelled payment
+        if (urlParams.get('canceled') === 'true') {
+            toast.error('Payment was cancelled. Please try again.');
+            // Clean up URL
+            window.history.replaceState({}, '', '/pages/subscription');
+        }
+        
         if (urlParams.get('upgrade') === 'true') {
             setTimeout(() => {
                 document.getElementById('subscription-plans')?.scrollIntoView({ behavior: 'smooth' });
             }, 500);
         }
     }, []);
+
+    const verifyPayment = async (sessionId, planId, billingCycle) => {
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch('/api/stripe/verify-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ sessionId, planId, billingCycle })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                toast.success('Payment successful! Your subscription is now active.');
+                // Refresh subscription data
+                checkUserSubscription();
+            } else {
+                toast.error('Failed to activate subscription. Please contact support.');
+            }
+        } catch (error) {
+            console.error('Payment verification error:', error);
+            toast.error('Failed to verify payment. Please refresh the page.');
+        }
+    };
 
     const checkUserSubscription = async () => {
         try {
@@ -118,13 +175,25 @@ export default function SubscriptionPage() {
     };
 
     const handlePlanSelect = (plan) => {
+        // Prevent selecting Basic plan
         if (plan.id === 'basic') {
-            toast.info('You are already on the Basic plan');
+            if (userSubscription?.planId === 'basic') {
+                toast.info('You are already on the Basic plan');
+            } else {
+                toast.error('Cannot downgrade to Basic plan. Please contact support if you want to cancel your subscription.');
+            }
             return;
         }
 
+        // Check if already on this plan
         if (userSubscription?.planId === plan.id) {
             toast.success(`You're already subscribed to ${plan.name}!`);
+            return;
+        }
+
+        // Prevent downgrade from Enterprise to Pro
+        if (userSubscription?.planId === 'enterprise' && plan.id === 'pro') {
+            toast.error('Cannot downgrade from Enterprise to Pro. Please contact support if you want to change your plan.');
             return;
         }
 
@@ -203,6 +272,74 @@ export default function SubscriptionPage() {
                     </p>
                 </div>
             </section>
+
+            {/* Expiry Warning Banner */}
+            {userSubscription && userSubscription.planId !== 'basic' && userSubscription.endDate && (() => {
+                const daysLeft = getDaysUntilExpiry(userSubscription);
+                const showWarning = daysLeft <= 7 && daysLeft > 0;
+                const isExpired = daysLeft <= 0;
+                
+                if (!showWarning && !isExpired) return null;
+                
+                return (
+                    <section className="px-4 sm:px-6 lg:px-8 pb-8">
+                        <div className="max-w-6xl mx-auto">
+                            <div className={`rounded-2xl border-2 p-6 ${
+                                isExpired 
+                                    ? 'bg-red-50 border-red-300' 
+                                    : 'bg-amber-50 border-amber-300'
+                            }`}>
+                                <div className="flex items-start gap-4">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                                        isExpired 
+                                            ? 'bg-red-100' 
+                                            : 'bg-amber-100'
+                                    }`}>
+                                        <AlertTriangle className={`w-6 h-6 ${
+                                            isExpired 
+                                                ? 'text-red-600' 
+                                                : 'text-amber-600'
+                                        }`} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className={`text-lg font-bold mb-2 ${
+                                            isExpired 
+                                                ? 'text-red-900' 
+                                                : 'text-amber-900'
+                                        }`}>
+                                            {isExpired 
+                                                ? 'Your subscription has expired' 
+                                                : `Your subscription expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
+                                            }
+                                        </h3>
+                                        <p className={`text-sm mb-4 ${
+                                            isExpired 
+                                                ? 'text-red-700' 
+                                                : 'text-amber-700'
+                                        }`}>
+                                            {isExpired 
+                                                ? 'Your account has been downgraded to the Basic plan. Renew now to restore your premium features.' 
+                                                : 'Renew your subscription to continue enjoying premium features without interruption.'
+                                            }
+                                        </p>
+                                        <button
+                                            onClick={() => document.getElementById('subscription-plans')?.scrollIntoView({ behavior: 'smooth' })}
+                                            className={`px-6 py-2.5 rounded-lg font-semibold text-white transition-all flex items-center gap-2 ${
+                                                isExpired 
+                                                    ? 'bg-red-600 hover:bg-red-700' 
+                                                    : 'bg-amber-600 hover:bg-amber-700'
+                                            }`}
+                                        >
+                                            {isExpired ? 'Renew Now' : 'Extend Subscription'}
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                );
+            })()}
 
             {/* Current Usage Summary (Enhanced) */}
             {userSubscription && (
@@ -289,18 +426,18 @@ export default function SubscriptionPage() {
                                             </div>
                                             <div className="text-3xl font-bold text-amber-600 mb-1">
                                                 {userSubscription.planId === 'basic' ? '∞' : 
-                                                 userSubscription.expiresAt ? 
-                                                 Math.max(0, Math.ceil((new Date(userSubscription.expiresAt) - new Date()) / (1000 * 60 * 60 * 24))) : 
-                                                 '30'}
+                                                 userSubscription.endDate ? 
+                                                 Math.max(0, Math.ceil((new Date(userSubscription.endDate) - new Date()) / (1000 * 60 * 60 * 24))) : 
+                                                 '365'}
                                             </div>
                                             <div className="text-sm font-medium text-gray-700">
                                                 {userSubscription.planId === 'basic' ? 'Forever' : 'Days Left'}
                                             </div>
                                             <div className="text-xs text-gray-500 mt-1">
                                                 {userSubscription.planId === 'basic' ? 'No expiry' : 
-                                                 userSubscription.expiresAt ? 
-                                                 new Date(userSubscription.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 
-                                                 'Renews monthly'}
+                                                 userSubscription.endDate ? 
+                                                 new Date(userSubscription.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 
+                                                 'Active'}
                                             </div>
                                         </div>
                                     </div>
@@ -477,9 +614,16 @@ export default function SubscriptionPage() {
                                         {/* CTA Button */}
                                         <button
                                             onClick={() => handlePlanSelect(plan)}
-                                            disabled={loading || isCurrentPlan}
+                                            disabled={
+                                                loading || 
+                                                isCurrentPlan || 
+                                                (plan.id === 'basic' && userSubscription?.planId !== 'basic') ||
+                                                (plan.id === 'pro' && userSubscription?.planId === 'enterprise')
+                                            }
                                             className={`w-full py-4 px-6 rounded-xl font-bold text-sm transition-all duration-300 mb-8 ${
                                                 isCurrentPlan
+                                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                    : (plan.id === 'basic' && userSubscription?.planId !== 'basic') || (plan.id === 'pro' && userSubscription?.planId === 'enterprise')
                                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                                     : plan.popular
                                                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xl shadow-blue-900/30 hover:shadow-2xl hover:scale-105"
@@ -493,6 +637,10 @@ export default function SubscriptionPage() {
                                                 </span>
                                             ) : isCurrentPlan ? (
                                                 'Your Current Plan'
+                                            ) : (plan.id === 'basic' && userSubscription?.planId !== 'basic') ? (
+                                                'Cannot Downgrade'
+                                            ) : (plan.id === 'pro' && userSubscription?.planId === 'enterprise') ? (
+                                                'Cannot Downgrade'
                                             ) : (
                                                 <span className="flex items-center justify-center gap-2">
                                                     {plan.cta}

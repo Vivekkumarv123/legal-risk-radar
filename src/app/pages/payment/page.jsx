@@ -33,6 +33,8 @@ function PaymentContent() {
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [paymentComplete, setPaymentComplete] = useState(false);
+    const [prorationDetails, setProrationDetails] = useState(null);
+    const [loadingProration, setLoadingProration] = useState(true);
     const [formData, setFormData] = useState({
         cardNumber: '',
         expiryDate: '',
@@ -92,15 +94,46 @@ function PaymentContent() {
 
     const selectedPlan = plans[planId];
     const isAnnual = billingCycle === 'annual';
-    const price = isAnnual ? selectedPlan?.annualPrice : selectedPlan?.monthlyPrice;
-    const totalAmount = price;
+    const monthlyPrice = isAnnual ? selectedPlan?.annualPrice : selectedPlan?.monthlyPrice;
+    const baseAmount = isAnnual ? monthlyPrice * 12 : monthlyPrice;
+    const totalAmount = prorationDetails?.proratedAmount ?? baseAmount;
     const savings = isAnnual && selectedPlan ? (selectedPlan.monthlyPrice * 12) - (selectedPlan.annualPrice * 12) : 0;
 
     useEffect(() => {
         if (!planId || !selectedPlan) {
             toast.error('Invalid plan selected');
             router.push('/pages/subscription');
+            return;
         }
+        
+        // Fetch pro-rated pricing
+        fetchProrationDetails();
+        
+        // Check if user already has this plan
+        const checkExistingSubscription = async () => {
+            try {
+                const token = localStorage.getItem('accessToken');
+                const response = await fetch('/api/subscription', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success && result.subscription) {
+                    // If user already has the selected plan, redirect back
+                    if (result.subscription.planId === planId && result.subscription.status === 'active') {
+                        toast.info(`You already have the ${selectedPlan.name} plan`);
+                        router.push('/pages/subscription');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+            }
+        };
+        
+        checkExistingSubscription();
         
         // Auto-fill email if user is logged in
         const userEmail = localStorage.getItem('userEmail');
@@ -128,7 +161,38 @@ function PaymentContent() {
         return () => {
             window.removeEventListener('popstate', handlePopState);
         };
-    }, [planId, selectedPlan, router, paymentComplete]);
+    }, [planId, router, paymentComplete]);
+
+    const fetchProrationDetails = async () => {
+        if (!selectedPlan) return;
+        
+        try {
+            setLoadingProration(true);
+            const token = localStorage.getItem('accessToken');
+            
+            const response = await fetch('/api/subscription/calculate-prorated', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    planId: selectedPlan.id,
+                    billingCycle
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                setProrationDetails(result);
+            }
+        } catch (error) {
+            console.error('Error fetching proration details:', error);
+        } finally {
+            setLoadingProration(false);
+        }
+    };
 
     const handleInputChange = (field, value) => {
         if (field.includes('.')) {
@@ -184,19 +248,10 @@ function PaymentContent() {
         setProcessing(true);
 
         try {
-            // Validate form
-            if (!formData.cardNumber || !formData.expiryDate || !formData.cvv || !formData.cardholderName) {
-                toast.error('Please fill in all required fields');
-                setProcessing(false);
-                return;
-            }
-
-            // Simulate payment processing
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Process payment
             const token = localStorage.getItem('accessToken');
-            const response = await fetch('/api/subscription', {
+            
+            // Create Stripe checkout session
+            const response = await fetch('/api/stripe/create-checkout-session', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -204,26 +259,17 @@ function PaymentContent() {
                 },
                 body: JSON.stringify({
                     planId: selectedPlan.id,
-                    billingCycle,
-                    paymentData: formData
+                    billingCycle
                 })
             });
 
             const result = await response.json();
 
-            if (result.success) {
-                setPaymentComplete(true);
-                toast.success('Payment successful! Welcome to ' + selectedPlan.name);
-                
-                // Prevent back navigation
-                window.history.pushState(null, '', window.location.href);
-                
-                // Redirect to dashboard after a brief delay
-                setTimeout(() => {
-                    router.replace('/pages/userdashboard');
-                }, 1500);
+            if (result.success && result.url) {
+                // Redirect to Stripe Checkout URL directly
+                window.location.href = result.url;
             } else {
-                toast.error(result.error || 'Payment failed');
+                toast.error(result.error || 'Failed to create checkout session');
                 setProcessing(false);
             }
 
@@ -291,207 +337,85 @@ function PaymentContent() {
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                             <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
                                 
-                                {/* Email */}
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Email
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="email"
-                                            placeholder="your@email.com"
-                                            value={formData.email}
-                                            onChange={(e) => handleInputChange('email', e.target.value)}
-                                            onFocus={() => setFocusedField('email')}
-                                            onBlur={() => setFocusedField(null)}
-                                            className={`w-full px-4 py-3 pl-11 border rounded-lg transition-all text-gray-900 placeholder:text-gray-400 ${
-                                                focusedField === 'email' 
-                                                    ? 'border-blue-500 ring-4 ring-blue-100 shadow-sm' 
-                                                    : 'border-gray-300 hover:border-gray-400'
-                                            }`}
-                                            required
-                                        />
-                                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                {/* Info Notice */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex gap-3">
+                                        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-medium text-blue-900 mb-1">
+                                                Secure Stripe Checkout
+                                            </p>
+                                            <p className="text-xs text-blue-700">
+                                                You'll be redirected to Stripe's secure payment page to complete your purchase.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Card Information Section */}
-                                <div className="space-y-4">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Card information
-                                    </label>
+                                {/* Plan Summary */}
+                                <div className="space-y-3 py-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">Plan</span>
+                                        <span className="font-semibold text-gray-900">{selectedPlan.name}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">Billing</span>
+                                        <span className="font-semibold text-gray-900">{isAnnual ? 'Annual' : 'Monthly'}</span>
+                                    </div>
+                                    {isAnnual && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-600">Price per month</span>
+                                            <span className="font-medium text-gray-900">₹{monthlyPrice}</span>
+                                        </div>
+                                    )}
+                                    {isAnnual && savings > 0 && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-600">Annual discount</span>
+                                            <span className="font-medium text-green-600">-₹{savings}</span>
+                                        </div>
+                                    )}
                                     
-                                    {/* Card Number */}
-                                    <div className="border border-gray-300 rounded-lg overflow-hidden hover:border-gray-400 transition-all">
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                placeholder="1234 1234 1234 1234"
-                                                value={formData.cardNumber}
-                                                onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
-                                                onFocus={() => setFocusedField('cardNumber')}
-                                                onBlur={() => setFocusedField(null)}
-                                                maxLength={19}
-                                                className={`w-full px-4 py-3 pl-11 border-0 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400 ${
-                                                    focusedField === 'cardNumber' ? 'ring-4 ring-blue-100' : ''
-                                                }`}
-                                                required
-                                            />
-                                            <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            
-                                            {/* Card Type Badge */}
-                                            {getCardType(formData.cardNumber) !== 'card' && (
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                    {getCardType(formData.cardNumber) === 'visa' && (
-                                                        <div className="px-2 py-1 bg-blue-600 rounded text-white text-xs font-bold">
-                                                            VISA
-                                                        </div>
-                                                    )}
-                                                    {getCardType(formData.cardNumber) === 'mastercard' && (
-                                                        <div className="px-2 py-1 bg-red-500 rounded text-white text-xs font-bold">
-                                                            MC
-                                                        </div>
-                                                    )}
-                                                    {getCardType(formData.cardNumber) === 'amex' && (
-                                                        <div className="px-2 py-1 bg-blue-700 rounded text-white text-xs font-bold">
-                                                            AMEX
-                                                        </div>
-                                                    )}
+                                    {/* Pro-rated pricing breakdown */}
+                                    {loadingProration ? (
+                                        <div className="flex items-center justify-center py-4">
+                                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                                            <span className="ml-2 text-sm text-gray-600">Calculating pricing...</span>
+                                        </div>
+                                    ) : prorationDetails?.isProrated && prorationDetails.unusedCredit > 0 && (
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Info className="w-4 h-4 text-green-600" />
+                                                <span className="text-xs font-semibold text-green-900">Upgrade Credit Applied!</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-gray-600">Full plan price</span>
+                                                <span className="font-medium text-gray-900">₹{prorationDetails.fullAmount}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-gray-600">Unused credit ({prorationDetails.daysRemaining} days left)</span>
+                                                <span className="font-medium text-green-600">-₹{prorationDetails.unusedCredit}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs pt-2 border-t border-green-200">
+                                                <span className="font-semibold text-gray-900">You pay today</span>
+                                                <span className="font-bold text-green-600">₹{prorationDetails.proratedAmount}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                                        <span className="text-base font-semibold text-gray-900">Total due today</span>
+                                        <div className="text-right">
+                                            <div className="text-2xl font-bold text-gray-900">₹{totalAmount}</div>
+                                            {isAnnual && !prorationDetails?.isProrated && (
+                                                <div className="text-xs text-gray-500">
+                                                    ₹{monthlyPrice}/month × 12 months
                                                 </div>
                                             )}
-                                        </div>
-                                        
-                                        {/* Expiry & CVV Row */}
-                                        <div className="grid grid-cols-2 border-t border-gray-300">
-                                            <div className="relative border-r border-gray-300">
-                                                <input
-                                                    type="text"
-                                                    placeholder="MM / YY"
-                                                    value={formData.expiryDate}
-                                                    onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
-                                                    onFocus={() => setFocusedField('expiry')}
-                                                    onBlur={() => setFocusedField(null)}
-                                                    maxLength={5}
-                                                    className={`w-full px-4 py-3 border-0 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400 ${
-                                                        focusedField === 'expiry' ? 'ring-4 ring-blue-100' : ''
-                                                    }`}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    placeholder="CVC"
-                                                    value={formData.cvv}
-                                                    onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                                    onFocus={() => setFocusedField('cvv')}
-                                                    onBlur={() => setFocusedField(null)}
-                                                    maxLength={4}
-                                                    className={`w-full px-4 py-3 border-0 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400 ${
-                                                        focusedField === 'cvv' ? 'ring-4 ring-blue-100' : ''
-                                                    }`}
-                                                    required
-                                                />
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 group">
-                                                    <Info className="w-4 h-4 text-gray-400 cursor-help" />
-                                                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-48 bg-gray-900 text-white text-xs rounded-lg p-2 shadow-lg z-10">
-                                                        3-digit security code on the back of your card
-                                                    </div>
+                                            {prorationDetails?.isProrated && prorationDetails.unusedCredit > 0 && (
+                                                <div className="text-xs text-green-600">
+                                                    Pro-rated for upgrade
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Cardholder Name */}
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Cardholder name
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Full name on card"
-                                            value={formData.cardholderName}
-                                            onChange={(e) => handleInputChange('cardholderName', e.target.value)}
-                                            onFocus={() => setFocusedField('name')}
-                                            onBlur={() => setFocusedField(null)}
-                                            className={`w-full px-4 py-3 pl-11 border rounded-lg transition-all text-gray-900 placeholder:text-gray-400 ${
-                                                focusedField === 'name' 
-                                                    ? 'border-blue-500 ring-4 ring-blue-100 shadow-sm' 
-                                                    : 'border-gray-300 hover:border-gray-400'
-                                            }`}
-                                            required
-                                        />
-                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    </div>
-                                </div>
-
-                                {/* Billing Address */}
-                                <div className="space-y-4 pt-2">
-                                    <label className="block text-sm font-medium text-gray-700">
-                                        Billing address
-                                    </label>
-                                    
-                                    <select
-                                        value={formData.billingAddress.country}
-                                        onChange={(e) => handleInputChange('billingAddress.country', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:border-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900"
-                                    >
-                                        <option value="India">India</option>
-                                        <option value="USA">United States</option>
-                                        <option value="UK">United Kingdom</option>
-                                    </select>
-
-                                    <input
-                                        type="text"
-                                        placeholder="Address"
-                                        value={formData.billingAddress.street}
-                                        onChange={(e) => handleInputChange('billingAddress.street', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:border-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400"
-                                        required
-                                    />
-                                    
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <input
-                                            type="text"
-                                            placeholder="City"
-                                            value={formData.billingAddress.city}
-                                            onChange={(e) => handleInputChange('billingAddress.city', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:border-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400"
-                                            required
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="State"
-                                            value={formData.billingAddress.state}
-                                            onChange={(e) => handleInputChange('billingAddress.state', e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:border-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400"
-                                            required
-                                        />
-                                    </div>
-
-                                    <input
-                                        type="text"
-                                        placeholder="ZIP / Postal code"
-                                        value={formData.billingAddress.zipCode}
-                                        onChange={(e) => handleInputChange('billingAddress.zipCode', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:border-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all text-gray-900 placeholder:text-gray-400"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Demo Notice */}
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                    <div className="flex gap-3">
-                                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-medium text-amber-900 mb-1">
-                                                Demo payment system
-                                            </p>
-                                            <p className="text-xs text-amber-700">
-                                                This is a demonstration. Use any test card number. No real charges will be processed.
-                                            </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -505,12 +429,12 @@ function PaymentContent() {
                                     {processing ? (
                                         <>
                                             <Loader2 className="w-5 h-5 animate-spin" />
-                                            <span>Processing...</span>
+                                            <span>Redirecting to Stripe...</span>
                                         </>
                                     ) : (
                                         <>
                                             <Lock className="w-4 h-4" />
-                                            <span>Pay ₹{totalAmount}</span>
+                                            <span>Proceed to Payment</span>
                                         </>
                                     )}
                                 </button>
@@ -519,7 +443,7 @@ function PaymentContent() {
                                 <div className="flex items-center justify-center gap-2 pt-2">
                                     <Shield className="w-4 h-4 text-gray-400" />
                                     <p className="text-xs text-gray-500">
-                                        Secured by 256-bit SSL encryption
+                                        Secured by Stripe - PCI DSS compliant
                                     </p>
                                 </div>
                             </form>
@@ -595,9 +519,9 @@ function PaymentContent() {
                                     {/* Pricing Breakdown */}
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">
-                                            {isAnnual ? 'Annual subscription' : 'Monthly subscription'}
+                                            {isAnnual ? `${selectedPlan.name} (₹${monthlyPrice}/month × 12)` : 'Monthly subscription'}
                                         </span>
-                                        <span className="font-medium text-gray-900">₹{price}</span>
+                                        <span className="font-medium text-gray-900">₹{isAnnual ? monthlyPrice * 12 : monthlyPrice}</span>
                                     </div>
                                     
                                     {isAnnual && savings > 0 && (

@@ -64,7 +64,24 @@ export async function POST(req) {
     // 3. Fallback to Guest ID
     if (isGuest) {
       if (!guestIdHeader) {
-        return NextResponse.json({ error: "Authentication failed. Please log in again." }, { status: 401 });
+        // For demo page, if no guest ID and no token, check if there's any auth cookie
+        const hasAnyCookie = cookieStore.get("token") || 
+                            cookieStore.get("accessToken") || 
+                            cookieStore.get("refreshToken");
+        
+        if (hasAnyCookie) {
+          // Token exists but is invalid/expired
+          return NextResponse.json({ 
+            error: "Session expired. Please log in again.", 
+            sessionExpired: true 
+          }, { status: 401 });
+        }
+        
+        // No authentication at all
+        return NextResponse.json({ 
+          error: "Authentication required. Please log in.", 
+          authRequired: true 
+        }, { status: 401 });
       }
       trackerId = `guest_${guestIdHeader}`;
     }
@@ -83,23 +100,49 @@ export async function POST(req) {
         if (last.getDate() === today.getDate()) currentCount = data.count || 0;
       }
       if (currentCount >= GUEST_DAILY_LIMIT) {
+        // Calculate time until midnight (reset time)
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const hoursUntilReset = Math.floor((tomorrow - now) / (1000 * 60 * 60));
+        const minutesUntilReset = Math.floor(((tomorrow - now) % (1000 * 60 * 60)) / (1000 * 60));
+        
         return NextResponse.json({ 
           error: "Daily limit reached", 
           isLimitReached: true,
-          limitType: 'guest_limit'
+          limitType: 'guest_limit',
+          currentUsage: currentCount,
+          limit: GUEST_DAILY_LIMIT,
+          resetTime: tomorrow.toISOString(),
+          hoursUntilReset,
+          minutesUntilReset,
+          resetMessage: `Limit resets in ${hoursUntilReset}h ${minutesUntilReset}m`
         }, { status: 403 });
       }
     } else {
       // Check authenticated user limits
       const usageCheck = await checkUsageLimit(userId, 'ai_query');
       if (!usageCheck.allowed) {
+        // Calculate time until midnight (reset time for daily limits)
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const hoursUntilReset = Math.floor((tomorrow - now) / (1000 * 60 * 60));
+        const minutesUntilReset = Math.floor(((tomorrow - now) % (1000 * 60 * 60)) / (1000 * 60));
+        
         return NextResponse.json({ 
           error: usageCheck.message,
           isLimitReached: true,
           upgradeRequired: usageCheck.upgradeRequired,
           currentUsage: usageCheck.currentUsage,
           limit: usageCheck.limit,
-          limitType: usageCheck.limitType || 'ai_query'
+          limitType: usageCheck.limitType || 'ai_query',
+          resetTime: tomorrow.toISOString(),
+          hoursUntilReset,
+          minutesUntilReset,
+          resetMessage: `Limit resets in ${hoursUntilReset}h ${minutesUntilReset}m`
         }, { status: 403 });
       }
     }
@@ -163,6 +206,7 @@ export async function POST(req) {
     }
 
     const sanitizedDoc = (contextToAnalyze || "").replace(/"""/g, "'''");
+    console.log(sanitizedDoc);
     let prompt;
 
     if (isStandardAnalysis) {

@@ -16,6 +16,8 @@ const SubscriptionSchema = z.object({
   price: z.number().min(0),
   currency: z.string().default("INR"),
   paymentId: z.string().optional(),
+  stripeSubscriptionId: z.string().optional(),
+  stripeCustomerId: z.string().optional(),
   features: z.object({
     aiQueries: z.number().default(-1), // -1 means unlimited
     documentAnalysis: z.boolean().default(false),
@@ -26,6 +28,7 @@ const SubscriptionSchema = z.object({
     teamCollaboration: z.number().default(0), // Number of team members
     contractComparison: z.boolean().default(false),
     chromeExtension: z.boolean().default(false),
+    newsletter: z.boolean().default(false),
   }),
   createdAt: z.any().optional(),
   updatedAt: z.any().optional(),
@@ -39,6 +42,9 @@ const UsageSchema = z.object({
   voiceQueries: z.number().default(0),
   pdfReportsGenerated: z.number().default(0),
   contractComparisons: z.number().default(0),
+  glossaryLookups: z.number().default(0),
+  dailyContractComparisons: z.record(z.number()).optional(),
+  dailyGlossaryLookups: z.record(z.number()).optional(),
   createdAt: z.any().optional(),
   updatedAt: z.any().optional(),
 });
@@ -118,6 +124,19 @@ class SubscriptionModel {
   }
 
   /**
+   * Find subscription by Stripe subscription ID
+   */
+  async findByStripeId(stripeSubscriptionId) {
+    const snapshot = await this.collection
+      .where("stripeSubscriptionId", "==", stripeSubscriptionId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return null;
+    return this._normalizeDoc(snapshot.docs[0]);
+  }
+
+  /**
    * Check if subscription is expired
    */
   isExpired(subscription) {
@@ -173,6 +192,9 @@ class UsageModel {
       voiceQueries: 0,
       pdfReportsGenerated: 0,
       contractComparisons: 0,
+      glossaryLookups: 0,
+      dailyContractComparisons: {},
+      dailyGlossaryLookups: {},
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -197,6 +219,28 @@ class UsageModel {
     return {
       ...usage,
       [field]: usage[field] + amount
+    };
+  }
+
+  /**
+   * Increment daily usage counter inside current month's usage doc
+   */
+  async incrementDailyUsage(userId, field, dateKey, amount = 1) {
+    const usage = await this.getCurrentMonthUsage(userId);
+    const updateData = {
+      [`${field}.${dateKey}`]: FieldValue.increment(amount),
+      updatedAt: FieldValue.serverTimestamp()
+    };
+
+    await this.collection.doc(usage.id).update(updateData);
+
+    const currentDaily = (usage[field] && usage[field][dateKey]) || 0;
+    return {
+      ...usage,
+      [field]: {
+        ...(usage[field] || {}),
+        [dateKey]: currentDaily + amount
+      }
     };
   }
 
@@ -245,10 +289,14 @@ export const PLANS = {
       teamCollaboration: 0,
       contractComparison: false,
       chromeExtension: false,
+      newsletter: false,
     },
     limits: {
       dailyQueries: 5,
       monthlyDocuments: 0,
+      pdfReportsMonthly: 0,
+      dailyContractComparisons: 1,
+      dailyGlossaryLookups: 10,
     }
   },
   pro: {
@@ -268,10 +316,14 @@ export const PLANS = {
       teamCollaboration: 0,
       contractComparison: true,
       chromeExtension: true,
+      newsletter: false,
     },
     limits: {
       dailyQueries: -1, // Unlimited
       monthlyDocuments: 50,
+      pdfReportsMonthly: 20,
+      dailyContractComparisons: -1,
+      dailyGlossaryLookups: -1,
     }
   },
   enterprise: {
@@ -291,10 +343,14 @@ export const PLANS = {
       teamCollaboration: 5,
       contractComparison: true,
       chromeExtension: true,
+      newsletter: true,
     },
     limits: {
       dailyQueries: -1, // Unlimited
       monthlyDocuments: -1, // Unlimited
+      pdfReportsMonthly: -1, // Unlimited
+      dailyContractComparisons: -1,
+      dailyGlossaryLookups: -1,
     }
   }
 };

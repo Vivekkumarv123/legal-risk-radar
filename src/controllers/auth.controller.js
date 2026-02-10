@@ -1,4 +1,6 @@
 import { User } from "@/models/user.model.js"; // Our new Firestore Model
+import { Subscription } from "@/models/subscription.model.js";
+import { db } from "@/lib/firebaseAdmin";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -7,8 +9,43 @@ import { generatePassword } from "@/utils/password.utils";
 import { generateOTP } from "@/utils/otp.utils";
 import { generateAccessToken, generateRefreshToken } from "@/utils/token.utils";
 import { getSignupEmailHtml, getGoogleSignupEmailHtml, getGoogleSignupEmailText } from "@/utils/email-templates";
+import crypto from "crypto";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
+
+/**
+ * Helper function to automatically subscribe new users to newsletter
+ */
+async function autoSubscribeToNewsletter(email, name) {
+  try {
+    const subscriptionsRef = db.collection('newsletterSubscriptions');
+    
+    // Check if already subscribed
+    const existingSnapshot = await subscriptionsRef.where('email', '==', email).limit(1).get();
+    
+    if (existingSnapshot.empty) {
+      // Create newsletter subscription
+      const unsubscribeToken = crypto.randomBytes(32).toString('hex');
+      await subscriptionsRef.add({
+        email,
+        name: name || '',
+        categories: ['all'],
+        frequency: 'daily', // Default to daily
+        isActive: true,
+        unsubscribeToken,
+        subscribedAt: new Date(),
+        lastSentAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      console.log(`✅ Auto-subscribed ${email} to newsletter`);
+    }
+  } catch (error) {
+    console.error('Failed to auto-subscribe to newsletter:', error);
+    // Don't fail signup if newsletter subscription fails
+  }
+}
 
 export const authController = {
   // 1. SIGNUP
@@ -22,13 +59,43 @@ export const authController = {
     const rawPassword = generatePassword(name);
     const hashedPassword = await bcrypt.hash(rawPassword, 8);
 
-    await User.create({
+    const newUser = await User.create({
       name,
       email: normalizedEmail,
       password: hashedPassword,
       provider: "local",
       role: "user",
     });
+
+    // ✅ CREATE DEFAULT BASIC SUBSCRIPTION FOR NEW USERS
+    try {
+      await Subscription.create({
+        userId: newUser.id,
+        planId: "basic",
+        planName: "Basic",
+        status: "active",
+        price: 0,
+        currency: "INR",
+        features: {
+          aiQueries: 5, // Daily limit
+          documentAnalysis: true,
+          voiceQueries: false,
+          pdfReports: false,
+          prioritySupport: false,
+          apiAccess: false,
+          teamCollaboration: 0,
+          contractComparison: true,
+          chromeExtension: false,
+          newsletter: false,
+        }
+      });
+    } catch (subErr) {
+      console.error("Failed to create subscription for new user:", subErr);
+      // Don't fail signup even if subscription creation fails
+    }
+
+    // ✅ AUTO-SUBSCRIBE TO NEWSLETTER
+    await autoSubscribeToNewsletter(normalizedEmail, name);
 
     // Generate the professional HTML content
     const emailHtml = getSignupEmailHtml(name, normalizedEmail, rawPassword);
@@ -90,6 +157,36 @@ export const authController = {
         role: "user",
       });
       isFirstGoogleSignup = true;
+
+      // ✅ CREATE DEFAULT BASIC SUBSCRIPTION FOR NEW GOOGLE USERS
+      try {
+        await Subscription.create({
+          userId: user.id,
+          planId: "basic",
+          planName: "Basic",
+          status: "active",
+          price: 0,
+          currency: "INR",
+          features: {
+            aiQueries: 5, // Daily limit
+            documentAnalysis: true,
+            voiceQueries: false,
+            pdfReports: false,
+            prioritySupport: false,
+            apiAccess: false,
+            teamCollaboration: 0,
+            contractComparison: true,
+            chromeExtension: false,
+            newsletter: false,
+          }
+        });
+      } catch (subErr) {
+        console.error("Failed to create subscription for new Google user:", subErr);
+        // Don't fail login even if subscription creation fails
+      }
+
+      // ✅ AUTO-SUBSCRIBE TO NEWSLETTER
+      await autoSubscribeToNewsletter(email, payload.name);
     } else {
       // 🔑 LINK GOOGLE to existing account
       if (!user.provider.includes("google")) {

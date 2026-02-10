@@ -13,10 +13,18 @@ import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
 // ============================================
 const getGuestId = () => {
     if (typeof window === 'undefined') return '';
-    let id = localStorage.getItem('guest_id');
+    
+    // Use sessionStorage for per-session guest ID (fresh each time)
+    let id = window.__guestId;
     if (!id) {
         id = crypto.randomUUID();
-        localStorage.setItem('guest_id', id);
+        window.__guestId = id;
+        // Also store in sessionStorage as backup
+        try {
+            sessionStorage.setItem('guest_id', id);
+        } catch (e) {
+            console.warn('sessionStorage not available');
+        }
     }
     return id;
 };
@@ -286,9 +294,9 @@ function WelcomeScreen({ onFileClick }) {
             <div className="max-w-2xl w-full text-center space-y-8">
                 {/* Logo and Title */}
                 <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-4">
+                    {/* <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-4">
                         <Sparkles className="w-10 h-10 text-white" />
-                    </div>
+                    </div> */}
                     <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
                         Legal AI Assistant
                     </h1>
@@ -491,7 +499,7 @@ export default function Try() {
     }, [inputText]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col">
+        <div className="min-h-screen border border-red-500 bg-gradient-to-b from-gray-50 to-white flex flex-col">
             
             <LimitModal isOpen={showLimitModal} router={router} />
             <ShareChatModal 
@@ -503,7 +511,7 @@ export default function Try() {
 
             {/* Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">

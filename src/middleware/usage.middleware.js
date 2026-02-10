@@ -18,6 +18,7 @@ export async function checkUsageLimit(userId, action, amount = 1) {
         }
 
         const plan = PLANS[subscription.planId] || PLANS.basic;
+        const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
         // Check specific action limits
         switch (action) {
@@ -82,6 +83,41 @@ export async function checkUsageLimit(userId, action, amount = 1) {
                         limitType: 'contract_comparison'
                     };
                 }
+                {
+                    const dailyLimit = plan.limits?.dailyContractComparisons ?? (plan.features.contractComparison ? -1 : 0);
+                    if (dailyLimit !== -1) {
+                        const dailyUsed = usage.dailyContractComparisons?.[todayKey] || 0;
+                        if (dailyUsed >= dailyLimit) {
+                            return {
+                                allowed: false,
+                                message: `Daily limit of ${dailyLimit} contract comparison(s) reached`,
+                                upgradeRequired: true,
+                                currentUsage: dailyUsed,
+                                limit: dailyLimit,
+                                limitType: 'contract_comparison'
+                            };
+                        }
+                    }
+                }
+                break;
+
+            case 'glossary_lookup':
+                {
+                    const dailyLimit = plan.limits?.dailyGlossaryLookups ?? 0;
+                    if (dailyLimit !== -1) {
+                        const dailyUsed = usage.dailyGlossaryLookups?.[todayKey] || 0;
+                        if (dailyUsed >= dailyLimit) {
+                            return {
+                                allowed: false,
+                                message: `Daily limit of ${dailyLimit} glossary lookups reached`,
+                                upgradeRequired: true,
+                                currentUsage: dailyUsed,
+                                limit: dailyLimit,
+                                limitType: 'glossary_lookup'
+                            };
+                        }
+                    }
+                }
                 break;
 
             default:
@@ -116,7 +152,8 @@ export async function trackUsage(userId, action, amount = 1) {
             'document_analysis': 'documentsAnalyzed',
             'voice_query': 'voiceQueries',
             'pdf_report': 'pdfReportsGenerated',
-            'contract_comparison': 'contractComparisons'
+            'contract_comparison': 'contractComparisons',
+            'glossary_lookup': 'glossaryLookups'
         };
 
         const field = fieldMap[action];
@@ -125,7 +162,16 @@ export async function trackUsage(userId, action, amount = 1) {
         }
 
         // Increment usage in database
-        const updatedUsage = await Usage.incrementUsage(userId, field, amount);
+        let updatedUsage = await Usage.incrementUsage(userId, field, amount);
+
+        if (action === 'contract_comparison') {
+            const todayKey = new Date().toISOString().slice(0, 10);
+            updatedUsage = await Usage.incrementDailyUsage(userId, 'dailyContractComparisons', todayKey, amount);
+        }
+        if (action === 'glossary_lookup') {
+            const todayKey = new Date().toISOString().slice(0, 10);
+            updatedUsage = await Usage.incrementDailyUsage(userId, 'dailyGlossaryLookups', todayKey, amount);
+        }
         
         return {
             success: true,
@@ -169,7 +215,8 @@ export async function getUserUsageInfo(userId) {
                 documentsAnalyzed: usage.documentsAnalyzed || 0,
                 voiceQueries: usage.voiceQueries || 0,
                 pdfReportsGenerated: usage.pdfReportsGenerated || 0,
-                contractComparisons: usage.contractComparisons || 0
+                contractComparisons: usage.contractComparisons || 0,
+                dailyGlossaryLookups: usage.dailyGlossaryLookups || {}
             },
             plan: {
                 id: plan.id,

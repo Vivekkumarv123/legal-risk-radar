@@ -1,0 +1,111 @@
+import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { verifyToken } from '@/middleware/auth.middleware';
+import { PLANS } from '@/constants/plans';
+import { Subscription } from '@/models/subscription.model';
+import { calculateProratedAmount } from '@/utils/subscription.utils';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+export async function POST(request) {
+    try {
+        const authResult = await verifyToken(request);
+        if (!authResult.success) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { planId, billingCycle } = await request.json();
+
+        if (!planId || !PLANS[planId]) {
+            return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 });
+        }
+
+        const userId = authResult.user.uid;
+        const userEmail = authResult.user.email;
+        const plan = PLANS[planId];
+
+        // Calculate price based on billing cycle
+        const isAnnual = billingCycle === 'annual';
+        const monthlyPrice = isAnnual ? plan.price : plan.price;
+        let totalAmount = isAnnual ? monthlyPrice * 12 : monthlyPrice;
+
+        // Check for existing subscription and calculate pro-rated amount
+        const currentSubscription = await Subscription.findActiveByUser(userId);
+        let prorationApplied = false;
+        
+        console.log('📊 Current subscription check:', {
+            found: !!currentSubscription,
+            planId: currentSubscription?.planId,
+            price: currentSubscription?.price,
+            startDate: currentSubscription?.startDate,
+            endDate: currentSubscription?.endDate
+        });
+        
+        if (currentSubscription && currentSubscription.planId !== 'basic') {
+            // Calculate pro-rated amount for upgrade
+            const prorationDetails = calculateProratedAmount(currentSubscription, plan, billingCycle);
+            totalAmount = prorationDetails.proratedAmount;
+            prorationApplied = true;
+            
+            console.log('🔄 Pro-ration applied:', {
+                currentPlan: currentSubscription.planId,
+                newPlan: planId,
+                fullAmount: prorationDetails.fullAmount,
+                unusedCredit: prorationDetails.unusedCredit,
+                proratedAmount: prorationDetails.proratedAmount,
+                daysRemaining: prorationDetails.daysRemaining,
+                totalDays: prorationDetails.totalDays
+            });
+        } else {
+            console.log('💰 Full amount (no proration):', {
+                reason: currentSubscription ? 'Upgrading from Basic' : 'New subscription',
+                amount: totalAmount
+            });
+        }
+
+        // Create Stripe checkout session
+        const description = prorationApplied 
+            ? `${plan.description} - ${isAnnual ? 'Annual' : 'Monthly'} billing (Pro-rated upgrade)` 
+            : `${plan.description} - ${isAnnual ? 'Annual' : 'Monthly'} billing`;
+            
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'inr',
+                        product_data: {
+                            name: `${plan.displayName} Plan`,
+                            description: description,
+                        },
+                        unit_amount: totalAmount * 100, // Stripe expects amount in paise
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            success_url: `${process.env.NEXT_PUBLIC_APP_URL}/pages/subscription?success=true&session_id={CHECKOUT_SESSION_ID}&plan=${planId}&billing=${billingCycle}`,
+            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pages/subscription?canceled=true`,
+            customer_email: userEmail,
+            metadata: {
+                userId,
+                planId,
+                billingCycle,
+                prorationApplied: prorationApplied.toString(),
+            },
+        });
+
+        return NextResponse.json({
+            success: true,
+            sessionId: session.id,
+            url: session.url,
+        });
+
+    } catch (error) {
+        console.error('Create checkout session error:', error);
+        return NextResponse.json({ 
+            error: 'Failed to create checkout session',
+            details: error.message 
+        }, { status: 500 });
+    }
+}

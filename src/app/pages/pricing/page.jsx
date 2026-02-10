@@ -6,99 +6,40 @@ import {
     ShieldCheck, FileText, MessageCircle, Clock,
     Check, X, Briefcase, ChevronRight, Star
 } from "lucide-react";
+import { PLANS } from "@/constants/plans";
 
 export default function PricingAndFeatures() {
     const [isAnnual, setIsAnnual] = useState(true);
     const router = useRouter();
 
-    // Pricing Data with ONLY implemented features
-    const plans = [
-        {
-            id: "basic",
-            name: "Basic",
-            desc: "Essential legal guidance for individuals.",
-            price: 0,
-            features: [
-                "5 AI Legal Queries / day",
-                "Basic Document Analysis",
-                "Access to IPC/CrPC Context",
-                "Community Support",
-                "Chat History Storage"
-            ],
-            missing: [
-                "Unlimited Queries",
-                "Document Upload & OCR",
-                "Voice Queries",
-                "PDF Reports",
-                "Contract Comparison",
-                "Chrome Extension",
-                "Legal Glossary",
-                "Chat Sharing",
-                "Priority Support"
-            ],
-            cta: "Get Started Free",
-            popular: false,
-            limits: {
-                dailyQueries: 5,
-                monthlyDocuments: 0,
-            }
-        },
-        {
-            id: "pro",
-            name: "Pro Advisor",
-            desc: "For freelancers and proactive professionals.",
-            price: isAnnual ? 499 : 699,
-            features: [
-                "Unlimited AI Legal Chat",
-                "Document Upload & OCR Analysis",
-                "Voice-to-Text Queries (12+ Languages)",
-                "Export Analysis to PDF Reports",
-                "Contract Comparison Tool",
-                "Chrome Extension Access",
-                "Legal Glossary with Pop-ups",
-                "Chat Sharing with Public URLs",
-                "Priority Email Support"
-            ],
-            missing: [
-                "API Access",
-                "Team Collaboration",
-                "White-label Reports",
-                "Custom Templates"
-            ],
-            cta: "Upgrade to Pro",
-            popular: true,
-            limits: {
-                dailyQueries: -1, // Unlimited
-                monthlyDocuments: 50,
-            }
-        },
-        {
-            id: "enterprise",
-            name: "Enterprise",
-            desc: "For small firms and legal teams.",
-            price: isAnnual ? 2499 : 2999,
-            features: [
-                "Everything in Pro",
-                "Unlimited Document Analysis",
-                "Advanced Analytics Dashboard",
-                "Usage Tracking & Reports",
-                "Dedicated Account Manager",
-                "Priority Support"
-            ],
-            missing: [
-                "Team Collaboration (5 Users)",
-                "API Access for Workflows",
-                "Custom Legal Templates",
-                "White-label Reports"
-            ],
-            cta: "Contact Sales",
-            popular: false,
-            limits: {
-                dailyQueries: -1, // Unlimited
-                monthlyDocuments: -1, // Unlimited
-            }
-        },
-    ];
+    // Generate dynamic plan data from constants
+    const generatePlans = () => {
+        return Object.values(PLANS).map((plan) => {
+            // Get enabled features for this plan
+            const enabledFeatures = Object.entries(plan.features)
+                .filter(([_, feature]) => feature.enabled === true && feature.description)
+                .map(([_, feature]) => feature.description);
+
+            // Get disabled features for comparison
+            const disabledFeatures = Object.entries(plan.features)
+                .filter(([_, feature]) => feature.enabled === false && feature.description)
+                .map(([_, feature]) => feature.description);
+
+            return {
+                id: plan.id,
+                name: plan.displayName,
+                desc: plan.description,
+                price: isAnnual && plan.price > 0 ? plan.price : plan.price,
+                features: enabledFeatures,
+                missing: disabledFeatures,
+                cta: plan.id === 'basic' ? 'Get Started Free' : plan.id === 'pro' ? 'Upgrade to Pro' : 'Contact Sales',
+                popular: plan.popular,
+                limits: plan.limits,
+            };
+        });
+    };
+
+    const plans = generatePlans();
 
     useEffect(() => {
         // Pricing page is view-only, no need to check user subscription
@@ -322,7 +263,103 @@ export default function PricingAndFeatures() {
                 </div>
             </section>
 
-            {/* ================= FOOTER CTA ================= */}
+            {/* ================= FEATURE COMPARISON TABLE ================= */}
+            <section className="py-24 px-6 bg-gray-50/50" id="features-table">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Complete Feature Comparison</h2>
+                        <p className="text-gray-600 max-w-2xl mx-auto">See all features across every plan</p>
+                    </div>
+
+                    {/* Responsive Table Container */}
+                    <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-gray-200">
+                                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 sticky left-0 bg-white z-10 w-64 min-w-64">
+                                        Features
+                                    </th>
+                                    {plans.map((plan) => (
+                                        <th key={plan.id} className="px-6 py-4 text-center">
+                                            <div className="text-sm font-bold text-gray-900">{plan.name}</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {plan.price === 0 ? "Free" : `₹${plan.price}/month`}
+                                            </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {/* Get all unique features across all plans */}
+                                {Array.from(
+                                    new Set(
+                                        plans.flatMap((plan) =>
+                                            Object.entries(plan.features)
+                                                .filter(([_, feature]) => feature.description)
+                                                .map(([key, _]) => key)
+                                        )
+                                    )
+                                ).map((featureKey, idx) => (
+                                    <tr key={featureKey} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 sticky left-0 z-10 bg-inherit">
+                                            {plans[0].features[featureKey]?.description ||
+                                                plans[1].features[featureKey]?.description ||
+                                                plans[2].features[featureKey]?.description}
+                                        </td>
+                                        {plans.map((plan) => {
+                                            const feature = plan.features[featureKey];
+                                            return (
+                                                <td key={`${plan.id}-${featureKey}`} className="px-6 py-4 text-center">
+                                                    {feature?.enabled ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <Check size={20} className="text-green-600" />
+                                                            {feature.limit && feature.limit > 0 && feature.limit !== -1 && (
+                                                                <span className="text-xs text-gray-600 mt-1">
+                                                                    {feature.limit}/{feature.limitType}
+                                                                </span>
+                                                            )}
+                                                            {feature.limit === -1 && (
+                                                                <span className="text-xs text-gray-600 mt-1">Unlimited</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <X size={20} className="text-gray-300 mx-auto" />
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Table Legend */}
+                    <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
+                            <Check size={20} className="text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Included</p>
+                                <p className="text-sm text-gray-600">Available in this plan</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                            <X size={20} className="text-gray-300 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Not Included</p>
+                                <p className="text-sm text-gray-600">Available in higher plans</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                            <Briefcase size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Limits</p>
+                                <p className="text-sm text-gray-600">Daily or monthly quota</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
             <section className="bg-gray-900 text-white py-20 px-6 relative overflow-hidden">
                 {/* Abstract shapes */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-3xl opacity-20 -mr-16 -mt-16"></div>

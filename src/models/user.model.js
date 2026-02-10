@@ -11,9 +11,27 @@ const UserSchema = z.object({
   
   provider: z.enum(["local", "google"]).default("local"),
   role: z.string().default("user"),
+  plan: z.string().default("free"),
   
   avatar: z.string().url().optional(),
   refreshToken: z.string().optional(),
+  
+  // Settings
+  settings: z.object({
+    notifications: z.object({
+      email: z.boolean().default(true),
+      push: z.boolean().default(false),
+      updates: z.boolean().default(true)
+    }).optional(),
+    privacy: z.object({
+      shareAnalytics: z.boolean().default(false),
+      publicProfile: z.boolean().default(false)
+    }).optional(),
+    preferences: z.object({
+      theme: z.string().default("light"),
+      language: z.string().default("en")
+    }).optional()
+  }).optional(),
   
   // OTP Fields
   resetOtp: z.string().optional(),

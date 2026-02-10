@@ -1,14 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Upload, ArrowRight, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { authenticatedFetch } from "@/utils/auth.utils";
+import UpgradePrompt from "@/components/subscription/UpgradePrompt";
 
 export default function ClauseComparison() {
     const [contracts, setContracts] = useState({ contract1: null, contract2: null });
     const [comparison, setComparison] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [subscription, setSubscription] = useState(null);
+    const [planDetails, setPlanDetails] = useState(null);
+    const [usage, setUsage] = useState(null);
+    const [loadingPlan, setLoadingPlan] = useState(true);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const [upgradeMessage, setUpgradeMessage] = useState("");
+
+    useEffect(() => {
+        const fetchPlanData = async () => {
+            try {
+                const [subRes, usageRes] = await Promise.all([
+                    authenticatedFetch('/api/subscription'),
+                    authenticatedFetch('/api/usage')
+                ]);
+
+                const subJson = await subRes.json();
+                if (subJson.success) {
+                    setSubscription(subJson.subscription);
+                    setPlanDetails(subJson.planDetails);
+                }
+
+                const usageJson = await usageRes.json();
+                if (usageJson.success) {
+                    setUsage(usageJson.currentUsage);
+                }
+            } catch (error) {
+                if (error.message !== 'Authentication required') {
+                    console.error('Plan fetch error:', error);
+                }
+            } finally {
+                setLoadingPlan(false);
+            }
+        };
+
+        fetchPlanData();
+    }, []);
+
+    const getDailyLimit = () => {
+        if (!planDetails) return 0;
+        return planDetails.limits?.dailyContractComparisons ?? (planDetails.features?.contractComparison ? -1 : 0);
+    };
+
+    const getDailyUsed = () => {
+        if (!usage) return 0;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        return usage.dailyContractComparisons?.[todayKey] || 0;
+    };
 
     const handleFileUpload = (contractKey, file) => {
         setContracts(prev => ({ ...prev, [contractKey]: file }));
@@ -16,6 +64,23 @@ export default function ClauseComparison() {
 
     const compareContracts = async () => {
         if (!contracts.contract1 || !contracts.contract2) return;
+
+        if (loadingPlan) {
+            return;
+        }
+
+        if (!subscription || !planDetails) {
+            toast.error('Please log in to compare contracts');
+            return;
+        }
+
+        const limit = getDailyLimit();
+        const used = getDailyUsed();
+        if (limit !== -1 && used >= limit) {
+            setUpgradeMessage(`You have reached your daily contract comparison limit (${limit}/day).`);
+            setShowUpgrade(true);
+            return;
+        }
 
         setLoading(true);
         const formData = new FormData();
@@ -28,7 +93,22 @@ export default function ClauseComparison() {
                 body: formData
             });
             const result = await response.json();
+            if (!response.ok) {
+                if (response.status === 403) {
+                    setUpgradeMessage(result.upgradeMessage || result.error || 'Upgrade required for contract comparison.');
+                    setShowUpgrade(true);
+                    return;
+                }
+                toast.error(result.error || 'Failed to compare contracts');
+                return;
+            }
             setComparison(result);
+
+            const usageRes = await authenticatedFetch('/api/usage');
+            const usageJson = await usageRes.json();
+            if (usageJson.success) {
+                setUsage(usageJson.currentUsage);
+            }
         } catch (error) {
             console.error('Comparison failed:', error);
             if (error.message === 'Authentication required') {
@@ -46,6 +126,13 @@ export default function ClauseComparison() {
             <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">Contract Clause Comparison</h2>
                 <p className="text-gray-600">Upload two contracts to compare clauses and identify differences</p>
+                {subscription && planDetails && (
+                    <p className="text-xs text-gray-500 mt-2">
+                        {getDailyLimit() === -1
+                            ? "Unlimited comparisons"
+                            : `${getDailyUsed()} of ${getDailyLimit()} comparisons used today`}
+                    </p>
+                )}
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -128,6 +215,15 @@ export default function ClauseComparison() {
                     </div>
                 </div>
             )}
+
+            <UpgradePrompt
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                feature="contract_comparison"
+                currentPlan={subscription?.planId || "basic"}
+                currentPlanExpiry={subscription?.endDate || null}
+                message={upgradeMessage}
+            />
         </div>
     );
 }

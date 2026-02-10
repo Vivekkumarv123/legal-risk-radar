@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Search, Book, X, ExternalLink } from "lucide-react";
+import toast from "react-hot-toast";
+import UpgradePrompt from "@/components/subscription/UpgradePrompt";
+import { authenticatedFetch } from "@/utils/auth.utils";
 
 export default function LegalGlossary() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -9,6 +12,12 @@ export default function LegalGlossary() {
     const [glossaryData, setGlossaryData] = useState([]);
     const [filteredTerms, setFilteredTerms] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [subscription, setSubscription] = useState(null);
+    const [planDetails, setPlanDetails] = useState(null);
+    const [usage, setUsage] = useState(null);
+    const [loadingPlan, setLoadingPlan] = useState(true);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const [upgradeMessage, setUpgradeMessage] = useState("");
 
     useEffect(() => {
         loadGlossaryData();
@@ -39,8 +48,128 @@ export default function LegalGlossary() {
         }
     };
 
+    useEffect(() => {
+        const fetchPlanData = async () => {
+            try {
+                const [subRes, usageRes] = await Promise.all([
+                    authenticatedFetch('/api/subscription'),
+                    authenticatedFetch('/api/usage')
+                ]);
+
+                const subJson = await subRes.json();
+                if (subJson.success) {
+                    setSubscription(subJson.subscription);
+                    setPlanDetails(subJson.planDetails);
+                    console.log('Plan details loaded:', subJson.planDetails);
+                }
+
+                const usageJson = await usageRes.json();
+                if (usageJson.success) {
+                    setUsage(usageJson.currentUsage);
+                    const todayKey = new Date().toISOString().slice(0, 10);
+                    const glossaryCount = usageJson.currentUsage.dailyGlossaryLookups?.[todayKey] || 0;
+                    console.log('Initial glossary lookup count:', glossaryCount);
+                    console.log('Usage data:', usageJson.currentUsage);
+                }
+            } catch (error) {
+                if (error.message !== 'Authentication required') {
+                    console.error('Plan fetch error:', error);
+                }
+            } finally {
+                setLoadingPlan(false);
+            }
+        };
+
+        fetchPlanData();
+    }, []);
+
+    const getDailyLimit = () => {
+        if (!planDetails) return 0;
+        return planDetails.limits?.dailyGlossaryLookups ?? 0;
+    };
+
+    const getDailyUsed = () => {
+        if (!usage) return 0;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        return usage.dailyGlossaryLookups?.[todayKey] || 0;
+    };
+
+    // Debug: Log when usage changes
+    useEffect(() => {
+        if (usage) {
+            const todayKey = new Date().toISOString().slice(0, 10);
+            const count = usage.dailyGlossaryLookups?.[todayKey] || 0;
+            console.log('Usage state updated. Glossary lookups today:', count);
+        }
+    }, [usage]);
+
+    const handleSelectTerm = async (term) => {
+  if (loadingPlan) return;
+
+  if (!subscription || !planDetails) {
+    toast.error('Please log in to view glossary details');
+    return;
+  }
+
+  // 🚀 Open modal instantly using local data
+  setSelectedTerm(term);
+
+  // 🔁 Track usage in background (non-blocking)
+  try {
+    const res = await authenticatedFetch('/api/legal-glossary/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ term: term.term }),
+    });
+
+    if (res.status === 403) {
+      const data = await res.json();
+
+      // Close modal + show upgrade
+      setSelectedTerm(null);
+      setUpgradeMessage(
+        data.upgradeMessage || 'Upgrade required for glossary lookups.'
+      );
+      setShowUpgrade(true);
+      return;
+    }
+
+    // Refresh usage immediately after successful tracking
+    if (res.ok) {
+      const usageRes = await authenticatedFetch('/api/usage');
+      if (usageRes.ok) {
+        const usageJson = await usageRes.json();
+        if (usageJson.success) {
+          setUsage(usageJson.currentUsage);
+          
+          // Update the displayed count immediately
+          const todayKey = new Date().toISOString().slice(0, 10);
+          const newCount = usageJson.currentUsage.dailyGlossaryLookups?.[todayKey] || 0;
+          console.log('Updated glossary lookup count:', newCount);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Usage tracking failed:', error);
+  }
+};
+
+
     const categories = [
-        'All', 'Contract Law', 'Criminal Law', 'Civil Law', 'Corporate Law', 'Property Law'
+        'All', 
+        'Criminal Law', 
+        'Civil Law', 
+        'Contract Law', 
+        'Corporate Law', 
+        'Constitutional Law',
+        'Property Law', 
+        'Family Law', 
+        'Tax Law', 
+        'Labour Law', 
+        'Intellectual Property Law',
+        'Environmental Law',
+        'Cyber Law',
+        'Administrative Law'
     ];
 
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -57,6 +186,13 @@ export default function LegalGlossary() {
                     <h1 className="text-3xl font-bold text-gray-900">Legal Glossary</h1>
                 </div>
                 <p className="text-gray-600">Comprehensive dictionary of Indian legal terms and concepts</p>
+                {subscription && planDetails && (
+                    <p className="text-xs text-gray-500 mt-2">
+                        {getDailyLimit() === -1
+                            ? "Unlimited glossary lookups"
+                            : `${getDailyUsed()} of ${getDailyLimit()} lookups used today`}
+                    </p>
+                )}
             </div>
 
             {/* Search Bar */}
@@ -98,7 +234,7 @@ export default function LegalGlossary() {
                     {filteredByCategory.map((term, index) => (
                         <div
                             key={index}
-                            onClick={() => setSelectedTerm(term)}
+                            onClick={() => handleSelectTerm(term)}
                             className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all"
                         >
                             <h3 className="font-bold text-lg text-gray-900 mb-2">{term.term}</h3>
@@ -179,6 +315,16 @@ export default function LegalGlossary() {
                     </div>
                 </div>
             )}
+
+            <UpgradePrompt
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                feature="glossary_lookup"
+                currentPlan={subscription?.planId || "basic"}
+                currentPlanExpiry={subscription?.endDate || null}
+                message={upgradeMessage}
+                upgradeMessage={upgradeMessage}
+            />
         </div>
     );
 }

@@ -18,6 +18,19 @@ export async function GET(request) {
         // If no subscription exists, create default Basic plan
         if (!subscription) {
             const basicPlan = PLANS.basic;
+            const features = {
+                aiQueries: basicPlan.limits?.dailyQueries || 5,
+                documentAnalysis: basicPlan.features?.documentAnalysis?.enabled || false,
+                voiceQueries: basicPlan.features?.voiceQueries?.enabled || false,
+                pdfReports: basicPlan.features?.pdfReports?.enabled || false,
+                prioritySupport: basicPlan.features?.prioritySupport?.enabled || false,
+                apiAccess: false,
+                teamCollaboration: 0,
+                contractComparison: basicPlan.features?.contractComparison?.enabled || false,
+                chromeExtension: basicPlan.features?.chromeExtension?.enabled || false,
+                newsletter: false,
+            };
+            
             subscription = await Subscription.create({
                 userId,
                 planId: basicPlan.id,
@@ -27,7 +40,7 @@ export async function GET(request) {
                 endDate: null, // Basic plan doesn't expire
                 price: basicPlan.price,
                 currency: basicPlan.currency,
-                features: basicPlan.features
+                features
             });
         }
 
@@ -85,6 +98,20 @@ export async function POST(request) {
         const startDate = new Date();
         const endDate = plan.id === 'basic' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
+        // Convert features
+        const features = {
+            aiQueries: plan.limits?.dailyQueries || -1,
+            documentAnalysis: plan.features?.documentAnalysis?.enabled || false,
+            voiceQueries: plan.features?.voiceQueries?.enabled || false,
+            pdfReports: plan.features?.pdfReports?.enabled || false,
+            prioritySupport: plan.features?.prioritySupport?.enabled || false,
+            apiAccess: false,
+            teamCollaboration: 0,
+            contractComparison: plan.features?.contractComparison?.enabled || false,
+            chromeExtension: plan.features?.chromeExtension?.enabled || false,
+            newsletter: false,
+        };
+
         // Create new subscription in database
         const subscription = await Subscription.create({
             userId,
@@ -96,7 +123,7 @@ export async function POST(request) {
             price: plan.price,
             currency: plan.currency,
             paymentId: paymentResult.paymentId,
-            features: plan.features
+            features
         });
 
         return NextResponse.json({
@@ -128,6 +155,19 @@ export async function DELETE(request) {
             
             // Create new Basic plan subscription
             const basicPlan = PLANS.basic;
+            const features = {
+                aiQueries: basicPlan.limits?.dailyQueries || 5,
+                documentAnalysis: basicPlan.features?.documentAnalysis?.enabled || false,
+                voiceQueries: basicPlan.features?.voiceQueries?.enabled || false,
+                pdfReports: basicPlan.features?.pdfReports?.enabled || false,
+                prioritySupport: basicPlan.features?.prioritySupport?.enabled || false,
+                apiAccess: false,
+                teamCollaboration: 0,
+                contractComparison: basicPlan.features?.contractComparison?.enabled || false,
+                chromeExtension: basicPlan.features?.chromeExtension?.enabled || false,
+                newsletter: false,
+            };
+            
             await Subscription.create({
                 userId,
                 planId: basicPlan.id,
@@ -137,7 +177,7 @@ export async function DELETE(request) {
                 endDate: null,
                 price: basicPlan.price,
                 currency: basicPlan.currency,
-                features: basicPlan.features
+                features
             });
         }
 

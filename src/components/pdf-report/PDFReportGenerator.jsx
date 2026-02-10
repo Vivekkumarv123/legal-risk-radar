@@ -1,16 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, FileText, AlertTriangle, Shield, Clock } from "lucide-react";
 import jsPDF from 'jspdf';
+import toast from "react-hot-toast";
+import UpgradePrompt from "@/components/subscription/UpgradePrompt";
+import { authenticatedFetch } from "@/utils/auth.utils";
 
 export default function PDFReportGenerator({ analysisData }) {
     const [generating, setGenerating] = useState(false);
+    const [subscription, setSubscription] = useState(null);
+    const [usage, setUsage] = useState(null);
+    const [planDetails, setPlanDetails] = useState(null);
+    const [loadingPlan, setLoadingPlan] = useState(true);
+    const [showUpgrade, setShowUpgrade] = useState(false);
+    const [upgradeMessage, setUpgradeMessage] = useState("");
+
+    useEffect(() => {
+        const fetchPlanData = async () => {
+            try {
+                const response = await authenticatedFetch('/api/subscription');
+                const result = await response.json();
+                if (result.success) {
+                    setSubscription(result.subscription);
+                    setUsage(result.usage);
+                    setPlanDetails(result.planDetails);
+                }
+            } catch (error) {
+                if (error.message !== 'Authentication required') {
+                    console.error('Plan fetch error:', error);
+                }
+            } finally {
+                setLoadingPlan(false);
+            }
+        };
+
+        fetchPlanData();
+    }, []);
+
+    const getPdfLimit = () => {
+        if (!planDetails) return 0;
+        return planDetails.limits?.pdfReportsMonthly ?? (planDetails.features?.pdfReports ? -1 : 0);
+    };
+
+    const hasPdfAccess = () => {
+        const limit = getPdfLimit();
+        if (limit === -1) return true;
+        return limit > 0;
+    };
+
+    const getPdfUsageText = () => {
+        const limit = getPdfLimit();
+        if (limit === -1) return "Unlimited PDF reports";
+        const used = usage?.pdfReportsGenerated || 0;
+        return `${used} of ${limit} PDF reports used this month`;
+    };
 
     const generatePDFReport = async () => {
+        if (loadingPlan) {
+            return;
+        }
+
+        if (!subscription || !planDetails) {
+            toast.error("Please log in to download PDF reports.");
+            return;
+        }
+
+        if (!hasPdfAccess()) {
+            setUpgradeMessage("PDF report downloads are available on Pro and Enterprise plans.");
+            setShowUpgrade(true);
+            return;
+        }
+
+        const limit = getPdfLimit();
+        const used = usage?.pdfReportsGenerated || 0;
+        if (limit !== -1 && used >= limit) {
+            setUpgradeMessage(`You have used all ${limit} PDF reports for this month.`);
+            setShowUpgrade(true);
+            return;
+        }
+
         setGenerating(true);
         
         try {
+            const usageResponse = await authenticatedFetch('/api/usage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'pdf_report', amount: 1 })
+            });
+
+            const usageResult = await usageResponse.json();
+            if (!usageResult.success) {
+                if (usageResponse.status === 403) {
+                    setUpgradeMessage("You've reached your monthly PDF report limit.");
+                    setShowUpgrade(true);
+                    return;
+                }
+                toast.error(usageResult.error || "Unable to track PDF usage.");
+                return;
+            }
+
+            setUsage(usageResult.usage);
+
             const pdf = new jsPDF();
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
@@ -122,7 +213,7 @@ export default function PDFReportGenerator({ analysisData }) {
 
         } catch (error) {
             console.error('PDF generation failed:', error);
-            alert('Failed to generate PDF report');
+            toast.error('Failed to generate PDF report');
         } finally {
             setGenerating(false);
         }
@@ -203,7 +294,19 @@ export default function PDFReportGenerator({ analysisData }) {
                     <li>Actionable recommendations</li>
                     <li>Compliance checklist</li>
                 </ul>
+                {subscription && planDetails && (
+                    <p className="mt-3 text-xs text-gray-500">{getPdfUsageText()}</p>
+                )}
             </div>
+
+            <UpgradePrompt
+                isOpen={showUpgrade}
+                onClose={() => setShowUpgrade(false)}
+                feature="pdf_report"
+                currentPlan={subscription?.planId || "basic"}
+                currentPlanExpiry={subscription?.endDate || null}
+                message={upgradeMessage}
+            />
         </div>
     );
 }

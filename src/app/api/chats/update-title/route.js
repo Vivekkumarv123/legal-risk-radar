@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 
 export async function POST(req) {
   try {
-    const { chatId } = await req.json();
+    const { chatId, title } = await req.json();
     
     if (!chatId) {
       return NextResponse.json({ error: "Chat ID required" }, { status: 400 });
@@ -37,24 +37,31 @@ export async function POST(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Get first user message to generate title
-    const messagesSnapshot = await db.collection("chats")
-      .doc(chatId)
-      .collection("messages")
-      .where("role", "==", "user")
-      .orderBy("createdAt", "asc")
-      .limit(1)
-      .get();
+    let newTitle;
 
-    if (messagesSnapshot.empty) {
-      return NextResponse.json({ error: "No messages found" }, { status: 404 });
+    // If title is provided, use it (manual rename)
+    if (title && title.trim()) {
+      newTitle = title.trim();
+    } else {
+      // Auto-generate title from first message
+      const messagesSnapshot = await db.collection("chats")
+        .doc(chatId)
+        .collection("messages")
+        .where("role", "==", "user")
+        .orderBy("createdAt", "asc")
+        .limit(1)
+        .get();
+
+      if (messagesSnapshot.empty) {
+        return NextResponse.json({ error: "No messages found" }, { status: 404 });
+      }
+
+      const firstMessage = messagesSnapshot.docs[0].data();
+      const documentContext = chatData.documentContext || "";
+
+      // Generate new title
+      newTitle = await generateChatTitle(firstMessage.content, documentContext);
     }
-
-    const firstMessage = messagesSnapshot.docs[0].data();
-    const documentContext = chatData.documentContext || "";
-
-    // Generate new title
-    const newTitle = await generateChatTitle(firstMessage.content, documentContext);
 
     // Update chat title
     await db.collection("chats").doc(chatId).update({

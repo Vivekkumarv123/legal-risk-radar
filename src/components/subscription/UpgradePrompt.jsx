@@ -49,6 +49,7 @@ export default function UpgradePrompt({
             case 'pdf_report': return 'PDF Reports';
             case 'contract_comparison': return 'Contract Comparison';
             case 'chrome_extension': return 'Chrome Extension';
+            case 'glossary_lookup': return 'Legal Glossary';
             default: return 'Premium Feature';
         }
     };
