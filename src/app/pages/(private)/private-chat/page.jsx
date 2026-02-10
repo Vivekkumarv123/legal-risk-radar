@@ -24,6 +24,62 @@ const ClauseComparison = dynamic(() => import("@/components/clause-comparison/Cl
 const LegalGlossary = dynamic(() => import("@/components/legal-glossary/LegalGlossary"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 const LegalCommunity = dynamic(() => import("@/components/community/LegalCommunity"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 
+// ==========================================
+// SUB-COMPONENTS
+// ==========================================
+
+function RiskBadge({ level, count, onClick }) {
+    const styles = { low: "bg-green-100 text-green-700 border-green-200 hover:bg-green-200", medium: "bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200", high: "bg-red-100 text-red-700 border-red-200 hover:bg-red-200" };
+    const icons = { low: "🟢", medium: "🟡", high: "🔴" };
+    return (
+        <button onClick={onClick} className={`${styles[level]} border px-3 py-1.5 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors`}>
+            <span className="text-xs">{icons[level]}</span><span className="capitalize">{level}</span><span className="bg-white/60 px-1.5 py-0.5 rounded text-xs ml-1">{count}</span>
+        </button>
+    );
+}
+
+function ResultCard({ analysis, scrollToClause }) {
+    const riskCounts = {
+        low: analysis.clauses?.filter(c => c.risk_level === 'low').length || 0,
+        medium: analysis.clauses?.filter(c => c.risk_level === 'medium').length || 0,
+        high: analysis.clauses?.filter(c => c.risk_level === 'high').length || 0
+    };
+    const overallRisk = riskCounts.high > 0 ? 'High' : riskCounts.medium > 2 ? 'Medium' : 'Low';
+    const riskColor = overallRisk === 'High' ? 'text-red-600' : overallRisk === 'Medium' ? 'text-yellow-600' : 'text-green-600';
+
+    return (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm w-full overflow-hidden">
+            <div className="p-6 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
+                <div className="flex items-center gap-3 mb-4"><Shield className={`w-8 h-8 ${riskColor}`} /><h2 className="text-xl font-bold text-gray-900">Risk Level: {overallRisk}</h2></div>
+                <p className="text-gray-600 text-sm leading-relaxed">{analysis.summary}</p>
+            </div>
+            <div className="p-4 bg-gray-50/50 flex flex-wrap gap-2 border-b border-gray-100">
+                {riskCounts.high > 0 && <RiskBadge level="high" count={riskCounts.high} onClick={() => scrollToClause('high')} />}
+                {riskCounts.medium > 0 && <RiskBadge level="medium" count={riskCounts.medium} onClick={() => scrollToClause('medium')} />}
+                {riskCounts.low > 0 && <RiskBadge level="low" count={riskCounts.low} onClick={() => scrollToClause('low')} />}
+            </div>
+            <div className="p-6 space-y-4">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Analyzed Clauses</h3>
+                {analysis.clauses?.map((clause, idx) => (
+                    <div key={idx} id={`clause-${clause.risk_level}-${idx}`} className={`p-4 rounded-xl border ${clause.risk_level === 'high' ? 'bg-red-50 border-red-100' : clause.risk_level === 'medium' ? 'bg-yellow-50 border-yellow-100' : 'bg-green-50 border-green-100'}`}>
+                        <div className="flex justify-between items-start mb-2 gap-2">
+                            <h4 className="font-semibold text-gray-900 text-sm">{clause.clause}</h4>
+                            <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${clause.risk_level === 'high' ? 'bg-red-200 text-red-800' : clause.risk_level === 'medium' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>{clause.risk_level}</span>
+                        </div>
+                        <p className="text-gray-700 text-sm">{clause.explanation}</p>
+                    </div>
+                ))}
+            </div>
+            {analysis.missing_protections?.length > 0 && (
+                <div className="p-6 bg-orange-50 border-t border-orange-100">
+                    <h3 className="text-sm font-semibold text-orange-800 mb-3 flex items-center gap-2">Missing Protections</h3>
+                    <ul className="space-y-2">{analysis.missing_protections.map((prot, idx) => (<li key={idx} className="flex items-start gap-2 text-sm text-gray-700"><span className="text-orange-500 mt-1">•</span>{prot}</li>))}</ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // Profile Dropdown Component (Dark Mode Updated)
 function ProfileDropdown({ isOpen, onClose, user, onUpgrade, onSettings, onLogout, onHelpCenter, onReleaseNotes, onTerms, onReportBug, position = "top" }) {
     const dropdownRef = useRef(null);
@@ -340,7 +396,24 @@ export default function Demo() {
 
         const loadVoices = () => {
             const v = window.speechSynthesis.getVoices();
-            if (v.length > 0) setAvailableVoices(v);
+            if (v.length > 0) {
+                setAvailableVoices(v);
+                console.log('Available voices:', v.map(voice => ({ name: voice.name, lang: voice.lang })));
+                
+                // Log Indian language voices specifically
+                const indianVoices = v.filter(voice => 
+                    voice.lang.includes('hi') || 
+                    voice.lang.includes('bn') || 
+                    voice.lang.includes('ta') || 
+                    voice.lang.includes('te') || 
+                    voice.lang.includes('gu') || 
+                    voice.lang.includes('kn') || 
+                    voice.lang.includes('ml') || 
+                    voice.lang.includes('pa') ||
+                    voice.lang.includes('en-IN')
+                );
+                console.log('Indian language voices:', indianVoices.map(v => ({ name: v.name, lang: v.lang })));
+            }
         };
         loadVoices();
         window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -470,9 +543,82 @@ export default function Demo() {
     // ==========================================
     const getBestVoice = (text) => {
         if (!availableVoices.length) return null;
-        const isIndianLang = /[\u0900-\u097F]/.test(text);
-        if (isIndianLang) return availableVoices.find(v => v.lang.includes('hi') || v.name.includes('Hindi')) || null;
-        return availableVoices.find(v => v.lang === 'en-US' || v.name.includes('Google US English')) || null;
+        
+        // Detect language from text using Unicode ranges
+        const isHindi = /[\u0900-\u097F]/.test(text); // Devanagari script (Hindi, Marathi, Sanskrit)
+        const isBengali = /[\u0980-\u09FF]/.test(text);
+        const isTamil = /[\u0B80-\u0BFF]/.test(text);
+        const isTelugu = /[\u0C00-\u0C7F]/.test(text);
+        const isGujarati = /[\u0A80-\u0AFF]/.test(text);
+        const isKannada = /[\u0C80-\u0CFF]/.test(text);
+        const isMalayalam = /[\u0D00-\u0D7F]/.test(text);
+        const isPunjabi = /[\u0A00-\u0A7F]/.test(text);
+        
+        // Try to find the best voice for the detected language
+        if (isHindi) {
+            return availableVoices.find(v => 
+                v.lang.includes('hi') || 
+                v.name.toLowerCase().includes('hindi') ||
+                v.lang === 'hi-IN'
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isBengali) {
+            return availableVoices.find(v => 
+                v.lang.includes('bn') || 
+                v.name.toLowerCase().includes('bengali')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isTamil) {
+            return availableVoices.find(v => 
+                v.lang.includes('ta') || 
+                v.name.toLowerCase().includes('tamil')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isTelugu) {
+            return availableVoices.find(v => 
+                v.lang.includes('te') || 
+                v.name.toLowerCase().includes('telugu')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isGujarati) {
+            return availableVoices.find(v => 
+                v.lang.includes('gu') || 
+                v.name.toLowerCase().includes('gujarati')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isKannada) {
+            return availableVoices.find(v => 
+                v.lang.includes('kn') || 
+                v.name.toLowerCase().includes('kannada')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isMalayalam) {
+            return availableVoices.find(v => 
+                v.lang.includes('ml') || 
+                v.name.toLowerCase().includes('malayalam')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        if (isPunjabi) {
+            return availableVoices.find(v => 
+                v.lang.includes('pa') || 
+                v.name.toLowerCase().includes('punjabi')
+            ) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
+        }
+        
+        // Default to English voice
+        return availableVoices.find(v => 
+            v.lang === 'en-US' || 
+            v.lang === 'en-IN' ||
+            v.name.includes('Google US English') ||
+            v.name.includes('Google UK English')
+        ) || availableVoices[0] || null;
     };
 
     const cleanMarkdown = (text) => {
@@ -485,40 +631,175 @@ export default function Demo() {
             if (!window.speechSynthesis) { resolve(); return; }
             window.speechSynthesis.cancel();
             const cleanText = cleanMarkdown(text);
+            if (!cleanText) { resolve(); return; }
+            
             const utterance = new SpeechSynthesisUtterance(cleanText);
             const voice = getBestVoice(cleanText);
-            if (voice) utterance.voice = voice;
-            utterance.lang = voice ? voice.lang : (/[\u0900-\u097F]/.test(cleanText) ? 'hi-IN' : 'en-US');
+            
+            if (voice) {
+                utterance.voice = voice;
+            }
+            
+            // Detect language and set appropriate lang code
+            const isHindi = /[\u0900-\u097F]/.test(cleanText);
+            const isBengali = /[\u0980-\u09FF]/.test(cleanText);
+            const isTamil = /[\u0B80-\u0BFF]/.test(cleanText);
+            const isTelugu = /[\u0C00-\u0C7F]/.test(cleanText);
+            const isGujarati = /[\u0A80-\u0AFF]/.test(cleanText);
+            const isKannada = /[\u0C80-\u0CFF]/.test(cleanText);
+            const isMalayalam = /[\u0D00-\u0D7F]/.test(cleanText);
+            const isPunjabi = /[\u0A00-\u0A7F]/.test(cleanText);
+            
+            if (voice && voice.lang) {
+                utterance.lang = voice.lang;
+            } else if (isHindi) {
+                utterance.lang = 'hi-IN';
+            } else if (isBengali) {
+                utterance.lang = 'bn-IN';
+            } else if (isTamil) {
+                utterance.lang = 'ta-IN';
+            } else if (isTelugu) {
+                utterance.lang = 'te-IN';
+            } else if (isGujarati) {
+                utterance.lang = 'gu-IN';
+            } else if (isKannada) {
+                utterance.lang = 'kn-IN';
+            } else if (isMalayalam) {
+                utterance.lang = 'ml-IN';
+            } else if (isPunjabi) {
+                utterance.lang = 'pa-IN';
+            } else {
+                utterance.lang = 'en-US';
+            }
+            
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
             utterance.onstart = () => setLiveStatus("speaking");
             utterance.onend = () => { setLiveStatus("idle"); resolve(); };
-            utterance.onerror = () => { setLiveStatus("idle"); resolve(); };
+            utterance.onerror = (event) => { 
+                // Ignore "interrupted" and "canceled" errors - these are normal
+                if (event.error === 'interrupted' || event.error === 'canceled') {
+                    console.log('Speech interrupted in live mode (normal behavior)');
+                }
+                setLiveStatus("idle"); 
+                resolve(); 
+            };
             window.speechSynthesis.speak(utterance);
         });
     };
 
     const speakText = (text) => {
-        if (!window.speechSynthesis) return;
+        if (!window.speechSynthesis) {
+            console.warn('Speech synthesis not supported');
+            toast.error('Text-to-speech is not supported in your browser');
+            return;
+        }
         if (!text) {
             console.warn('No text to speak');
             return;
         }
+        
         window.speechSynthesis.cancel();
         const cleanText = cleanMarkdown(text);
+        
         if (!cleanText) {
             console.warn('Text is empty after cleaning');
             return;
         }
+        
         const utterance = new SpeechSynthesisUtterance(cleanText);
         const voice = getBestVoice(cleanText);
-        if (voice) utterance.voice = voice;
-        utterance.lang = voice ? voice.lang : (/[\u0900-\u097F]/.test(cleanText) ? 'hi-IN' : 'en-US');
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
+        
+        if (voice) {
+            utterance.voice = voice;
+            console.log('Using voice:', voice.name, voice.lang);
+        }
+        
+        // Detect language and set appropriate lang code
+        const isHindi = /[\u0900-\u097F]/.test(cleanText);
+        const isBengali = /[\u0980-\u09FF]/.test(cleanText);
+        const isTamil = /[\u0B80-\u0BFF]/.test(cleanText);
+        const isTelugu = /[\u0C00-\u0C7F]/.test(cleanText);
+        const isGujarati = /[\u0A80-\u0AFF]/.test(cleanText);
+        const isKannada = /[\u0C80-\u0CFF]/.test(cleanText);
+        const isMalayalam = /[\u0D00-\u0D7F]/.test(cleanText);
+        const isPunjabi = /[\u0A00-\u0A7F]/.test(cleanText);
+        
+        // Set language code based on detected script
+        if (voice && voice.lang) {
+            utterance.lang = voice.lang;
+        } else if (isHindi) {
+            utterance.lang = 'hi-IN';
+        } else if (isBengali) {
+            utterance.lang = 'bn-IN';
+        } else if (isTamil) {
+            utterance.lang = 'ta-IN';
+        } else if (isTelugu) {
+            utterance.lang = 'te-IN';
+        } else if (isGujarati) {
+            utterance.lang = 'gu-IN';
+        } else if (isKannada) {
+            utterance.lang = 'kn-IN';
+        } else if (isMalayalam) {
+            utterance.lang = 'ml-IN';
+        } else if (isPunjabi) {
+            utterance.lang = 'pa-IN';
+        } else {
+            utterance.lang = 'en-US';
+        }
+        
+        // Set speech parameters for better quality
+        utterance.rate = 0.9; // Slightly slower for better clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        utterance.onstart = () => {
+            setIsSpeaking(true);
+            console.log('Speech started:', utterance.lang);
+        };
+        
+        utterance.onend = () => {
+            setIsSpeaking(false);
+            console.log('Speech ended');
+        };
+        
+        utterance.onerror = (event) => {
+            setIsSpeaking(false);
+            
+            // Ignore "interrupted" and "canceled" errors - these are normal when stopping speech
+            if (event.error === 'interrupted' || event.error === 'canceled') {
+                console.log('Speech interrupted (normal behavior)');
+                return;
+            }
+            
+            console.error('Speech error:', event.error);
+            
+            // Provide user feedback for actual errors only
+            if (event.error === 'not-allowed') {
+                toast.error('Please allow audio permissions');
+            } else if (event.error === 'network') {
+                toast.error('Network error. Please check your connection.');
+            } else if (event.error === 'synthesis-unavailable') {
+                toast.error('Text-to-speech is not available for this language');
+            } else if (event.error === 'synthesis-failed') {
+                toast.error('Speech synthesis failed. Please try again.');
+            }
+        };
+        
         window.speechSynthesis.speak(utterance);
     };
 
-    const stopSpeaking = () => { if (window.speechSynthesis) { window.speechSynthesis.cancel(); setIsSpeaking(false); } };
+    const stopSpeaking = () => { 
+        if (window.speechSynthesis) { 
+            // Check if speech is currently active before canceling
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel(); 
+            }
+            setIsSpeaking(false); 
+        } 
+    };
 
     const startLiveLoop = () => {
         if (!recognitionRef.current) return;
@@ -555,41 +836,89 @@ export default function Demo() {
         if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
+            
+            // Enhanced configuration for better multilingual support
             recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 3;
+            recognition.interimResults = true; // Enable interim results for better feedback
+            recognition.maxAlternatives = 3; // Get multiple alternatives
+            
+            // Set language based on user preference
             recognition.lang = speechLanguage;
+            
             recognition.onresult = (event) => {
-                let finalTranscript = "";
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                // Process all results
                 for (let i = event.resultIndex; i < event.results.length; i++) {
-                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
                 }
-                if (finalTranscript.trim()) handleLiveInput(finalTranscript);
+                
+                // Use final transcript if available, otherwise interim
+                const bestTranscript = finalTranscript || interimTranscript;
+                
+                if (bestTranscript.trim()) {
+                    if (isLiveMode) {
+                        handleLiveInput(bestTranscript);
+                    } else {
+                        setInputText(bestTranscript);
+                    }
+                }
             };
+
             recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
                 setIsRecognitionRunning(false);
+                
+                // If current language fails, try English as fallback
+                if (event.error === 'language-not-supported' && recognition.lang !== 'en-IN') {
+                    console.log(`${recognition.lang} not supported, falling back to English`);
+                    recognition.lang = 'en-IN';
+                    return;
+                }
+                
                 if (event.error === 'no-speech') return;
+                
                 if (isLiveMode) {
                     setLiveStatus("idle");
+                    // Provide user feedback in selected language
+                    const errorMessage = speechLanguage.startsWith('hi') 
+                        ? "मुझे समझने में कठिनाई हो रही है। कृपया फिर से कोशिश करें।" 
+                        : "I'm having trouble understanding. Please try again.";
+                    speakText(errorMessage);
                     setTimeout(() => { if (isLiveMode) startLiveLoop(); }, 1500);
-                } else { setIsRecording(false); }
+                } else { 
+                    setIsRecording(false); 
+                }
             };
+
             recognition.onnomatch = () => {
+                console.log('No speech was recognized');
                 if (isLiveMode) {
                     try { recognitionRef.current?.stop(); } catch (e) { }
                     setIsRecognitionRunning(false);
-                    speakText("I didn't hear anything.");
+                    const noSpeechMessage = speechLanguage.startsWith('hi') 
+                        ? "मैंने कुछ नहीं सुना। कृपया फिर से बोलें।" 
+                        : "I didn't hear anything. Please speak again.";
+                    speakText(noSpeechMessage);
                     setTimeout(() => { if (isLiveMode) startLiveLoop(); }, 1500);
                 }
             };
+            
             recognition.onstart = () => { if (isLiveMode) setIsRecognitionRunning(true); };
             recognition.onend = () => {
                 setIsRecognitionRunning(false);
                 if (isLiveMode && !liveCooldownRef.current) startLiveLoop();
             };
+            
             recognitionRef.current = recognition;
         }
-    }, [isLiveMode, speechLanguage]);
+    }, [isLiveMode, speechLanguage]); // Re-initialize when language changes
 
     useEffect(() => {
         return () => {
@@ -1269,12 +1598,39 @@ export default function Demo() {
                             <h2 className="text-3xl font-bold text-gray-900">{liveStatus === 'listening' ? "I'm listening..." : liveStatus === 'speaking' ? "Speaking..." : liveStatus === 'thinking' ? "Thinking..." : "Tap to Speak"}</h2>
                             <p className="text-gray-600">Live Conversation Mode</p>
                         </div>
+                        
+                        {/* Language Selector */}
                         {liveStatus === 'idle' && (
-                            <button disabled={isRecognitionRunning} onClick={startLiveLoop} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-lg shadow-lg hover:scale-105 transition-all">Start Talking</button>
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="flex items-center gap-3">
+                                    <label className="text-sm font-medium text-gray-700">Language:</label>
+                                    <select
+                                        value={speechLanguage}
+                                        onChange={(e) => setSpeechLanguage(e.target.value)}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    >
+                                        <option value="hi-IN">🇮🇳 Hindi</option>
+                                        <option value="en-IN">🇮🇳 English (India)</option>
+                                        <option value="bn-IN">🇮🇳 Bengali</option>
+                                        <option value="te-IN">🇮🇳 Telugu</option>
+                                        <option value="mr-IN">🇮🇳 Marathi</option>
+                                        <option value="ta-IN">🇮🇳 Tamil</option>
+                                        <option value="gu-IN">🇮🇳 Gujarati</option>
+                                        <option value="kn-IN">🇮🇳 Kannada</option>
+                                        <option value="ml-IN">🇮🇳 Malayalam</option>
+                                        <option value="pa-IN">🇮🇳 Punjabi</option>
+                                    </select>
+                                </div>
+                                <p className="text-xs text-gray-400 text-center max-w-md">
+                                    Speak in your preferred language. The AI will respond in the same language.
+                                </p>
+                            </div>
                         )}
-                        {liveStatus !== 'idle' && (
-                            <button onClick={() => { recognitionRef.current?.stop(); window.speechSynthesis.cancel(); setLiveStatus("idle"); setIsRecognitionRunning(false); }} className="px-8 py-4 bg-red-50 text-red-600 border border-red-200 rounded-full font-bold text-lg hover:bg-red-100 transition-all">Stop</button>
-                        )}
+                        
+                        <div className="flex gap-6">
+                            {liveStatus === 'idle' && <button disabled={isRecognitionRunning} onClick={startLiveLoop} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-lg shadow-lg hover:bg-blue-700 hover:scale-105 transition-all">Start Talking</button>}
+                            {liveStatus !== 'idle' && <button onClick={() => { recognitionRef.current?.stop(); window.speechSynthesis.cancel(); setLiveStatus("idle"); setIsRecognitionRunning(false); }} className="px-8 py-4 bg-red-50 text-red-600 border border-red-200 rounded-full font-bold text-lg hover:bg-red-100 transition-all">Stop</button>}
+                        </div>
                     </div>
                 </div>
             )}
@@ -1707,40 +2063,32 @@ export default function Demo() {
                                                 ) : (
                                                     <div className="text-gray-700 leading-relaxed">
                                                         {msg.analysis ? (
-                                                            // Analysis Rendering
-                                                            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                                                <h3 className="font-bold text-gray-900 mb-2">Analysis Result</h3>
-                                                                <p className="text-sm text-gray-700">{msg.analysis.summary}</p>
+                                                            <div className="flex flex-col gap-2 w-full">
+                                                                <ResultCard analysis={msg.analysis} scrollToClause={(level) => {
+                                                                    const element = document.getElementById(`clause-${level}-0`);
+                                                                    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                }} />
+                                                                <div className="flex gap-2 ml-2 mt-1">
+                                                                    <button onClick={() => speakText(msg.analysis.summary)} className="self-start flex items-center gap-2 text-xs text-gray-500 hover:text-blue-600 transition-colors ml-2">
+                                                                        <Volume2 className="w-5 h-5" />
+                                                                    </button>
+                                                                    {isSpeaking && <button onClick={stopSpeaking} className="p-1.5 text-red-400 hover:text-red-600 rounded-full transition-colors animate-pulse" title="Stop Speaking"><StopCircle className="w-5 h-5" /></button>}
+                                                                </div>
                                                             </div>
                                                         ) : (
-                                                            <div className="markdown-content prose prose-gray prose-p:leading-relaxed prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-200 max-w-none">
-                                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                            <div className="flex flex-col gap-1 items-start w-full">
+                                                                <div className="bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm px-6 py-5 shadow-sm w-full">
+                                                                    <div className="markdown-content prose prose-gray prose-p:leading-relaxed prose-pre:bg-gray-100 prose-pre:border prose-pre:border-gray-200 max-w-none">
+                                                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                                    </div>
+                                                                    
+                                                                </div>
+                                                                <div className="flex gap-2 ml-2 mt-1">
+                                                                    <button onClick={() => speakText(msg.content)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full transition-colors" title="Read Aloud"><Volume2 className="w-6 h-6" /></button>
+                                                                    {isSpeaking && <button onClick={stopSpeaking} className="p-1.5 text-red-400 hover:text-red-600 rounded-full transition-colors animate-pulse" title="Stop Speaking"><StopCircle className="w-6 h-6" /></button>}
+                                                                </div>
                                                             </div>
                                                         )}
-                                                        {/* Action Buttons for message */}
-                                                        <div className="flex gap-2 mt-2">
-                                                            <button
-                                                                onClick={() => {
-                                                                    const textToSpeak = msg.analysis
-                                                                        ? msg.analysis.summary || "Analysis complete"
-                                                                        : msg.content || "";
-                                                                    speakText(textToSpeak);
-                                                                }}
-                                                                className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-gray-900 transition-colors"
-                                                                title="Read aloud"
-                                                            >
-                                                                <Volume2 className="w-4 h-4" />
-                                                            </button>
-                                                            {isSpeaking && (
-                                                                <button
-                                                                    onClick={stopSpeaking}
-                                                                    className="p-1.5 hover:bg-gray-100 rounded text-red-500 hover:text-red-700 transition-colors"
-                                                                    title="Stop speaking"
-                                                                >
-                                                                    <StopCircle className="w-4 h-4" />
-                                                                </button>
-                                                            )}
-                                                        </div>
                                                     </div>
                                                 )}
                                             </div>

@@ -3,7 +3,7 @@ import { callGemini, generateChatTitle } from "@/lib/gemini";
 import { db } from "@/lib/firebaseAdmin"; 
 import { FieldValue } from "firebase-admin/firestore";
 import { headers, cookies } from "next/headers"; 
-import jwt from "jsonwebtoken";
+import { verifyToken } from "@/middleware/auth.middleware";
 import { checkUsageLimit, trackUsage } from "@/middleware/usage.middleware";
 
 // CONFIGURATION
@@ -22,68 +22,44 @@ export async function POST(req) {
     // STEP 1 & 2: AUTHENTICATION & USAGE LIMITS
     // ============================================================
     // ============================================================
-    // STEP 1: IDENTIFY THE USER (Cookie OR Header)
+    // STEP 1: IDENTIFY THE USER (Use existing auth middleware)
     // ============================================================
     const headersList = await headers();
-    const cookieStore = await cookies();
-    
-    // 1. Try to get Token from Header OR Cookie
-    const authHeader = headersList.get("authorization");
-    let token = null;
-    
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-        token = authHeader.split(" ")[1];
-    } else {
-        token = cookieStore.get("token")?.value || 
-                cookieStore.get("accessToken")?.value || 
-                cookieStore.get("refreshToken")?.value; 
-    }
-
     const guestIdHeader = headersList.get("x-guest-id");
 
     let userId = null;
     let isGuest = true;
     let trackerId = null;
 
-    // 2. Verify Token
-    if (token) {
-      try {
-        const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-        const decoded = jwt.verify(token, secret);
-        
-        if (decoded?.id) {
-          userId = decoded.id;
-          isGuest = false; // Valid User!
-          trackerId = `user_${userId}`;
-        }
-      } catch (e) {
-        // Token invalid/expired, treating as guest
-      }
+    // Use the same verifyToken function as other APIs
+    const authResult = await verifyToken(req);
+    
+    if (authResult.success && authResult.user?.uid) {
+      userId = authResult.user.uid;
+      isGuest = false;
+      trackerId = `user_${userId}`;
+      console.log(`✅ Authenticated user: ${userId}`);
+    } else {
+      console.log('⚠️ Authentication failed, treating as guest:', authResult.error || 'No token');
     }
 
-    // 3. Fallback to Guest ID
+    // 3. Fallback to Guest ID (only if truly a guest - no valid token)
     if (isGuest) {
       if (!guestIdHeader) {
-        // For demo page, if no guest ID and no token, check if there's any auth cookie
-        const hasAnyCookie = cookieStore.get("token") || 
-                            cookieStore.get("accessToken") || 
-                            cookieStore.get("refreshToken");
-        
-        if (hasAnyCookie) {
-          // Token exists but is invalid/expired
-          return NextResponse.json({ 
-            error: "Session expired. Please log in again.", 
-            sessionExpired: true 
-          }, { status: 401 });
-        }
-        
-        // No authentication at all
-        return NextResponse.json({ 
-          error: "Authentication required. Please log in.", 
-          authRequired: true 
-        }, { status: 401 });
+        // Generate a temporary guest ID if none provided
+        const tempGuestId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        trackerId = `guest_${tempGuestId}`;
+        console.log('🔓 Generated temporary guest ID for unauthenticated user:', tempGuestId);
+      } else {
+        trackerId = `guest_${guestIdHeader}`;
+        console.log('🔓 Using provided guest ID:', guestIdHeader);
       }
-      trackerId = `guest_${guestIdHeader}`;
+    }
+    
+    // Sanity check - should never happen but let's be safe
+    if (!trackerId) {
+      console.error('❌ ERROR: No tracker ID generated!');
+      return NextResponse.json({ error: "Authentication error" }, { status: 500 });
     }
 
 
