@@ -22,6 +22,7 @@ import dynamic from "next/dynamic";
 // Dynamically import tool components (Keep your existing imports)
 const ClauseComparison = dynamic(() => import("@/components/clause-comparison/ClauseComparison"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 const LegalGlossary = dynamic(() => import("@/components/legal-glossary/LegalGlossary"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
+const LegalCommunity = dynamic(() => import("@/components/community/LegalCommunity"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 
 // Profile Dropdown Component (Dark Mode Updated)
 function ProfileDropdown({ isOpen, onClose, user, onUpgrade, onSettings, onLogout, onHelpCenter, onReleaseNotes, onTerms, onReportBug, position = "top" }) {
@@ -1633,7 +1634,7 @@ export default function Demo() {
                             {/* Tool Rendering Logic */}
                             {activeTool === 'compare_docs' && <ClauseComparison />}
                             {activeTool === 'glossary_tool' && <LegalGlossary />}
-                            {activeTool === 'community_tool' && <div className="flex h-full items-center justify-center text-gray-500">Community Module Coming Soon</div>}
+                            {activeTool === 'community_tool' && <LegalCommunity />}
                         </div>
                     ) : (
                         <div className="max-w-3xl mx-auto px-4 py-8 pt-20">
