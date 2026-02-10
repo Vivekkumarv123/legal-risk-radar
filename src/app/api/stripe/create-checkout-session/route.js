@@ -118,7 +118,7 @@ export async function POST(request) {
         });
             
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            payment_method_types: ['card', 'link'],
             line_items: [
                 {
                     price_data: {
@@ -141,11 +141,6 @@ export async function POST(request) {
                 planId,
                 billingCycle,
                 prorationApplied: prorationApplied.toString(),
-            },
-            // Enable automatic payment methods including Google Pay
-            automatic_payment_methods: {
-                enabled: true,
-                allow_redirects: 'never', // Keeps user on Stripe Checkout page
             },
         });
 
