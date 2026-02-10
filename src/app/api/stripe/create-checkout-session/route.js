@@ -5,10 +5,19 @@ import { PLANS } from '@/constants/plans';
 import { Subscription } from '@/models/subscription.model';
 import { calculateProratedAmount } from '@/utils/subscription.utils';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export async function POST(request) {
     try {
+        // Check if Stripe key is configured
+        if (!process.env.STRIPE_SECRET_KEY) {
+            console.error('❌ STRIPE_SECRET_KEY not configured');
+            return NextResponse.json({ 
+                error: 'Payment system not configured. Please contact support.',
+                details: 'STRIPE_SECRET_KEY missing'
+            }, { status: 500 });
+        }
+
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
         const authResult = await verifyToken(request);
         if (!authResult.success) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -30,7 +39,14 @@ export async function POST(request) {
         let totalAmount = isAnnual ? monthlyPrice * 12 : monthlyPrice;
 
         // Check for existing subscription and calculate pro-rated amount
-        const currentSubscription = await Subscription.findActiveByUser(userId);
+        let currentSubscription = null;
+        try {
+            currentSubscription = await Subscription.findActiveByUser(userId);
+        } catch (subError) {
+            console.error('⚠️ Error fetching subscription (continuing without proration):', subError.message);
+            // Continue without proration if subscription lookup fails
+        }
+        
         let prorationApplied = false;
         
         console.log('📊 Current subscription check:', {
@@ -61,6 +77,12 @@ export async function POST(request) {
                 reason: currentSubscription ? 'Upgrading from Basic' : 'New subscription',
                 amount: totalAmount
             });
+        }
+
+        // Ensure amount is at least ₹1 (Stripe minimum)
+        if (totalAmount < 1) {
+            console.warn('⚠️ Amount too low, setting to minimum ₹1');
+            totalAmount = 1;
         }
 
         // Create Stripe checkout session
@@ -102,10 +124,11 @@ export async function POST(request) {
         });
 
     } catch (error) {
-        console.error('Create checkout session error:', error);
+        console.error('❌ Create checkout session error:', error);
         return NextResponse.json({ 
             error: 'Failed to create checkout session',
-            details: error.message 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }, { status: 500 });
     }
 }
