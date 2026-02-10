@@ -142,6 +142,11 @@ export async function POST(request) {
                 billingCycle,
                 prorationApplied: prorationApplied.toString(),
             },
+            // Enable automatic payment methods including Google Pay
+            automatic_payment_methods: {
+                enabled: true,
+                allow_redirects: 'never', // Keeps user on Stripe Checkout page
+            },
         });
 
         console.log('✅ Stripe session created:', session.id);
