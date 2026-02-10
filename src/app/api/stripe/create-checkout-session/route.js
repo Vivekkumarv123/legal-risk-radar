@@ -16,6 +16,25 @@ export async function POST(request) {
             }, { status: 500 });
         }
 
+        // Check if APP_URL is configured
+        if (!process.env.NEXT_PUBLIC_APP_URL) {
+            console.error('❌ NEXT_PUBLIC_APP_URL not configured');
+            return NextResponse.json({ 
+                error: 'Application URL not configured. Please contact support.',
+                details: 'NEXT_PUBLIC_APP_URL missing'
+            }, { status: 500 });
+        }
+
+        // Validate APP_URL has proper scheme
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        if (!appUrl.startsWith('http://') && !appUrl.startsWith('https://')) {
+            console.error('❌ NEXT_PUBLIC_APP_URL missing scheme:', appUrl);
+            return NextResponse.json({ 
+                error: 'Application URL misconfigured. Please contact support.',
+                details: 'NEXT_PUBLIC_APP_URL must start with http:// or https://'
+            }, { status: 500 });
+        }
+
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
         const authResult = await verifyToken(request);
@@ -89,6 +108,14 @@ export async function POST(request) {
         const description = prorationApplied 
             ? `${plan.description} - ${isAnnual ? 'Annual' : 'Monthly'} billing (Pro-rated upgrade)` 
             : `${plan.description} - ${isAnnual ? 'Annual' : 'Monthly'} billing`;
+        
+        console.log('🔐 Creating Stripe session with:', {
+            appUrl: process.env.NEXT_PUBLIC_APP_URL,
+            planId,
+            billingCycle,
+            amount: totalAmount,
+            prorationApplied
+        });
             
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -117,6 +144,8 @@ export async function POST(request) {
             },
         });
 
+        console.log('✅ Stripe session created:', session.id);
+
         return NextResponse.json({
             success: true,
             sessionId: session.id,
@@ -125,6 +154,12 @@ export async function POST(request) {
 
     } catch (error) {
         console.error('❌ Create checkout session error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            type: error.type,
+            code: error.code,
+            appUrl: process.env.NEXT_PUBLIC_APP_URL
+        });
         return NextResponse.json({ 
             error: 'Failed to create checkout session',
             details: error.message,
