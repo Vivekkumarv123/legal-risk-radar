@@ -23,6 +23,7 @@ import dynamic from "next/dynamic";
 const ClauseComparison = dynamic(() => import("@/components/clause-comparison/ClauseComparison"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 const LegalGlossary = dynamic(() => import("@/components/legal-glossary/LegalGlossary"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 const LegalCommunity = dynamic(() => import("@/components/community/LegalCommunity"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
+const ChromeExtensionDownload = dynamic(() => import("@/components/chrome-extension/ChromeExtensionDownload"), { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div> });
 
 // ==========================================
 // SUB-COMPONENTS
@@ -381,6 +382,7 @@ export default function Demo() {
         { id: 'compare_docs', label: 'Compare Docs', icon: FileCode, description: 'Compare legal documents' },
         { id: 'glossary_tool', label: 'Glossary', icon: Book, description: 'Legal terminology' },
         { id: 'community_tool', label: 'Community', icon: Users, description: 'Share and learn' },
+        { id: 'chrome_extension', label: 'Chrome Extension', icon: Download, description: 'Download browser extension' },
     ];
 
     // ==========================================
@@ -1991,6 +1993,7 @@ export default function Demo() {
                             {activeTool === 'compare_docs' && <ClauseComparison />}
                             {activeTool === 'glossary_tool' && <LegalGlossary />}
                             {activeTool === 'community_tool' && <LegalCommunity />}
+                            {activeTool === 'chrome_extension' && <ChromeExtensionDownload />}
                         </div>
                     ) : (
                         <div className="max-w-3xl mx-auto px-4 py-8 pt-20">

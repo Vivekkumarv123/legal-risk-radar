@@ -4,12 +4,21 @@ import nodemailer from 'nodemailer';
  * Create email transporter
  */
 function createTransporter() {
+    const emailUser = process.env.EMAIL_USER || process.env.SMTP_EMAIL;
+    const emailPass = process.env.EMAIL_PASSWORD || process.env.SMTP_PASS;
+
+    // Check if credentials are available
+    if (!emailUser || !emailPass) {
+        console.error('Email credentials missing. Please set EMAIL_USER/SMTP_EMAIL and EMAIL_PASSWORD/SMTP_PASS in environment variables.');
+        throw new Error('Email credentials not configured');
+    }
+
     // Using Gmail SMTP - you can change this to any email service
     return nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: process.env.EMAIL_USER, // Your Gmail address
-            pass: process.env.EMAIL_PASSWORD // Your Gmail app password
+            user: emailUser,
+            pass: emailPass
         }
     });
 }
@@ -22,7 +31,7 @@ export async function sendNewsletterEmail(to, subject, htmlContent, recipientNam
         const transporter = createTransporter();
 
         const mailOptions = {
-            from: `"LegalAdvisor Newsletter" <${process.env.EMAIL_USER}>`,
+            from: `"LegalAdvisor Newsletter" <${process.env.EMAIL_USER || process.env.SMTP_EMAIL}>`,
             to: to,
             subject: subject,
             html: htmlContent,
