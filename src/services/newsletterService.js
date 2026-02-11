@@ -247,7 +247,7 @@ export function getNewsletterTemplate(content, subscriberName = 'Legal Enthusias
                                 <table border="0" cellspacing="0" cellpadding="0">
                                     <tr>
                                         <td align="center" style="border-radius: 2px;" bgcolor="#002b49">
-                                            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" target="_blank" class="mobile-btn" style="font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; color: #ffffff; text-decoration: none; background-color: #002b49; padding: 14px 30px; border: 1px solid #002b49; display: inline-block; text-transform: uppercase; letter-spacing: 1px;">
+                                            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/pages/login" target="_blank" class="mobile-btn" style="font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; color: #ffffff; text-decoration: none; background-color: #002b49; padding: 14px 30px; border: 1px solid #002b49; display: inline-block; text-transform: uppercase; letter-spacing: 1px;">
                                                 Access Client Dashboard
                                             </a>
                                         </td>
