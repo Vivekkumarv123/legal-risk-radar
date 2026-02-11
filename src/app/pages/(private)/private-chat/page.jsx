@@ -82,7 +82,7 @@ function ResultCard({ analysis, scrollToClause }) {
 }
 
 // Profile Dropdown Component (Dark Mode Updated)
-function ProfileDropdown({ isOpen, onClose, user, onUpgrade, onSettings, onLogout, onHelpCenter, onReleaseNotes, onTerms, onReportBug, position = "top" }) {
+function ProfileDropdown({ isOpen, onClose, user, onUpgrade, onSettings, onLogout, onDeleteAccount, onHelpCenter, onReleaseNotes, onTerms, onReportBug, position = "top" }) {
     const dropdownRef = useRef(null);
 
     useEffect(() => {
@@ -178,14 +178,21 @@ function ProfileDropdown({ isOpen, onClose, user, onUpgrade, onSettings, onLogou
                 })}
             </div>
 
-            {/* Logout */}
-            <div className="p-2 border-t border-gray-100">
+            {/* Logout & Delete Account */}
+            <div className="p-2 border-t border-gray-100 space-y-0.5">
                 <button
                     onClick={onLogout}
                     className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
                     <LogOut className="w-4 h-4" />
                     <span className="text-sm font-medium">Log out</span>
+                </button>
+                <button
+                    onClick={onDeleteAccount}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                    <UserX className="w-4 h-4" />
+                    <span className="text-sm font-medium">Delete Account</span>
                 </button>
             </div>
         </div>
@@ -252,6 +259,42 @@ function UsageLimitReachedModal({ isOpen, onClose, limitInfo, onUpgrade }) {
     );
 }
 
+// Delete Account Modal Component
+function DeleteAccountModal({ isOpen, onClose, onConfirm, isLoading }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-2 border-red-50">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Delete Account?</h3>
+                    <p className="text-gray-500 text-sm mb-6">
+                        This action is <strong>irreversible</strong>. All your data will be permanently deleted.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={onClose} 
+                            disabled={isLoading} 
+                            className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={onConfirm} 
+                            disabled={isLoading} 
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70"
+                        >
+                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ==========================================
 // MAIN COMPONENT
 // ==========================================
@@ -294,7 +337,7 @@ export default function Demo() {
     const [availableVoices, setAvailableVoices] = useState([]);
 
     // Account & Chat Management
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [chatHistory, setChatHistory] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -971,6 +1014,42 @@ export default function Demo() {
     };
 
     const handleLogoutClick = () => setShowLogoutModal(true);
+    
+    const handleDeleteAccountClick = () => setShowDeleteAccountModal(true);
+
+    const performDeleteAccount = async () => {
+        setIsDeletingAccount(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const res = await fetch('/api/auth/delete-account', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            if (res.ok) {
+                toast.success("Account deleted successfully");
+                // Clear local storage
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                
+                setTimeout(() => {
+                    setShowDeleteAccountModal(false);
+                    router.push('/pages/login');
+                }, 1000);
+            } else {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to delete account");
+            }
+        } catch (error) {
+            console.error('Delete account error:', error);
+            toast.error(error.message || "Could not delete account");
+            setIsDeletingAccount(false);
+        }
+    };
 
     const performLogout = async () => {
         setIsLoggingOut(true);
@@ -1376,6 +1455,7 @@ export default function Demo() {
     const handleReleaseNotes = () => { setShowProfileDropdown(false); router.push('/pages/release-notes'); };
     const handleTerms = () => { setShowProfileDropdown(false); router.push('/pages/terms-policies'); };
     const handleReportBug = () => { setShowProfileDropdown(false); router.push('/pages/report-bug'); };
+    const handleDeleteAccount = () => { setShowProfileDropdown(false); handleDeleteAccountClick(); };
     const handleToolClick = (toolId) => { setActiveTool(toolId); if (window.innerWidth < 768) setSidebarOpen(false); };
     const handleCloseTool = () => { setActiveTool(null); };
 
@@ -1876,6 +1956,7 @@ export default function Demo() {
                             onUpgrade={handleUpgradePlan}
                             onSettings={handleSettings}
                             onLogout={handleLogoutClick}
+                            onDeleteAccount={handleDeleteAccount}
                             onHelpCenter={handleHelpCenter}
                             onReleaseNotes={handleReleaseNotes}
                             onTerms={handleTerms}
@@ -2509,6 +2590,14 @@ export default function Demo() {
                     </div>
                 </div>
             )}
+
+            {/* Delete Account Modal */}
+            <DeleteAccountModal
+                isOpen={showDeleteAccountModal}
+                onClose={() => !isDeletingAccount && setShowDeleteAccountModal(false)}
+                onConfirm={performDeleteAccount}
+                isLoading={isDeletingAccount}
+            />
 
             {/* Usage Limit Reached Modal */}
             <UsageLimitReachedModal
