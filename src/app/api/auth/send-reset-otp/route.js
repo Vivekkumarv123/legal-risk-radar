@@ -7,6 +7,11 @@ import { getResetPasswordEmailHtml } from '@/utils/email-templates';
 export async function POST(req) {
   try {
     const { email } = await req.json();
+    
+    if (!email) {
+      return NextResponse.json({ message: 'Email is required' }, { status: 400 });
+    }
+    
     const normalized = email?.toLowerCase?.() || '';
     
     // 1. Find User
@@ -18,7 +23,7 @@ export async function POST(req) {
     // 2. CHECK PROVIDER (Crucial Step)
     // Only allow "local" users to reset passwords. 
     // Google users don't have passwords stored in your DB.
-    if (user.provider !== 'local') {
+    if (user.provider !== 'local' && !user.provider.includes('local')) {
       return NextResponse.json({ 
         message: `This account uses ${user.provider} login. Please sign in with ${user.provider}.` 
       }, { status: 400 });
@@ -38,13 +43,12 @@ export async function POST(req) {
     const emailHtml = getResetPasswordEmailHtml(otp);
 
     // Note: ensure sendEmail arguments match your utils/email.utils.js definition
-    // Usually: (to, subject, text, html)
-    await sendEmail(
-      user.email,
-      'Reset Your Password - Legal Advisor',
-      `Your OTP is ${otp}. It expires in 10 minutes.`, // Fallback text
-      emailHtml // HTML content
-    );
+    await sendEmail({
+      to: user.email,
+      subject: 'Reset Your Password - Legal Advisor',
+      text: `Your OTP is ${otp}. It expires in 10 minutes.`, // Fallback text
+      html: emailHtml // HTML content
+    });
 
     return NextResponse.json({ message: 'OTP sent to email' }, { status: 200 });
 

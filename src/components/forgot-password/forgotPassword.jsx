@@ -286,10 +286,33 @@ export default function ForgotPassword() {
   /* ================= RESET PASSWORD ================= */
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    
+    // Client-side validation
     if (newPassword !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
+    
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    
+    if (newPassword.length > 16) {
+      toast.error("Password must not exceed 16 characters");
+      return;
+    }
+    
+    if (!/\d/.test(newPassword)) {
+      toast.error("Password must contain at least one number");
+      return;
+    }
+    
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      toast.error("Password must contain at least one special character");
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -489,6 +512,9 @@ export default function ForgotPassword() {
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    8-16 characters, must include numbers and special characters
+                  </p>
               </div>
 
               <div className="space-y-2">
