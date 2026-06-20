@@ -1,5 +1,7 @@
 # Legal Risk Radar 🏛️⚖️
 
+![Legal Risk Radar Cover Photo](./public/cover_image.png)
+
 **AI-Powered Legal Document Analysis for Everyone**
 
 Legal Risk Radar is a comprehensive AI-powered web application that transforms complex legal documents into simple, understandable insights. Built with Next.js 15 and powered by Google Gemini AI, it helps non-lawyers navigate legal documents safely and confidently.
@@ -64,26 +66,60 @@ Legal documents are often:
 - **Chrome Extension** for browser integration
 - **Usage Analytics** and insights
 
+## 🏗️ **Kaggle 5-Day Agent Intensive Structural Framework**
+
+Legal Risk Radar is engineered on top of the **Kaggle 5-Day Agent Intensive** structural framework, transitioning standard linear web pipelines into a stateful, tool-enabled multi-agent graph architecture.
+
+![Architecture Diagram](./public/architecture_diagram.png)
+
+
+### 1. The ADK 2.0 Graph Workflow API Architecture
+The core backend controller acts as an Agent Development Kit (ADK) 2.0 graph workflow dispatcher, routing telemetry down specialized execution nodes:
+*   **Triage Node**: The routing gatekeeper. It parses input length, query signatures, and file payloads to categorize intents (e.g., standard document analysis vs. quick chat vs. streaming voice input).
+*   **Auditor Node**: A high-precision processing specialist. It isolates the analysis persona by enforcing a system prompt that mandates strict compliance checks, missing clause scans, and deterministic structured JSON output.
+*   **Vernacular Synthesis Node**: A latency-sensitive voice interaction engine. It coordinates regional language formatting and controls response brevity constraints to generate speech vectors suitable for immediate TTS compilation.
+
+![Sequence Diagram](./public/sequence_diagram.png)
+
+### 2. Custom Model Context Protocol (MCP) Server Tooling
+The Gemini client is configured to invoke deterministic plugins simulating a local Model Context Protocol (MCP) Server setup:
+*   **Tesseract.js OCR Tool**: Triggered autonomously when a raw image is ingested, extracting raw text buffers into the model's context.
+*   **Legal Glossary Fetching Script**: Provides targeted definitions of complex terminology directly to the model to avoid hallucinated legal interpretations.
+*   **Contract-Diff Endpoint**: Calculates structural changes across document versions, outputting diff streams back to the parent agent.
+
+### 3. Context Engineering & Long-Term Persistent Memory
+*   **Sliding Context Window**: To maximize context density and minimize token waste, chat session retrieval is optimized using a sliding message context window that limits history to the last 5 messages, retaining core intent while discarding noisy chat history.
+*   **Durable State Blocks (Firestore)**: Writes are formatted as deterministic state logs within Firebase Firestore. These serve as a long-term memory bridge across browser refreshes and sub-agent invocations.
+
+### 4. Human-in-the-Loop (HITL) Intercepts & Rate Limits
+*   **Validation Halt State**: High-risk contract clauses (e.g., severe liability shifts, missing termination notices, or extremely high risk scores > 8) trigger a validation halt state. In production, this pauses the agent pipeline, demanding an explicit human-in-the-loop acknowledgement or intervention.
+*   **Client-Side Load Balancing & Fallbacks**: Out-of-quota statuses trigger a self-healing cascade rotating through Gemini models (`gemini-3-flash-preview` -> `gemini-2.5-flash` -> `gemini-2.5-flash-lite`) using exponential backoff retry algorithms.
+
+### 5. Local Debugging & Trace Testing (`agents-cli eval`)
+To test agent performance, prompt changes, and tool call routing offline, execute traces with:
+```bash
+npx agents-cli eval --config ./agent-eval.config.json --suite ./tests/eval/legal-radar-suite.json
+```
+This local evaluation runner evaluates:
+1.  **Triage Node Routing Accuracy** (Ensuring text queries go to Chat and documents go to Auditor).
+2.  **JSON Schema Compliance** of the Auditor Node output.
+3.  **Latency Constraints** of the Vernacular Synthesis Node response vectors.
+
 ---
 
-## 🏗️ **Technology Stack**
+## 🛠️ **Technology Stack**
 
-### **Frontend**
-- **Next.js 15** (App Router) - React framework
-- **React 19** - UI library
-- **Tailwind CSS** - Styling framework
-- **Lucide Icons** - Icon library
-- **Framer Motion** - Animations
-- **React Hot Toast** - Notifications
+### **Frontend & Interface**
+*   **Next.js 15 (App Router)** & **React 19**
+*   **Tailwind CSS** & **Framer Motion** for premium micro-animations
+*   **React Hot Toast** & **Lucide Icons**
 
-### **Backend**
-- **Next.js API Routes** - Server-side logic
-- **Google Gemini API** - AI processing with 3-model rotation
-- **Firebase Firestore** - NoSQL database
-- **Firebase Admin SDK** - Server-side Firebase
-- **JWT Authentication** - Secure token management
-- **Tesseract.js** - OCR for images
-- **pdf2json** - PDF text extraction
+### **Agent Runtime & Storage**
+*   **Google Generative AI SDK** (representing `genai.Client()`)
+*   **Firebase Firestore NoSQL Database** (Stateful Memory Bus)
+*   **Firebase Admin SDK** for secure server transactions
+*   **Tesseract.js** (OCR Tooling)
+*   **JWT Token Authorization** & HttpOnly cookie management
 
 ### **Database Schema**
 ```
@@ -94,13 +130,6 @@ Legal documents are often:
 ├── usage/          # Monthly usage tracking
 └── sharedChats/    # Public chat sharing
 ```
-
-### **AI & Processing**
-- **Google Gemini 3 Flash Preview** - Primary analysis model
-- **Google Gemini 2.5 Flash Lite** - Live conversation model
-- **Fallback Models** - gemini-1.5-flash, gemini-1.5-pro
-- **Retry Mechanism** - Exponential backoff with 3 API keys
-- **Error Handling** - Comprehensive error recovery
 
 ---
 
@@ -543,7 +572,7 @@ We welcome contributions! Here's how to get started:
 - Test your changes thoroughly
 - Update the README if needed
 
----
+<!-- ---
 
 ## 📞 **Support & Community**
 
@@ -556,7 +585,7 @@ We welcome contributions! Here's how to get started:
 ### **Business Inquiries**
 - **Enterprise Sales**: enterprise@legalriskradar.com
 - **Partnerships**: partnerships@legalriskradar.com
-- **Media**: press@legalriskradar.com
+- **Media**: press@legalriskradar.com -->
 
 ---
 

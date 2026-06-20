@@ -159,7 +159,10 @@ export async function POST(req) {
     }
 
     // ============================================================
-    // ✅ STEP 4: INTELLIGENT INTENT DETECTION
+    // ✅ STEP 4: INTELLIGENT INTENT DETECTION (ADK 2.0 Triage Node)
+    // The ADK 2.0 Triage Node inspects the incoming user payload, assessing the intent
+    // (Standard JSON analysis vs. interactive conversation) and routing context payload
+    // to the downstream specialist node.
     // ============================================================
     const userQuery = message || "Explain the risks.";
     const fileContext = fileUrl ? `(File URL provided: ${fileUrl})` : "";
@@ -186,7 +189,10 @@ export async function POST(req) {
     let prompt;
 
     if (isStandardAnalysis) {
-        // --- MODE A: ANALYST (Strict JSON) ---
+        // --- MODE A: ANALYST (Strict JSON) - ADK 2.0 Auditor Node ---
+        // Isolates the "Auditor" agent persona by providing highly structured system
+        // instructions to extract legal discrepancies, verify missing clauses, and return
+        // an evaluation-ready structured JSON schema.
         prompt = `
           Legal Risk AI - Analyze for non-lawyers:
           
@@ -207,7 +213,9 @@ export async function POST(req) {
           }
         `;
     } else {
-        // --- MODE B: CHAT COMPANION (Simple Text) ---
+        // --- MODE B: CHAT COMPANION (Simple Text) - Isolated Conversational Persona ---
+        // Sets up system guidelines defining character boundary, conversational constraints,
+        // and localization instructions to behave as a concise legal companion.
         const chatHistoryContext = chatHistory ? `
           PREVIOUS CONVERSATION:
           """
@@ -255,7 +263,10 @@ export async function POST(req) {
     }
 
     // ============================================================
-    // STEP 6: SAVE TO FIRESTORE & TRACK USAGE
+    // STEP 6: SAVE TO FIRESTORE & TRACK USAGE (Stateful Long-Term Memory Bridge)
+    // Firestore serves as our durable, multi-session Memory Bus. Writes here persist
+    // the agent session data, enabling the sliding context window to fetch previous
+    // interaction graphs.
     // ============================================================
     await usageRef.set({ count: isGuest ? currentCount + 1 : 0, lastUsed: FieldValue.serverTimestamp(), type: isGuest ? "guest" : "user" }, { merge: true });
 

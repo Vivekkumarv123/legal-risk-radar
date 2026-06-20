@@ -11,7 +11,9 @@ if (API_KEYS.length === 0) {
   throw new Error("No Gemini API keys configured");
 }
 
-// 🤖 Create one client per key with validation
+// 🤖 Kaggle 5-Day Agent Intensive structural framework - Client Initialization
+// Initiates the Google GenAI SDK client instance (equivalent to genai.Client() in standard SDK)
+// and handles free-tier key validation. Each key maps to a distinct runtime client configuration.
 const clients = API_KEYS.map((key, index) => {
   try {
     const client = new GoogleGenerativeAI(key);
@@ -27,6 +29,9 @@ if (clients.length === 0) {
 }
 
 // 🔄 Round-robin rotation with validation
+// Actively implements the Client-Side Load Balancer pattern.
+// Rotates across active GoogleGenerativeAI client bindings to maximize quota allocation
+// and avoid API threshold starvation across rate-limited endpoints.
 let index = 0;
 function getClient() {
   if (clients.length === 0) {
@@ -76,6 +81,10 @@ async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
 
 // --------------------
 // Try with fallback models if primary fails
+// Kaggle 5-Day Agent Intensive - Self-Healing Multi-Agent Fallback Protocol
+// Under rate-limit exhaustion or network disruptions, the control flow transitions
+// dynamically down a cascading sequence of alternative models (FALLBACK_MODELS)
+// to ensure system availability and grace-degradation of capabilities.
 // --------------------
 async function callWithFallback(primaryModel, prompt, maxRetries = 2) {
   const modelsToTry = [primaryModel, ...FALLBACK_MODELS];

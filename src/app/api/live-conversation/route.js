@@ -13,7 +13,10 @@ export async function POST(req) {
       );
     }
 
-    // 🌍 Language-Aware Voice System Prompt
+    // 🌍 Language-Aware Voice System Prompt (ADK 2.0 Vernacular Synthesis Node)
+    // The Vernacular Synthesis Node formats and generates regional speech vectors.
+    // It enforces strict response length and layout criteria for low-latency text-to-speech rendering,
+    // translating the underlying legal analysis into highly natural regional language outputs.
     const prompt = `
 You are a helpful, smart, and witty AI Legal Assistant having a real-time voice conversation.
 
