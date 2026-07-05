@@ -1,16 +1,16 @@
-# Legal Risk Radar 🏛️⚖️
+# LegalAdvisor 🏛️⚖️
 
-![Legal Risk Radar Cover Photo](./public/cover_image.png)
+![LegalAdvisor Cover Photo](./public/cover_image.png)
 
 **AI-Powered Legal Document Analysis for Everyone**
 
-Legal Risk Radar is a comprehensive AI-powered web application that transforms complex legal documents into simple, understandable insights. Built with Next.js 15 and powered by Google Gemini AI, it helps non-lawyers navigate legal documents safely and confidently.
+LegalAdvisor is a comprehensive AI-powered web application that transforms complex legal documents into simple, understandable insights. Built with Next.js 15 and powered by Google Gemini AI, it helps non-lawyers navigate legal documents safely and confidently.
 
 > **⚠️ Disclaimer:** This is not legal advice. It is a legal awareness and risk-explanation tool designed to help users understand potential risks in legal documents.
 
 ---
 
-## 🌟 Why Legal Risk Radar?
+## 🌟 Why LegalAdvisor?
 
 Legal documents are often:
 - **Complex and confusing** with legal jargon
@@ -68,7 +68,7 @@ Legal documents are often:
 
 ## 🏗️ **Agentic Workflow Architecture**
 
-Legal Risk Radar is engineered using a stateful, tool-enabled multi-agent graph architecture, transitioning standard linear web pipelines into an advanced cognitive routing system.
+LegalAdvisor is engineered using a stateful, tool-enabled multi-agent graph architecture, transitioning standard linear web pipelines into an advanced cognitive routing system.
 
 ![Architecture Diagram](./public/architecture_diagram.png)
 
@@ -199,7 +199,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 2. Enable **2-Step Verification** if not already enabled
 3. Go to **App passwords** (under "How you sign in to Google")
 4. Select **Mail** and **Other (Custom name)**
-5. Name it "Legal Risk Radar"
+5. Name it "LegalAdvisor"
 6. Click **Generate**
 7. Copy the 16-character password (format: `abcd efgh ijkl mnop`)
 8. Use this password (without spaces) as `EMAIL_PASSWORD` and `SMTP_PASS`
@@ -577,15 +577,15 @@ We welcome contributions! Here's how to get started:
 ## 📞 **Support & Community**
 
 ### **Get Help**
-- **Email**: support@legalriskradar.com
-- **Documentation**: [docs.legalriskradar.com](https://docs.legalriskradar.com)
+- **Email**: support@legaladvisor.com
+- **Documentation**: [docs.legaladvisor.com](https://docs.legaladvisor.com)
 - **GitHub Issues**: Report bugs and request features
 - **Community Discord**: Join our developer community
 
 ### **Business Inquiries**
-- **Enterprise Sales**: enterprise@legalriskradar.com
-- **Partnerships**: partnerships@legalriskradar.com
-- **Media**: press@legalriskradar.com -->
+- **Enterprise Sales**: enterprise@legaladvisor.com
+- **Partnerships**: partnerships@legaladvisor.com
+- **Media**: press@legaladvisor.com -->
 
 ---
 
@@ -652,4 +652,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-*Legal Risk Radar - Making Legal Documents Understandable for Everyone* 🏛️⚖️
+*LegalAdvisor - Making Legal Documents Understandable for Everyone* 🏛️⚖️
