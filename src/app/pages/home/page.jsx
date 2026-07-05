@@ -45,7 +45,7 @@ export default function HomePage() {
                     {/* Desktop Nav */}
                     <nav className="hidden md:flex items-center gap-8 font-medium text-slate-600">
                         <Link href="#how-it-works" className="hover:text-blue-600 transition">How it Works</Link>
-                        <Link href="/pages/features" className="hover:text-blue-600 transition">Features</Link>
+                        {/* <Link href="/pages/features" className="hover:text-blue-600 transition">Features</Link> */}
                         <Link href="/pages/pricing" className="hover:text-blue-600 transition">Pricing</Link>
                         <div className="h-6 w-px bg-slate-200"></div>
                         <Link href="/pages/feedback" className="hover:text-blue-600 transition">FeedBack</Link>

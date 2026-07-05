@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
     Menu, X, FileText, Book, MessageSquare, LogOut, AlertCircle,
     Upload, ArrowRight, Search, Loader2, Send, Star, Flag, Lightbulb,
@@ -280,8 +280,10 @@ function CommunitySection() {
 
 export default function ToolsPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const [activeTab, setActiveTab] = useState('compare');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
     const [user, setUser] = useState(null);
     const [isAuthChecking, setIsAuthChecking] = useState(true);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -305,6 +307,31 @@ export default function ToolsPage() {
         };
         checkAuth();
     }, [router]);
+
+    // Close tools when navigating to chat and reopen defaults when returning
+    useEffect(() => {
+        if (!pathname) return;
+
+        const isChat = pathname.includes('/private-chat') || pathname.includes('/chat');
+        if (isChat) {
+            // Animate closing: start fade-out then clear tabs/sidebar
+            if (!isClosing) {
+                setIsClosing(true);
+                setTimeout(() => {
+                    setActiveTab(null);
+                    setSidebarOpen(false);
+                    setIsClosing(false);
+                }, 240); // match CSS transition duration
+            }
+        } else {
+            // If user navigates back to tools page and no tab selected, default to compare
+            if ((pathname.includes('/tools') || pathname === '/' ) && !activeTab) {
+                // ensure any closing state is reset
+                setIsClosing(false);
+                setActiveTab('compare');
+            }
+        }
+    }, [pathname]);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -377,7 +404,7 @@ export default function ToolsPage() {
             {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-20 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
             {/* SIDEBAR */}
-            <aside className={`fixed md:static inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col shadow-lg md:shadow-none`}>
+            <aside className={`fixed md:static inset-y-0 left-0 z-30 w-72 bg-white border-r border-gray-200 transform transition-all duration-200 ${isClosing ? 'opacity-0 -translate-x-4 pointer-events-none' : ''} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 flex flex-col shadow-lg md:shadow-none`}>
                 {/* Logo Section */}
                 <div className="p-6 border-b border-gray-100 flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shadow-lg">
@@ -459,7 +486,7 @@ export default function ToolsPage() {
             </aside>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden">
+            <main className={`flex-1 flex flex-col h-full overflow-hidden transition-opacity duration-200 ${isClosing ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                 {/* Header */}
                 <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                     <div className="flex items-center gap-4">

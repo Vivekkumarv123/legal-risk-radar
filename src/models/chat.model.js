@@ -14,6 +14,58 @@ const ChatSchema = z.object({
   updatedAt: z.any().optional(),
 });
 
+// Schema for Decision Analysis (Structured AI Output)
+const DecisionAnalysisSchema = z.object({
+  decisionSummary: z.object({
+    finalDecision: z.string(),
+    decisionScore: z.number(),
+    overallRisk: z.enum(["LOW", "MEDIUM", "HIGH"]),
+    confidence: z.number(),
+
+    estimatedFinancialRisk: z.string().optional(),
+    lawyerReviewRecommended: z.boolean().optional(),
+    negotiationRequired: z.boolean().optional(),
+  }),
+
+  executiveSummary: z.string(),
+
+  keyRisks: z.array(z.string()),
+
+  missingProtections: z.array(z.string()),
+
+  recommendations: z.array(
+    z.object({
+      priority: z.enum(["HIGH", "MEDIUM", "LOW"]),
+      title: z.string(),
+      description: z.string(),
+    })
+  ),
+
+  whatIfSuggestions: z.array(
+    z.object({
+      scenario: z.string(),
+      impact: z.string(),
+      newDecisionScore: z.number().optional(),
+      newRisk: z.string().optional(),
+    })
+  ),
+
+  nextBestActions: z.array(z.string()),
+
+  followUpQuestions: z.array(z.string()),
+
+  clauses: z.array(
+    z.object({
+      clause: z.string(),
+      riskLevel: z.enum(["HIGH", "MEDIUM", "LOW"]),
+      severity: z.number(),
+      explanation: z.string(),
+      businessImpact: z.string(),
+      recommendation: z.string(),
+    })
+  ),
+});
+
 // Schema for a Single Message (Inside a Chat)
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -23,7 +75,7 @@ const MessageSchema = z.object({
   attachmentUrl: z.string().url().optional().nullable(),
   
   // AI Structured Data (optional)
-  analysisData: z.any().optional(), // JSON object for risk scores/clauses
+  analysisData: DecisionAnalysisSchema.optional().nullable(),
   
   createdAt: z.any().optional(),
 });
@@ -161,3 +213,4 @@ class MessageModel {
 // ==========================================
 export const Chat = new ChatModel();
 export const Message = new MessageModel();
+export const DecisionAnalysis = DecisionAnalysisSchema; 

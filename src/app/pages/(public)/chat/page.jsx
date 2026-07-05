@@ -2,12 +2,12 @@
 import { useState, useRef, useEffect } from "react";
 import { 
     Send, Paperclip, X, AlertCircle, Shield, 
-    Plus, Lock, ArrowRight, Share2, Sparkles, FileText, ChevronDown, Check
+    Plus, Lock, ArrowRight, Share2, Sparkles, FileText, ChevronDown, Check,
+    AlertTriangle, ShieldAlert, Info, ListTodo, HelpCircle
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
-
 // ============================================
 // UTILITY: Guest ID Generator
 // ============================================
@@ -30,27 +30,317 @@ const getGuestId = () => {
 };
 
 // ============================================
-// DATA NORMALIZER
+// DATA NORMALIZER with Fallback Parsing
 // ============================================
 function normalizeAnalysis(raw) {
     if (!raw) return null;
+
+    const decisionSummary = raw.decisionSummary || raw.decision_summary || {};
+    const clauses = Array.isArray(raw.clauses) ? raw.clauses : [];
+
     return {
-        summary: raw.summary || "Analysis complete.",
-        clauses: (raw.clauses || []).map(c => {
-            const rawLevel = c.risk_level ? c.risk_level.toLowerCase() : "low";
+        summary: raw.executiveSummary || raw.executive_summary || raw.summary || "Analysis complete.",
+        decisionSummary: {
+            finalDecision: decisionSummary.finalDecision || decisionSummary.final_decision || "Review Before Signing",
+            decisionScore: decisionSummary.decisionScore ?? decisionSummary.decision_score,
+            overallRisk: decisionSummary.overallRisk || decisionSummary.overall_risk || "MEDIUM"
+        },
+        clauses: clauses.map(c => {
+            const rawLevel = (c.riskLevel || c.risk_level || "low").toLowerCase();
             let normalizedLevel = rawLevel;
             if (rawLevel === "critical") normalizedLevel = "high";
             if (rawLevel === "beneficial") normalizedLevel = "low";
 
             return {
-                clause: c.clause_snippet || c.clause || "Clause text missing",
+                clause: c.clause || c.clause_snippet || "Clause text missing",
                 risk_level: normalizedLevel,
                 explanation: c.explanation || "No explanation provided.",
                 recommendation: c.recommendation || "No recommendation."
             };
         }),
-        missing_protections: raw.missing_clauses || []
+        missingProtections: raw.missingProtections || raw.missing_protections || raw.missing_clauses || []
     };
+}
+
+// Enhanced Text Response with Markdown Support
+function TextResponseCard({ content }) {
+    if (!content) return null;
+
+    // Determine Overall Risk Level from the text content
+    const extractRiskLevel = (text) => {
+        if (text.match(/high\s+risk/i) || text.match(/🚨/) || text.match(/DO NOT sign/i)) return "HIGH";
+        if (text.match(/low\s+risk/i) || text.match(/✅/)) return "LOW";
+        return "MEDIUM";
+    };
+
+    const riskLevel = extractRiskLevel(content);
+    const riskStyles = {
+        HIGH: { 
+            color: 'text-rose-600 border-rose-200 bg-rose-50/50', 
+            badge: 'bg-rose-100 text-rose-800 border border-rose-200', 
+            bannerBg: 'from-rose-50 to-rose-100/50 border-rose-200',
+            icon: <ShieldAlert className="w-8 h-8 text-rose-600" />
+        },
+        MEDIUM: { 
+            color: 'text-amber-600 border-amber-200 bg-amber-50/50', 
+            badge: 'bg-amber-100 text-amber-800 border border-amber-200', 
+            bannerBg: 'from-amber-50 to-amber-100/50 border-amber-200',
+            icon: <AlertTriangle className="w-8 h-8 text-amber-600" />
+        },
+        LOW: { 
+            color: 'text-emerald-600 border-emerald-200 bg-emerald-50/50', 
+            badge: 'bg-emerald-100 text-emerald-800 border border-emerald-200', 
+            bannerBg: 'from-emerald-50 to-emerald-100/50 border-emerald-200',
+            icon: <Shield className="w-8 h-8 text-emerald-600" />
+        }
+    };
+
+    const activeStyle = riskStyles[riskLevel];
+
+    // Split sections by the section separators •\n-- or --- or similar
+    const rawSections = content.split(/\s*(?:•\s*\n\s*-+|-{3,}|•\s*-+)\s*/);
+    
+    // Parse helper for bold markdown text
+    const formatBold = (text) => {
+        if (!text) return "";
+        const parts = text.split(/\*\*(.*?)\*\*/g);
+        return parts.map((part, i) => 
+            i % 2 === 1 ? <strong key={i} className="font-bold text-gray-900">{part}</strong> : part
+        );
+    };
+
+    // Clean up title text by removing ###, formatting bold, and trimming
+    const cleanTitle = (title) => {
+        return title.replace(/^###\s*/, '').replace(/[*⚠️🚨✅]/g, '').trim();
+    };
+
+    // Banner / Intro Section (Section 0)
+    const bannerSection = rawSections[0] || "";
+    const bannerLines = bannerSection.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    const cleanBannerTitle = bannerLines.find(l => l.toLowerCase().includes('risk') || l.toLowerCase().includes('caution') || l.toLowerCase().includes('safe')) || `${riskLevel.charAt(0) + riskLevel.slice(1).toLowerCase()} Risk Analysis`;
+    const cleanBannerDesc = bannerLines.filter(l => !l.toLowerCase().includes('risk') && !l.toLowerCase().includes('caution') && !l.toLowerCase().includes('safe') && l !== '⚠️' && l !== '🚨' && l !== '✅');
+
+    // Process all other sections
+    const formattedSections = [];
+    for (let i = 1; i < rawSections.length; i++) {
+        const rawSec = rawSections[i].trim();
+        if (!rawSec) continue;
+
+        const rawLines = rawSec.split('\n').map(l => l.trim()).filter(Boolean);
+        if (rawLines.length === 0) continue;
+
+        let lines = [];
+        rawLines.forEach(rl => {
+            if (rl.startsWith('###')) {
+                lines.push(rl);
+            } else {
+                const hasInlineBullets = rl.match(/(?:^\s*[\*•✓✔]\s+)|(?:\s+[\*•✓✔]\s+)/);
+                const hasInlineNumbers = rl.match(/^\d+\.\s+/) || rl.match(/\s+\d+\.\s+/);
+
+                if (hasInlineBullets) {
+                    const splitParts = rl.split(/(?:^\s*[\*•✓✔]\s+)|(?:\s+[\*•✓✔]\s+)/).map(p => p.trim()).filter(Boolean);
+                    lines.push(...splitParts);
+                } else if (hasInlineNumbers) {
+                    const splitParts = rl.split(/(?:^\s*\d+\.\s+)|(?:\s+\d+\.\s+)/).map(p => p.trim()).filter(Boolean);
+                    lines.push(...splitParts);
+                } else {
+                    lines.push(rl);
+                }
+            }
+        });
+
+        // The first line starting with ### (or any non-list line) is the header
+        let titleLine = "";
+        let contentLines = [];
+
+        if (lines[0] && (lines[0].startsWith('###') || !lines[0].match(/^[-*•✓✔\d]/))) {
+            titleLine = lines[0];
+            contentLines = lines.slice(1);
+        } else {
+            contentLines = lines;
+        }
+
+        const titleText = cleanTitle(titleLine);
+
+        // Parse items (lists, recommendations, or raw text)
+        const parsedItems = [];
+        let disclaimerText = "";
+
+        contentLines.forEach(line => {
+            // Check for disclaimer
+            if (line.toLowerCase().includes('disclaimer') || line.startsWith('***')) {
+                disclaimerText = line.replace(/^[-*•✓✔\s]+/, '').replace(/\*+$/, '').trim();
+                return;
+            }
+
+            const cleanedLine = line.replace(/^[-*•✓✔]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+            if (!cleanedLine) return;
+
+            const headerMatch = line.match(/^#+\s*(.*)/) || cleanedLine.match(/^#+\s*(.*)/);
+            if (headerMatch) {
+                parsedItems.push({
+                    type: 'subtitle',
+                    content: headerMatch[1].replace(/[*⚠️🚨✅]/g, '').trim()
+                });
+                return;
+            }
+
+            // Strip bold markers from start/end of the key if present
+            const cleanKey = (key) => key.replace(/^\*\*|\*\*$/g, '').trim();
+            
+            const boldMatch = cleanedLine.match(/^(\*\*.*?\*\*)\s*[:-]\s*(.*)/);
+            const colonMatch = cleanedLine.match(/^(.*?)\s*:\s*(.*)/);
+
+            if (boldMatch) {
+                parsedItems.push({
+                    type: 'pair',
+                    title: cleanKey(boldMatch[1]),
+                    desc: boldMatch[2].trim()
+                });
+            } else if (colonMatch && colonMatch[1].length < 40) {
+                parsedItems.push({
+                    type: 'pair',
+                    title: cleanKey(colonMatch[1]),
+                    desc: colonMatch[2].trim()
+                });
+            } else {
+                // Check for inline blocks like "Final Recommendation: DO NOT sign"
+                const recMatch = cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points):\*\*(.*)/i) || 
+                                 cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points)\*\*:(.*)/i) ||
+                                 cleanedLine.match(/^(Final Recommendation|Why|Suggested Negotiation Points):\s*(.*)/i);
+                if (recMatch) {
+                    parsedItems.push({
+                        type: 'highlight',
+                        label: recMatch[1].trim(),
+                        content: recMatch[2].trim()
+                    });
+                } else {
+                    parsedItems.push({
+                        type: 'text',
+                        content: cleanedLine
+                    });
+                }
+            }
+        });
+
+        formattedSections.push({
+            title: titleText,
+            items: parsedItems,
+            disclaimer: disclaimerText
+        });
+    }
+
+    return (
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all w-full">
+            {/* Risk Banner Header */}
+            <div className={`bg-gradient-to-br ${activeStyle.bannerBg} px-8 py-8 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100 shrink-0">
+                        {activeStyle.icon}
+                    </div>
+                    <div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${activeStyle.badge} mb-1.5`}>
+                            {riskLevel} RISK LEVEL
+                        </span>
+                        <h2 className="text-2xl font-bold text-gray-900 leading-tight">
+                            {cleanBannerTitle}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            {/* Banner Description */}
+            {cleanBannerDesc && cleanBannerDesc.length > 0 && (
+                <div className="px-8 py-6 bg-slate-50/50 border-b border-gray-100 space-y-2">
+                    {cleanBannerDesc.map((paragraph, pIdx) => (
+                        <p key={pIdx} className="text-gray-600 text-sm leading-relaxed font-medium">
+                            {formatBold(paragraph)}
+                        </p>
+                    ))}
+                </div>
+            )}
+
+            {/* Rendered Sections */}
+            <div className="px-8 py-8 space-y-8">
+                {formattedSections.map((sec, secIdx) => {
+                    return (
+                        <div key={secIdx} className="space-y-4">
+                            {sec.title && (
+                                <h3 className="text-lg font-bold text-gray-950 flex items-center gap-2 border-b border-gray-100 pb-2">
+                                    <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
+                                    {sec.title}
+                                </h3>
+                            )}
+
+                            <div className="space-y-3.5">
+                                {sec.items.map((item, itemIdx) => {
+                                    if (item.type === 'pair') {
+                                        return (
+                                            <div key={itemIdx} className="flex gap-3 bg-slate-50/70 border border-slate-100 p-4 rounded-2xl hover:bg-slate-50 transition-colors">
+                                                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <span className="text-[10px] text-blue-700 font-bold">✓</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <h4 className="text-sm font-semibold text-gray-900">
+                                                        {item.title}
+                                                    </h4>
+                                                    <p className="text-xs text-gray-600 leading-relaxed font-normal">
+                                                        {formatBold(item.desc)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (item.type === 'subtitle') {
+                                        return (
+                                            <h4 key={itemIdx} className="text-sm font-bold text-gray-900 mt-4 mb-2">
+                                                {formatBold(item.content)}
+                                            </h4>
+                                        );
+                                    }
+
+                                    if (item.type === 'highlight') {
+                                        const isActionable = item.label.toLowerCase().includes('recommendation');
+                                        const cardBg = isActionable 
+                                            ? 'bg-rose-50/60 border-rose-100 text-rose-950' 
+                                            : 'bg-indigo-50/60 border-indigo-100 text-indigo-950';
+                                        const labelColor = isActionable ? 'text-rose-700' : 'text-indigo-700';
+
+                                        return (
+                                            <div key={itemIdx} className={`border p-5 rounded-2xl space-y-2 ${cardBg}`}>
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${labelColor}`}>
+                                                    {item.label}
+                                                </span>
+                                                <p className="text-sm leading-relaxed font-semibold">
+                                                    {formatBold(item.content)}
+                                                </p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <p key={itemIdx} className="text-sm text-gray-700 leading-relaxed pl-1">
+                                            {formatBold(item.content)}
+                                        </p>
+                                    );
+                                })}
+                            </div>
+
+                            {sec.disclaimer && (
+                                <div className="mt-4 p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-2.5">
+                                    <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                                    <p className="text-[11px] text-slate-500 leading-relaxed italic">
+                                        {formatBold(sec.disclaimer)}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
 // ============================================
@@ -446,7 +736,7 @@ export default function Try() {
                 },
                 body: JSON.stringify(apiBody),
             });
-
+            
             if (aiRes.status === 403) {
                 const errorData = await aiRes.json();
                 if (errorData.limitType === 'guest_limit') {
@@ -470,6 +760,7 @@ export default function Try() {
                 setMessages(prev => [...prev, { role: "assistant", analysis: normalized }]);
             } else {
                 const responseText = 
+                    aiData.data?.executiveSummary || 
                     aiData.data?.summary || 
                     aiData.data?.response || 
                     aiData.data?.text || 
@@ -589,7 +880,7 @@ export default function Try() {
                                             </div>
                                         </div>
                                     ) : msg.analysis ? (
-                                        <div className="flex gap-3 w-full max-w-3xl">
+                                        <div className="flex gap-3 w-full max-w-4xl">
                                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 mt-1 shadow-lg">
                                                 <Sparkles className="w-4 h-4 text-white" />
                                             </div>
@@ -598,12 +889,12 @@ export default function Try() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex gap-3 max-w-3xl w-full">
+                                        <div className="flex gap-3 max-w-4xl w-full">
                                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 mt-1 shadow-lg">
                                                 <Sparkles className="w-4 h-4 text-white" />
                                             </div>
-                                            <div className="flex-1 bg-white border border-gray-200 rounded-3xl rounded-tl-md px-6 py-4 shadow-sm">
-                                                <p className="text-gray-800 leading-relaxed">{msg.content}</p>
+                                            <div className="flex-1">
+                                                <TextResponseCard content={msg.content} />
                                             </div>
                                         </div>
                                     )}

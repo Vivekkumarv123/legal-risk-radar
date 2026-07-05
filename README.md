@@ -66,18 +66,18 @@ Legal documents are often:
 - **Chrome Extension** for browser integration
 - **Usage Analytics** and insights
 
-## 🏗️ **Kaggle 5-Day Agent Intensive Structural Framework**
+## 🏗️ **Agentic Workflow Architecture**
 
-Legal Risk Radar is engineered on top of the **Kaggle 5-Day Agent Intensive** structural framework, transitioning standard linear web pipelines into a stateful, tool-enabled multi-agent graph architecture.
+Legal Risk Radar is engineered using a stateful, tool-enabled multi-agent graph architecture, transitioning standard linear web pipelines into an advanced cognitive routing system.
 
 ![Architecture Diagram](./public/architecture_diagram.png)
 
 
-### 1. The ADK 2.0 Graph Workflow API Architecture
-The core backend controller acts as an Agent Development Kit (ADK) 2.0 graph workflow dispatcher, routing telemetry down specialized execution nodes:
+### 1. The Agent Graph Workflow API Architecture
+The core backend controller acts as an Agent Graph Workflow dispatcher, routing requests down specialized execution nodes:
 *   **Triage Node**: The routing gatekeeper. It parses input length, query signatures, and file payloads to categorize intents (e.g., standard document analysis vs. quick chat vs. streaming voice input).
 *   **Auditor Node**: A high-precision processing specialist. It isolates the analysis persona by enforcing a system prompt that mandates strict compliance checks, missing clause scans, and deterministic structured JSON output.
-*   **Vernacular Synthesis Node**: A latency-sensitive voice interaction engine. It coordinates regional language formatting and controls response brevity constraints to generate speech vectors suitable for immediate TTS compilation.
+*   **Vernacular Synthesis Node**: A latency-sensitive voice interaction engine. It coordinates regional language formatting and controls response brevity constraints to generate responses suitable for immediate TTS compilation.
 
 ![Sequence Diagram](./public/sequence_diagram.png)
 

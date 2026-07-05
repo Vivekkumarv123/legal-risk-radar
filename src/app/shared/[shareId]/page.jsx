@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { 
-    MessageCircle, User, Bot, Eye, Calendar, Share2, 
-    Copy, Check, AlertCircle, FileText, ChevronRight,
-    ShieldAlert, Info, ArrowLeft, ShieldCheck, Printer, Clock
+    MessageCircle, Eye, Calendar, Share2, 
+    Check, AlertCircle, FileText, ChevronRight,
+    ShieldAlert, ShieldCheck, Printer, Clock,
+    Bot, AlertTriangle, CheckCircle, Scale, ListTodo, XCircle,
+    HelpCircle, Lightbulb, UserCheck, Briefcase
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -28,8 +30,23 @@ export default function SharedChatPage() {
         try {
             const response = await fetch(`/api/shared/${shareId}`);
             const result = await response.json();
-            if (result.success) {
-                setChatData(result);
+            
+            // Map the exact structure from the backend log
+            if (result.success && result.messages) {
+                setChatData({ 
+                    sharedChat: result.sharedChat, 
+                    messages: result.messages 
+                });
+            } else if (Array.isArray(result)) {
+                // Fallback just in case the backend returns a raw array
+                setChatData({ 
+                    sharedChat: {
+                        title: "Legal Consultation Analysis",
+                        createdAt: result[0]?.createdAt || new Date().toISOString(),
+                        viewCount: 1
+                    }, 
+                    messages: result 
+                });
             } else {
                 setError(result.error || 'This report is no longer available.');
             }
@@ -51,13 +68,9 @@ export default function SharedChatPage() {
         }
     };
 
-    const handlePrint = () => {
-        window.print();
-    };
-
     if (loading) return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-            <div className="w-16 h-16 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+            <div className="w-16 h-16 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
             <p className="text-xl font-medium text-slate-600 text-center animate-pulse">Opening your legal report...</p>
         </div>
     );
@@ -89,7 +102,7 @@ export default function SharedChatPage() {
                     
                     <div className="flex items-center gap-3">
                         <button 
-                            onClick={handlePrint}
+                            onClick={() => window.print()}
                             className="p-2 text-slate-500 hover:text-slate-900 transition-colors"
                             title="Print Report"
                         >
@@ -121,7 +134,7 @@ export default function SharedChatPage() {
                         </h1>
                         <div className="flex flex-wrap items-center gap-6 text-slate-500 font-semibold text-sm">
                             <span className="flex items-center gap-2"><Calendar size={18} className="text-slate-400"/> {new Date(sharedChat.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</span>
-                            <span className="flex items-center gap-2"><Eye size={18} className="text-slate-400"/> {sharedChat.viewCount} views</span>
+                            <span className="flex items-center gap-2"><Eye size={18} className="text-slate-400"/> {sharedChat.viewCount || 1} views</span>
                             <span className="flex items-center gap-2"><MessageCircle size={18} className="text-slate-400"/> {messages.length} Exchanges</span>
                         </div>
                     </div>
@@ -130,20 +143,12 @@ export default function SharedChatPage() {
                 {/* Messages Timeline */}
                 <div className="space-y-16">
                     {messages.map((message, idx) => (
-                        <div key={idx} className={`flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-${idx * 100}`}>
+                        <div key={message.id || idx} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             {message.role === 'user' ? (
                                 /* USER MESSAGE LOOK */
                                 <div className="flex flex-col items-end group">
                                     <div className="bg-white border border-slate-200 p-6 rounded-[24px] rounded-tr-none shadow-sm max-w-[90%] md:max-w-[80%] hover:border-blue-300 transition-colors">
-                                        {message.attachmentUrl && (
-                                            <div className="mb-4 rounded-xl overflow-hidden border border-slate-100 shadow-inner group">
-                                                <div className="bg-slate-50 p-2 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                                    <FileText size={12} /> Source Document
-                                                </div>
-                                                <img src={message.attachmentUrl} alt="Document" className="w-full h-auto max-h-[400px] object-contain bg-white" />
-                                            </div>
-                                        )}
-                                        <p className="text-lg text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">{message.content}</p>
+                                        <p className="text-lg text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">{message.displayContent || message.content}</p>
                                     </div>
                                     <div className="flex items-center gap-2 mt-3 pr-2">
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Your Inquiry</span>
@@ -154,9 +159,9 @@ export default function SharedChatPage() {
                                 /* ASSISTANT REPORT LOOK */
                                 <div className="w-full">
                                     <div className="bg-white border border-slate-200 rounded-[32px] rounded-tl-none shadow-sm overflow-hidden border-t-4 border-t-blue-600">
-                                        {/* Report Header */}
-                                        <div className="p-8 md:p-10 pb-0">
-                                            <div className="flex items-center gap-3 mb-8">
+                                        
+                                        <div className="p-8 md:p-10 pb-6 border-b border-slate-100">
+                                            <div className="flex items-center gap-3 mb-6">
                                                 <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
                                                     <Bot className="text-white" size={24} />
                                                 </div>
@@ -166,21 +171,16 @@ export default function SharedChatPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Markdown Content with SaaS Typography */}
-                                            <div className="prose prose-slate prose-lg max-w-none text-slate-600 leading-relaxed prose-headings:text-slate-900 prose-headings:font-black prose-strong:text-slate-900 prose-p:mb-6">
-                                                <ReactMarkdown>{message.content}</ReactMarkdown>
-                                            </div>
+                                            {(!message.analysisData) && (
+                                                <div className="prose prose-slate prose-lg max-w-none text-slate-600 leading-relaxed prose-headings:text-slate-900 prose-headings:font-black">
+                                                    <ReactMarkdown>{message.displayContent || message.content}</ReactMarkdown>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Professional Findings Display */}
+                                        {/* Deep Structured Data Display mapped exactly to your backend response */}
                                         {message.analysisData && (
-                                            <div className="p-8 md:p-10 pt-4 bg-slate-50/50 border-t border-slate-100">
-                                                <div className="flex items-center gap-2 mb-6">
-                                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest italic flex items-center gap-2">
-                                                       Critical Findings Breakdown
-                                                    </h4>
-                                                </div>
+                                            <div className="bg-slate-50/30">
                                                 <AnalysisDisplay data={message.analysisData} />
                                             </div>
                                         )}
@@ -194,114 +194,287 @@ export default function SharedChatPage() {
                         </div>
                     ))}
                 </div>
-
-                {/* Grade-Level CTA Section */}
-                <div className="mt-24 text-center print:hidden">
-                    <div className="inline-block p-1 rounded-[40px] bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-2xl shadow-blue-200 mb-8">
-                        <div className="bg-slate-900 rounded-[38px] px-10 py-12 text-white max-w-3xl">
-                            <h2 className="text-3xl font-black mb-4 leading-tight">Protect your business from hidden risks.</h2>
-                            <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto font-medium">
-                                Get professional-grade legal analysis for any document in seconds. 
-                                Trusted by freelancers and enterprises.
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                                <Link href="/pages/signup" className="w-full sm:w-auto bg-white text-slate-900 px-10 py-4 rounded-full font-black text-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 active:scale-95">
-                                    Analyze My Document <ChevronRight size={20} />
-                                </Link>
-                                <Link href="/pages/features" className="w-full sm:w-auto bg-white/10 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white/20 transition-all">
-                                    View Features
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                    <p className="text-slate-400 text-sm font-medium">Powered by LegalRadar.ai Intelligence System</p>
-                </div>
             </main>
-
-            {/* Print Footer */}
-            <footer className="hidden print:block fixed bottom-0 left-0 right-0 p-8 border-t border-slate-200 bg-white">
-                <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                    <span>LegalRadar Analysis Report</span>
-                    <span>Shared ID: {shareId}</span>
-                    <span>Page 1 of 1</span>
-                </div>
-            </footer>
         </div>
     );
 }
 
 /**
- * Enhanced Sub-component for Risk Cards
- * Uses high-contrast colors and professional spacing
+ * Maps the exact JSON structure provided by the backend:
+ * decisionSummary (overallRisk, finalDecision, confidence, etc)
+ * executiveSummary
+ * keyRisks (array of strings)
+ * missingProtections (array of strings)
+ * nextBestActions (array of strings)
+ * followUpQuestions (array of strings)
+ * recommendations (array of objects)
+ * whatIfSuggestions (array of objects)
+ * clauses (array of objects)
  */
 function AnalysisDisplay({ data }) {
     const parsed = typeof data === 'string' ? JSON.parse(data) : data;
 
-    // Standardize input if it's the custom structure vs generic JSON
-    const clauses = parsed.clauses || [];
+    const {
+        executiveSummary,
+        decisionSummary,
+        keyRisks = [],
+        missingProtections = [],
+        nextBestActions = [],
+        followUpQuestions = [],
+        recommendations = [],
+        whatIfSuggestions = [],
+        clauses = []
+    } = parsed;
 
     return (
-        <div className="grid grid-cols-1 gap-4">
-            {clauses.map((item, idx) => (
-                <div 
-                    key={idx} 
-                    className={`group bg-white border p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 ${
-                        item.risk_level?.toLowerCase() === 'high' 
-                        ? 'border-l-8 border-l-red-500 border-slate-200' 
-                        : 'border-l-8 border-l-amber-500 border-slate-200'
-                    }`}
-                >
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-900 text-white text-[10px] font-black italic">
-                                {idx + 1}
-                            </span>
-                            <h5 className="font-black text-slate-900 text-sm uppercase tracking-tight">
-                                {item.clause_snippet || item.clause || "Clause Analysis"}
-                            </h5>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${
-                            item.risk_level?.toLowerCase() === 'high' 
-                            ? 'bg-red-50 text-red-600' 
-                            : 'bg-amber-50 text-amber-700'
-                        }`}>
-                            {item.risk_level} Risk
-                        </span>
+        <div className="flex flex-col">
+            
+            {/* Top Level Summary & Decision Banner */}
+            <div className="p-8 md:p-10 border-b border-slate-200 space-y-8 bg-white">
+                
+                {/* Executive Summary */}
+                {executiveSummary && (
+                    <div>
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-3">
+                            <FileText size={16} className="text-blue-500" /> Executive Summary
+                        </h4>
+                        <p className="text-slate-700 text-lg leading-relaxed font-medium">
+                            {executiveSummary}
+                        </p>
                     </div>
-                    
-                    <p className="text-slate-600 text-base leading-relaxed font-medium pl-9">
-                        {item.explanation}
-                    </p>
+                )}
 
-                    {item.suggestion && (
-                        <div className="mt-4 ml-9 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                            <p className="text-xs text-emerald-800 font-bold flex items-center gap-2 mb-1">
-                                <ShieldCheck size={14} /> Recommended Action:
-                            </p>
-                            <p className="text-sm text-emerald-700 font-medium leading-relaxed">
-                                {item.suggestion}
-                            </p>
+                {/* Decision Summary Banner */}
+                {decisionSummary && (
+                    <div className={`p-6 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-6 ${
+                        (decisionSummary.overallRisk === 'HIGH' || decisionSummary.overallRisk === 'CRITICAL')
+                            ? 'bg-red-50 border-red-200'
+                            : decisionSummary.overallRisk === 'MEDIUM'
+                            ? 'bg-amber-50 border-amber-200'
+                            : 'bg-emerald-50 border-emerald-200'
+                    }`}>
+                        <div>
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-500 block mb-1">
+                                Final Recommendation
+                            </span>
+                            <div className="flex items-center gap-2">
+                                {(decisionSummary.overallRisk === 'HIGH' || decisionSummary.overallRisk === 'CRITICAL') 
+                                    ? <XCircle className="text-red-600" size={24} /> 
+                                    : <Scale size={24} className="text-slate-700"/>}
+                                <h2 className="text-2xl font-black text-slate-900">{decisionSummary.finalDecision || "Review Carefully"}</h2>
+                            </div>
+                            
+                            <div className="flex items-center gap-3 mt-3">
+                                {decisionSummary.confidence && (
+                                    <span className="text-xs font-bold text-slate-600 bg-white/60 px-2 py-1 rounded-md border border-slate-200/50">
+                                        {decisionSummary.confidence}% AI Confidence
+                                    </span>
+                                )}
+                                {decisionSummary.lawyerReviewRecommended && (
+                                    <span className="text-xs font-bold text-red-700 flex items-center gap-1">
+                                        <Briefcase size={12} /> Lawyer Review Required
+                                    </span>
+                                )}
+                                {decisionSummary.negotiationRequired && (
+                                    <span className="text-xs font-bold text-amber-700 flex items-center gap-1">
+                                        <UserCheck size={12} /> Negotiation Required
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-col md:items-end">
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-500 block mb-1">
+                                Overall Risk
+                            </span>
+                            <span className={`px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-widest shadow-sm border ${
+                                (decisionSummary.overallRisk === 'HIGH' || decisionSummary.overallRisk === 'CRITICAL')
+                                    ? 'bg-red-100 text-red-700 border-red-200'
+                                    : decisionSummary.overallRisk === 'MEDIUM'
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                    : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                            }`}>
+                                {decisionSummary.overallRisk || 'UNKNOWN'}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Quick Insights Grid */}
+            {(keyRisks.length > 0 || missingProtections.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-200 border-b border-slate-200">
+                    {/* Key Risks (Array of Strings) */}
+                    {keyRisks.length > 0 && (
+                        <div className="bg-white p-8 md:p-10">
+                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-6">
+                                <AlertTriangle size={18} className="text-red-500" /> Key Risks Identified
+                            </h4>
+                            <ul className="space-y-4">
+                                {keyRisks.map((risk, idx) => (
+                                    <li key={idx} className="flex gap-3 text-slate-700 font-medium text-base">
+                                        <span className="text-red-500 mt-1 flex-shrink-0 font-bold">•</span>
+                                        <span>{risk}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {/* Missing Protections (Array of Strings) */}
+                    {missingProtections.length > 0 && (
+                        <div className="bg-white p-8 md:p-10">
+                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-6">
+                                <ShieldAlert size={18} className="text-amber-500" /> Missing Protections
+                            </h4>
+                            <ul className="space-y-4">
+                                {missingProtections.map((missing, idx) => (
+                                    <li key={idx} className="flex gap-3 text-slate-700 font-medium text-base">
+                                        <span className="text-amber-500 mt-1 flex-shrink-0 font-bold">•</span>
+                                        <span>{missing}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
                 </div>
-            ))}
+            )}
 
-            {/* Missing Clauses Warning */}
-            {parsed.missing_clauses && parsed.missing_clauses.length > 0 && (
-                <div className="mt-6 bg-amber-50 rounded-2xl p-6 border border-amber-200 border-dashed">
-                    <h5 className="text-amber-800 font-black text-sm uppercase tracking-widest flex items-center gap-2 mb-4">
-                        <AlertCircle size={18} /> Critical Missing Protections
-                    </h5>
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {parsed.missing_clauses.map((missing, i) => (
-                            <li key={i} className="flex items-center gap-2 text-sm text-amber-700 font-bold bg-white/50 p-3 rounded-xl border border-amber-100">
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                                {missing}
-                            </li>
+            {/* Next Best Actions (Array of Strings) */}
+            {nextBestActions.length > 0 && (
+                <div className="p-8 md:p-10 bg-white border-b border-slate-200">
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-6">
+                        <CheckCircle size={18} className="text-emerald-500" /> Next Best Actions
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {nextBestActions.map((action, idx) => (
+                            <div key={idx} className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl flex gap-3 items-start">
+                                <ListTodo size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                                <span className="text-emerald-900 font-medium text-sm leading-relaxed">
+                                    {action}
+                                </span>
+                            </div>
                         ))}
-                    </ul>
+                    </div>
                 </div>
             )}
+
+            {/* What If Scenarios & Recommendations (Handling arrays of objects) */}
+            {(whatIfSuggestions.length > 0 || recommendations.length > 0) && (
+                <div className="p-8 md:p-10 bg-slate-50 border-b border-slate-200 grid grid-cols-1 gap-8">
+                    {whatIfSuggestions.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                <Lightbulb size={18} className="text-blue-500" /> Strategic 'What-If' Scenarios
+                            </h4>
+                            <div className="space-y-3">
+                                {whatIfSuggestions.map((suggestion, idx) => (
+                                    <div key={idx} className="bg-white border border-slate-200 p-4 rounded-xl text-sm">
+                                        <strong className="text-slate-900 block mb-1">{suggestion.scenario || suggestion.title || "Scenario:"}</strong>
+                                        <span className="text-slate-600">{suggestion.suggestion || suggestion.description || JSON.stringify(suggestion)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {recommendations.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-4">
+                                <ShieldCheck size={18} className="text-indigo-500" /> Detailed Recommendations
+                            </h4>
+                            <div className="space-y-3">
+                                {recommendations.map((rec, idx) => (
+                                    <div key={idx} className="bg-white border border-slate-200 p-4 rounded-xl text-sm">
+                                        <strong className="text-slate-900 block mb-1">{rec.title || rec.topic || "Recommendation:"}</strong>
+                                        <span className="text-slate-600">{rec.description || rec.action || JSON.stringify(rec)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Clause Breakdown List */}
+            {clauses.length > 0 && (
+                <div className="p-8 md:p-10 bg-slate-50/50">
+                    <div className="flex items-center gap-2 mb-8">
+                        <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                            Detailed Clause Breakdown
+                        </h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                        {clauses.map((item, idx) => (
+                            <div 
+                                key={idx} 
+                                className={`group bg-white border p-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 ${
+                                    (item.risk_level || item.riskLevel)?.toLowerCase() === 'high' 
+                                    ? 'border-l-8 border-l-red-500 border-slate-200' 
+                                    : (item.risk_level || item.riskLevel)?.toLowerCase() === 'medium'
+                                    ? 'border-l-8 border-l-amber-500 border-slate-200'
+                                    : 'border-l-8 border-l-emerald-500 border-slate-200'
+                                }`}
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                    <div className="flex items-start sm:items-center gap-3">
+                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-900 text-white text-[10px] font-black italic flex-shrink-0">
+                                            {idx + 1}
+                                        </span>
+                                        <h5 className="font-black text-slate-900 text-sm uppercase tracking-tight line-clamp-2">
+                                            {item.clause_snippet || item.clauseTitle || item.clause || "Clause Analysis"}
+                                        </h5>
+                                    </div>
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm whitespace-nowrap self-start sm:self-auto ${
+                                        (item.risk_level || item.riskLevel)?.toLowerCase() === 'high' 
+                                        ? 'bg-red-50 text-red-600' 
+                                        : (item.risk_level || item.riskLevel)?.toLowerCase() === 'medium'
+                                        ? 'bg-amber-50 text-amber-700'
+                                        : 'bg-emerald-50 text-emerald-700'
+                                    }`}>
+                                        {(item.risk_level || item.riskLevel)} Risk
+                                    </span>
+                                </div>
+                                
+                                <p className="text-slate-600 text-base leading-relaxed font-medium pl-9">
+                                    {item.explanation || item.analysis}
+                                </p>
+
+                                {(item.suggestion || item.recommendation) && (
+                                    <div className="mt-4 ml-9 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                                        <p className="text-xs text-emerald-800 font-bold flex items-center gap-2 mb-1">
+                                            <ShieldCheck size={14} /> Recommended Action:
+                                        </p>
+                                        <p className="text-sm text-emerald-700 font-medium leading-relaxed">
+                                            {item.suggestion || item.recommendation}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Follow-Up Questions (Array of Strings) */}
+            {followUpQuestions.length > 0 && (
+                <div className="p-8 md:p-10 bg-white border-t border-slate-200">
+                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 mb-6">
+                        <HelpCircle size={18} className="text-slate-400" /> Recommended Questions to Ask
+                    </h4>
+                    <div className="flex flex-col gap-3">
+                        {followUpQuestions.map((q, idx) => (
+                            <div key={idx} className="bg-slate-50 border border-slate-200 px-5 py-4 rounded-xl text-slate-700 font-medium flex items-center gap-3">
+                                <MessageCircle size={18} className="text-blue-500 flex-shrink-0" />
+                                <span>{q}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

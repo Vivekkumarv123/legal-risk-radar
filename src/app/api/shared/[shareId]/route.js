@@ -38,15 +38,24 @@ export async function GET(request, { params }) {
         SharedChat.incrementViewCount(shareId).catch(console.error);
 
         // Sanitize data for public sharing
+        // The message shape was recently extended to include `displayContent`
+        // and the frontend expects both the full `content` and a shorter
+        // `displayContent` (for previews). Also accept alternate field names
+        // that may have been used when saving (fileUrl, analysis).
         const sanitizedMessages = messages.map(msg => ({
             id: msg.id,
             role: msg.role,
-            content: msg.content,
-            attachmentUrl: msg.attachmentUrl,
-            analysisData: msg.analysisData,
+            // Full content (may be long, includes detailed analysis text)
+            content: msg.content || msg.displayContent || '',
+            // Short or user-facing content for UI previews
+            displayContent: msg.displayContent || msg.content || '',
+            // Attachment / uploaded file URL (accept multiple possible names)
+            attachmentUrl: msg.attachmentUrl || msg.fileUrl || null,
+            // Structured AI analysis (may be an object)
+            analysisData: msg.analysisData || msg.analysis || null,
             createdAt: msg.createdAt
         }));
-
+        console.log(sanitizedMessages);
         return NextResponse.json({
             success: true,
             sharedChat: {

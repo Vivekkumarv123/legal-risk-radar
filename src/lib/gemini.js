@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// 🔑 API key pool (free-tier rotation)
+// 🔑 API key pool for client load balancing
 const API_KEYS = [
   process.env.GEMINI_API_KEY_1,
   process.env.GEMINI_API_KEY_2,
@@ -11,9 +11,9 @@ if (API_KEYS.length === 0) {
   throw new Error("No Gemini API keys configured");
 }
 
-// 🤖 Kaggle 5-Day Agent Intensive structural framework - Client Initialization
-// Initiates the Google GenAI SDK client instance (equivalent to genai.Client() in standard SDK)
-// and handles free-tier key validation. Each key maps to a distinct runtime client configuration.
+// Client Initialization
+// Initiates the Google GenAI SDK client instance and handles key validation.
+// Each key maps to a distinct runtime client configuration.
 const clients = API_KEYS.map((key, index) => {
   try {
     const client = new GoogleGenerativeAI(key);
@@ -29,9 +29,8 @@ if (clients.length === 0) {
 }
 
 // 🔄 Round-robin rotation with validation
-// Actively implements the Client-Side Load Balancer pattern.
 // Rotates across active GoogleGenerativeAI client bindings to maximize quota allocation
-// and avoid API threshold starvation across rate-limited endpoints.
+// and avoid API rate limits.
 let index = 0;
 function getClient() {
   if (clients.length === 0) {
@@ -48,9 +47,9 @@ function getClient() {
   return client;
 }
 
-// 📌 Models required by hackathon
-const CHAT_MODEL = "gemini-3-flash-preview";
-const LIVE_MODEL = "gemini-2.5-flash-lite";
+// 📌 Models configuration
+const CHAT_MODEL = "gemini-3.1-flash-lite";
+const LIVE_MODEL = "gemini-3.1-flash-lite";
 // Fallback models in case primary models are overloaded
 const FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 
@@ -80,11 +79,10 @@ async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
 }
 
 // --------------------
-// Try with fallback models if primary fails
-// Kaggle 5-Day Agent Intensive - Self-Healing Multi-Agent Fallback Protocol
-// Under rate-limit exhaustion or network disruptions, the control flow transitions
-// dynamically down a cascading sequence of alternative models (FALLBACK_MODELS)
-// to ensure system availability and grace-degradation of capabilities.
+// Try with fallback models if primary model fails
+// Self-Healing Multi-Agent Fallback Protocol: Under rate-limit exhaustion or network
+// disruptions, transitions down a cascading sequence of alternative models (FALLBACK_MODELS)
+// to ensure system availability and graceful degradation.
 // --------------------
 async function callWithFallback(primaryModel, prompt, maxRetries = 2) {
   const modelsToTry = [primaryModel, ...FALLBACK_MODELS];
