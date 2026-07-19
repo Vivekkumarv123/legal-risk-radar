@@ -96,7 +96,7 @@ export default function HomePage() {
                         </motion.h1>
                         
                         <motion.p variants={fadeInUp} className="text-lg text-slate-500 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                            Upload contracts, NDAs, or agreements and get an instant summary, risk analysis, and actionable advice powered by advanced AI.
+                            Legal Advisor is an AI-powered contract analysis assistant that integrates with Google Drive, Docs, and Calendar to audit agreements, highlight risk clauses, draft notice response templates, and schedule contract deadlines.
                         </motion.p>
                         
                         <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -224,7 +224,7 @@ export default function HomePage() {
                     <div className="relative z-10">
                         <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Stop signing blindly.</h2>
                         <p className="text-slate-400 text-lg mb-10 max-w-2xl mx-auto">
-                            Join 10,000+ freelancers and businesses who use LegalAI to protect themselves from bad contracts.
+                            Join 10,000+ freelancers and businesses who use Legal Advisor to protect themselves from bad contracts.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <Link href="/pages/signup" className="bg-blue-500 hover:bg-blue-400 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-500/30">
@@ -244,7 +244,7 @@ export default function HomePage() {
                 <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                     <div className="col-span-2 md:col-span-1">
                         <div className="flex items-center gap-2 text-blue-700 font-extrabold text-xl mb-4">
-                            <Scale size={24} /> LegalAI
+                            <Scale size={24} /> Legal Advisor
                         </div>
                         <p className="text-slate-500 text-sm leading-relaxed">
                             Making legal help accessible, affordable, and understandable for everyone.
@@ -276,7 +276,7 @@ export default function HomePage() {
                     </div>
                 </div>
                 <div className="max-w-7xl mx-auto border-t border-slate-100 pt-8 text-center text-slate-400 text-sm">
-                    © {new Date().getFullYear()} Legal Advisor AI. All rights reserved.
+                    © {new Date().getFullYear()} Legal Advisor. All rights reserved.
                 </div>
             </footer>
         </div>
