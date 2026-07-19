@@ -267,11 +267,11 @@ export default function HomePage() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 mb-4">Company</h4>
+                        <h4 className="font-bold text-slate-900 mb-4">Legal</h4>
                         <ul className="space-y-2 text-sm text-slate-500">
-                            <li><a href="#" className="hover:text-blue-600">About</a></li>
-                            <li><a href="#" className="hover:text-blue-600">Careers</a></li>
-                            <li><a href="#" className="hover:text-blue-600">Contact</a></li>
+                            <li><Link href="/pages/privacy-policy" className="hover:text-blue-600">Privacy Policy</Link></li>
+                            <li><Link href="/pages/terms-of-service" className="hover:text-blue-600">Terms of Service</Link></li>
+                            <li><Link href="/pages/terms-policies" className="hover:text-blue-600">Compliance Center</Link></li>
                         </ul>
                     </div>
                 </div>
