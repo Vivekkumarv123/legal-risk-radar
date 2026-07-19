@@ -186,31 +186,189 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ================= HOW IT WORKS ================= */}
-            <section id="how-it-works" className="py-24 px-6 bg-white">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Simplify Law in 3 Steps</h2>
-                        <p className="text-slate-500 text-lg">No lawyer fees. No waiting weeks. Just answers.</p>
+            {/* ================= HOW IT WORKS (REDESIGNED) ================= */}
+            <section id="how-it-works" className="py-32 px-6 bg-gradient-to-b from-white to-slate-50/50 relative overflow-hidden">
+                {/* Ambient geometric background shapes */}
+                <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-full blur-[140px] pointer-events-none" />
+                <div className="absolute top-0 right-10 w-72 h-72 bg-slate-100 rounded-full blur-3xl opacity-40 pointer-events-none" />
+
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col items-center text-center mb-24">
+                        <span className="text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-50 border border-blue-100/80 px-4 py-1.5 rounded-full shadow-xs">
+                            Product Workflow
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mt-5 mb-4 max-w-2xl leading-[1.15]">
+                            Simplify Corporate Law in <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Three Execution Steps</span>
+                        </h2>
+                        <p className="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">
+                            An automated contract auditing engine built to eliminate workflow friction and scale legal operations at business speed.
+                        </p>
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-8 relative">
-                        {/* Connecting Line (Desktop) */}
-                        <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-linear-to-r from-blue-100 via-blue-200 to-blue-100 -z-10"></div>
-
+                    <div className="grid lg:grid-cols-3 gap-8 relative">
                         {[
-                            { title: "Upload", desc: "Drag & drop any PDF contract or legal document.", icon: <FileText size={24} /> },
-                            { title: "Analyze", desc: "Our AI scans for risks, loopholes, and weird clauses.", icon: <Zap size={24} /> },
-                            { title: "Resolve", desc: "Get actionable advice or ask questions in plain English.", icon: <CheckCircle size={24} /> },
+                            { 
+                                title: "Secure Agreement Upload", 
+                                desc: "Drag and drop legal PDFs or structural contract scans. Our engine securely ingests and parses multi-page document metadata natively.", 
+                                icon: <FileText className="w-5 h-5 text-blue-600" />,
+                                number: "01",
+                                borderHover: "group-hover:border-blue-500/30"
+                            },
+                            { 
+                                title: "Deep-Level Risk Scan", 
+                                desc: "Proprietary AI intelligence flags hidden liabilities, extracts unfavorable indemnity terms, and suggests optimized fallback language instantly.", 
+                                icon: <Zap className="w-5 h-5 text-indigo-600" />,
+                                number: "02",
+                                borderHover: "group-hover:border-indigo-500/30"
+                            },
+                            { 
+                                title: "Enterprise Systems Sync", 
+                                desc: "Instantly compile notice briefs directly into Google Workspace ecosystems while deploying lifecycle automation alerts directly to your team calendar.", 
+                                icon: <CheckCircle className="w-5 h-5 text-emerald-600" />,
+                                number: "03",
+                                borderHover: "group-hover:border-emerald-500/30"
+                            },
                         ].map((step, i) => (
-                            <div key={i} className="relative bg-white p-6 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/50 text-center hover:-translate-y-2 transition-transform duration-300">
-                                <div className="w-16 h-16 mx-auto bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-600/30">
+                            <motion.div 
+                                key={i} 
+                                whileHover={{ y: -6 }}
+                                transition={{ type: "spring", stiffness: 150, damping: 20 }}
+                                className={`bg-white p-10 rounded-3xl border border-slate-200/70 shadow-xl shadow-slate-200/20 relative overflow-hidden flex flex-col items-start text-left group transition-all duration-300 ${step.borderHover}`}
+                            >
+                                {/* Industrial level giant back-number branding */}
+                                <div className="absolute -top-4 -right-2 text-8xl font-black text-slate-100/60 font-mono tracking-tighter select-none group-hover:text-slate-200/50 group-hover:scale-105 transition-all duration-300">
+                                    {step.number}
+                                </div>
+
+                                <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center mb-8 shadow-xs relative z-10 group-hover:scale-110 group-hover:bg-white transition-transform duration-300">
                                     {step.icon}
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-900 mb-3">{step.title}</h3>
-                                <p className="text-slate-500 leading-relaxed">{step.desc}</p>
-                            </div>
+                                
+                                <h3 className="text-xl font-bold text-slate-900 mb-3.5 relative z-10 tracking-tight group-hover:text-blue-700 transition-colors duration-300">
+                                    {step.title}
+                                </h3>
+                                
+                                <p className="text-sm text-slate-500 leading-relaxed relative z-10">
+                                    {step.desc}
+                                </p>
+                                
+                                <div className="mt-8 flex items-center text-xs font-semibold text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-300 cursor-pointer">
+                                    Learn architecture details <ChevronRight size={14} className="ml-1" />
+                                </div>
+                            </motion.div>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ================= GOOGLE API INTEGRATION (REDESIGNED) ================= */}
+            <section className="py-32 px-6 bg-slate-950 border-t border-slate-900 relative overflow-hidden">
+                {/* Premium Dark-Mode Matrix/Mesh glows */}
+                <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[130px] pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
+                <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[130px] pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
+                <div className="max-w-7xl mx-auto relative z-10">
+                    <div className="flex flex-col items-center text-center mb-20">
+                        <span className="text-xs font-bold text-blue-400 uppercase tracking-widest bg-blue-950/80 border border-blue-800/40 px-4 py-1.5 rounded-full shadow-md">
+                            Connected Ecosystem
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mt-5 mb-4 max-w-3xl leading-[1.15]">
+                            Native Google Workspace Sync. <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Zero Workflow Interruption.</span>
+                        </h2>
+                        <p className="text-slate-400 text-base max-w-xl mx-auto leading-relaxed">
+                            Maintain a rigid chain of custody. Securely hook directly into your active runtime storage environments through dynamically gated access configurations.
+                        </p>
+                    </div>
+
+                    <div className="grid lg:grid-cols-3 gap-8">
+                        {/* Drive Card */}
+                        <motion.div 
+                            whileHover={{ y: -6 }}
+                            className="bg-slate-900/60 backdrop-blur-md border border-slate-800 p-8 rounded-3xl flex flex-col justify-between shadow-2xl hover:border-blue-500/40 transition-all duration-300 group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div>
+                                <div className="w-12 h-12 bg-blue-950/50 border border-blue-900/40 text-blue-400 rounded-xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                    <FileText className="w-5 h-5" />
+                                </div>
+                                <h4 className="font-bold text-slate-100 text-lg mb-2.5 tracking-tight group-hover:text-white transition-colors">Google Drive Repository</h4>
+                                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                                    Automates structured document storage into sandboxed directories. Our platform isolates asset reads strictly to metadata fields created natively within the system framework.
+                                </p>
+                            </div>
+                            <div>
+                                <ul className="text-xs text-slate-400 space-y-2.5 pt-5 border-t border-slate-800/80">
+                                    <li className="flex items-center gap-2.5">
+                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
+                                        <span>Isolated Application Sandboxing</span>
+                                    </li>
+                                    <li className="flex items-center gap-2.5">
+                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
+                                        <span>Automated Revision Tracking</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </motion.div>
+                        
+                        {/* Docs Card */}
+                        <motion.div 
+                            whileHover={{ y: -6 }}
+                            className="bg-slate-900/60 backdrop-blur-md border border-slate-800 p-8 rounded-3xl flex flex-col justify-between shadow-2xl hover:border-purple-500/40 transition-all duration-300 group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div>
+                                <div className="w-12 h-12 bg-purple-950/50 border border-purple-900/40 text-purple-400 rounded-xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                    <Shield className="w-5 h-5" />
+                                </div>
+                                <h4 className="font-bold text-slate-100 text-lg mb-2.5 tracking-tight group-hover:text-white transition-colors">Google Docs Compiler</h4>
+                                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                                    Compiles counter-proposals, remediation agreements, and certified notices into customizable document templates using live, user-approved contextual mapping tools.
+                                </p>
+                            </div>
+                            <div>
+                                <ul className="text-xs text-slate-400 space-y-2.5 pt-5 border-t border-slate-800/80">
+                                    <li className="flex items-center gap-2.5">
+                                        <div className="w-1.5 h-1.5 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+                                        <span>Real-time Clause Export Injection</span>
+                                    </li>
+                                    <li className="flex items-center gap-2.5">
+                                        <div className="w-1.5 h-1.5 bg-purple-400 rounded-full shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+                                        <span>Custom Corporate Tokens</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </motion.div>
+
+                        {/* Calendar Card */}
+                        <motion.div 
+                            whileHover={{ y: -6 }}
+                            className="bg-slate-900/60 backdrop-blur-md border border-slate-800 p-8 rounded-3xl flex flex-col justify-between shadow-2xl hover:border-emerald-500/40 transition-all duration-300 group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div>
+                                <div className="w-12 h-12 bg-emerald-950/50 border border-emerald-900/40 text-emerald-400 rounded-xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                    <Scale className="w-5 h-5" />
+                                </div>
+                                <h4 className="font-bold text-slate-100 text-lg mb-2.5 tracking-tight group-hover:text-white transition-colors">Calendar Lifecycle Engine</h4>
+                                <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                                    Ensures auto-renewals or expirations never pass unnoted. Seamlessly maps structural milestones, renewal targets, and expiration thresholds directly onto corporate schedules.
+                                </p>
+                            </div>
+                            <div>
+                                <ul className="text-xs text-slate-400 space-y-2.5 pt-5 border-t border-slate-800/80">
+                                    <li className="flex items-center gap-2.5">
+                                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                        <span>Automated SLA & Milestone Alerts</span>
+                                    </li>
+                                    <li className="flex items-center gap-2.5">
+                                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                        <span>Shared Operational Timelines</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
