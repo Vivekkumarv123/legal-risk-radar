@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Legal Risk Radar",
+  title: "Legal Advisor",
   description:
-    "Legal Risk Radar uses Gemini 3 to visually highlight legal risks inside documents, helping people understand contracts before they sign.",
+    "Legal Advisor uses Gemini to visually highlight legal risks inside documents, helping people understand contracts before they sign.",
 };
 
 export default function RootLayout({ children }) {
