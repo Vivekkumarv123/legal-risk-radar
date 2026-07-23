@@ -1,97 +1,83 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { useState, useEffect } from "react";
 import {
     ShieldCheck, FileText, MessageCircle, Clock,
-    Check, X, Zap, Scale, Briefcase, ChevronRight, Star
+    Check, X, Briefcase, ChevronRight, Star
 } from "lucide-react";
-
+import { PLANS } from "@/constants/plans";
 
 export default function PricingAndFeatures() {
     const [isAnnual, setIsAnnual] = useState(true);
     const router = useRouter();
-    const toggleBilling = () => setIsAnnual(!isAnnual);
 
-    // Pricing Data
-    const plans = [
-        {
-            name: "Basic",
-            desc: "Essential legal guidance for individuals.",
-            price: 0,
-            features: [
-                "5 AI Legal Queries / day",
-                "Basic Document Summary",
-                "Access to IPC/CrPC Context",
-                "Community Support",
-            ],
-            missing: [
-                "Deep Risk Analysis",
-                "Contract Drafting",
-                "Priority Support",
-            ],
-            cta: "Get Started Free",
-            popular: false,
-        },
-        {
-            name: "Pro Advisor",
-            desc: "For freelancers and proactive professionals.",
-            price: isAnnual ? 499 : 699,
-            features: [
-                "Unlimited AI Legal Chat",
-                "Deep Contract Risk Analysis",
-                "Voice-to-Text Queries",
-                "Export Analysis to PDF",
-                "Priority Email Support",
-            ],
-            missing: [
-                "API Access",
-                "White-label Reports",
-            ],
-            cta: "Upgrade to Pro",
-            popular: true,
-        },
-        {
-            name: "Enterprise",
-            desc: "For small firms and legal teams.",
-            price: isAnnual ? 2499 : 2999,
-            features: [
-                "Everything in Pro",
-                "Team Collaboration (5 Users)",
-                "API Access for Workflow",
-                "Dedicated Account Manager",
-                "Custom Legal Templates",
-            ],
-            missing: [],
-            cta: "Contact Sales",
-            popular: false,
-        },
-    ];
+    // Generate dynamic plan data from constants
+    const generatePlans = () => {
+        return Object.values(PLANS).map((plan) => {
+            // Get enabled features for this plan
+            const enabledFeatures = Object.entries(plan.features)
+                .filter(([_, feature]) => feature.enabled === true && feature.description)
+                .map(([_, feature]) => feature.description);
+
+            // Get disabled features for comparison
+            const disabledFeatures = Object.entries(plan.features)
+                .filter(([_, feature]) => feature.enabled === false && feature.description)
+                .map(([_, feature]) => feature.description);
+
+            return {
+                id: plan.id,
+                name: plan.displayName,
+                desc: plan.description,
+                price: isAnnual && plan.price > 0 ? plan.price : plan.price,
+                features: enabledFeatures,
+                missing: disabledFeatures,
+                cta: plan.id === 'basic' ? 'Get Started Free' : plan.id === 'pro' ? 'Upgrade to Pro' : 'Contact Sales',
+                popular: plan.popular,
+                limits: plan.limits,
+            };
+        });
+    };
+
+    const plans = generatePlans();
+
+    useEffect(() => {
+        // Pricing page is view-only, no need to check user subscription
+    }, []);
+
+    const handlePlanSelect = (plan) => {
+        // Pricing page is view-only, redirect to login for purchasing
+        if (plan.id === 'basic') {
+            router.push('/pages/signup');
+        } else {
+            router.push('/pages/login');
+        }
+    };
 
     const features = [
         {
             icon: <MessageCircle className="text-white" size={24} />,
             color: "bg-blue-600",
-            title: "Contextual AI Chat",
-            desc: "Ask complex questions about Indian Law (IPC, Contract Act) and get instant, simplified answers.",
+            title: "AI Legal Chat",
+            desc: "Ask complex questions about Indian Law (IPC, BNS, Contract Act) and get instant, simplified answers with chat history.",
         },
         {
             icon: <FileText className="text-white" size={24} />,
             color: "bg-purple-600",
-            title: "Document Risk Radar",
-            desc: "Upload NDAs, rental agreements, or employment contracts. We highlight risky clauses in seconds.",
+            title: "Document Analysis & OCR",
+            desc: "Upload PDFs or images of contracts, NDAs, agreements. Advanced OCR extracts text and AI highlights risky clauses.",
         },
         {
             icon: <ShieldCheck className="text-white" size={24} />,
             color: "bg-emerald-600",
-            title: "Enterprise-Grade Privacy",
-            desc: "Your documents are processed in memory and encrypted. We do not use your data to train public models.",
+            title: "Voice & Multi-Language",
+            desc: "Voice-to-text queries in 12+ Indian languages. Text-to-speech responses. Complete voice interface for hands-free use.",
         },
         {
             icon: <Clock className="text-white" size={24} />,
             color: "bg-orange-600",
-            title: "Instant Turnaround",
-            desc: "No waiting for appointments. Get preliminary legal insights 24/7, right from your device.",
+            title: "Advanced Features",
+            desc: "PDF reports, contract comparison, Chrome extension, legal glossary, chat sharing, and comprehensive analytics.",
         },
     ];
 
@@ -101,9 +87,9 @@ export default function PricingAndFeatures() {
             {/* ================= HERO SECTION (REVAMPED) ================= */}
             <section className="relative pt-20 pb-32 overflow-hidden">
                 {/* Background Decor */}
-                <div className="absolute top-0 left-0 w-full h-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50"></div>
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[500px] h-[500px] bg-blue-100 rounded-full blur-3xl opacity-40 animate-pulse"></div>
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[400px] h-[400px] bg-purple-100 rounded-full blur-3xl opacity-40"></div>
+                <div className="absolute top-0 left-0 w-full h-full bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [bg-size:16px_16px] mask-[radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50"></div>
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-125 h-125 bg-blue-100 rounded-full blur-3xl opacity-40 animate-pulse"></div>
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-100 h-100 bg-purple-100 rounded-full blur-3xl opacity-40"></div>
 
                 <div className="relative max-w-7xl mx-auto px-6 text-center z-10">
 
@@ -119,7 +105,7 @@ export default function PricingAndFeatures() {
                     {/* Headline */}
                     <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 tracking-tight mb-6 leading-tight">
                         Your Personal AI <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                        <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600">
                             Legal Consultant
                         </span>
                     </h1>
@@ -176,7 +162,7 @@ export default function PricingAndFeatures() {
                                 key={i}
                                 className="group bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
                             >
-                                <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-transparent to-gray-50 rounded-bl-full opacity-50 group-hover:scale-110 transition-transform`}></div>
+                                <div className={`absolute top-0 right-0 w-24 h-24 bg-linear-to-br from-transparent to-gray-50 rounded-bl-full opacity-50 group-hover:scale-110 transition-transform`}></div>
 
                                 <div className={`mb-6 ${f.color} w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg`}>
                                     {f.icon}
@@ -196,7 +182,7 @@ export default function PricingAndFeatures() {
                         <h2 className="text-4xl font-bold text-gray-900 mb-6">Simple, Transparent Pricing</h2>
 
                         {/* Toggle Switch */}
-                        <div className="flex items-center justify-center gap-4 p-1.5 bg-gray-100 inline-flex rounded-full">
+                        <div className="flex items-center justify-center gap-4 p-1.5 bg-gray-100  rounded-full">
                             <button
                                 onClick={() => setIsAnnual(false)}
                                 className={`px-6 py-2 rounded-full text-sm font-semibold transition-all ${!isAnnual ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
@@ -222,7 +208,7 @@ export default function PricingAndFeatures() {
                                     }`}
                             >
                                 {plan.popular && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg">
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-linear-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg">
                                         Most Popular
                                     </div>
                                 )}
@@ -240,12 +226,14 @@ export default function PricingAndFeatures() {
                                 </div>
 
                                 <button
-                                    className={`w-full py-4 rounded-xl font-bold transition-all mb-8 ${plan.popular
+                                    onClick={() => handlePlanSelect(plan)}
+                                    className={`w-full py-4 rounded-xl font-bold transition-all mb-8 ${
+                                        plan.popular
                                             ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/50"
                                             : "bg-gray-100 hover:bg-gray-200 text-gray-900"
                                         }`}
                                 >
-                                    {plan.cta}
+                                    {plan.id === 'basic' ? 'Get Started Free' : 'Login to Purchase'}
                                 </button>
 
                                 <div className="space-y-5">
@@ -275,7 +263,103 @@ export default function PricingAndFeatures() {
                 </div>
             </section>
 
-            {/* ================= FOOTER CTA ================= */}
+            {/* ================= FEATURE COMPARISON TABLE ================= */}
+            <section className="py-24 px-6 bg-gray-50/50" id="features-table">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Complete Feature Comparison</h2>
+                        <p className="text-gray-600 max-w-2xl mx-auto">See all features across every plan</p>
+                    </div>
+
+                    {/* Responsive Table Container */}
+                    <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-gray-200">
+                                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 sticky left-0 bg-white z-10 w-64 min-w-64">
+                                        Features
+                                    </th>
+                                    {plans.map((plan) => (
+                                        <th key={plan.id} className="px-6 py-4 text-center">
+                                            <div className="text-sm font-bold text-gray-900">{plan.name}</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {plan.price === 0 ? "Free" : `₹${plan.price}/month`}
+                                            </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {/* Get all unique features across all plans */}
+                                {Array.from(
+                                    new Set(
+                                        plans.flatMap((plan) =>
+                                            Object.entries(plan.features)
+                                                .filter(([_, feature]) => feature.description)
+                                                .map(([key, _]) => key)
+                                        )
+                                    )
+                                ).map((featureKey, idx) => (
+                                    <tr key={featureKey} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900 sticky left-0 z-10 bg-inherit">
+                                            {plans[0].features[featureKey]?.description ||
+                                                plans[1].features[featureKey]?.description ||
+                                                plans[2].features[featureKey]?.description}
+                                        </td>
+                                        {plans.map((plan) => {
+                                            const feature = plan.features[featureKey];
+                                            return (
+                                                <td key={`${plan.id}-${featureKey}`} className="px-6 py-4 text-center">
+                                                    {feature?.enabled ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <Check size={20} className="text-green-600" />
+                                                            {feature.limit && feature.limit > 0 && feature.limit !== -1 && (
+                                                                <span className="text-xs text-gray-600 mt-1">
+                                                                    {feature.limit}/{feature.limitType}
+                                                                </span>
+                                                            )}
+                                                            {feature.limit === -1 && (
+                                                                <span className="text-xs text-gray-600 mt-1">Unlimited</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <X size={20} className="text-gray-300 mx-auto" />
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Table Legend */}
+                    <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
+                            <Check size={20} className="text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Included</p>
+                                <p className="text-sm text-gray-600">Available in this plan</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                            <X size={20} className="text-gray-300 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Not Included</p>
+                                <p className="text-sm text-gray-600">Available in higher plans</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                            <Briefcase size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="font-semibold text-gray-900">Limits</p>
+                                <p className="text-sm text-gray-600">Daily or monthly quota</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
             <section className="bg-gray-900 text-white py-20 px-6 relative overflow-hidden">
                 {/* Abstract shapes */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-3xl opacity-20 -mr-16 -mt-16"></div>
@@ -299,6 +383,8 @@ export default function PricingAndFeatures() {
                     </div>
                 </div>
             </section>
+
+            {/* Payment Modal - Not needed in view-only pricing page */}
         </div>
     );
 }

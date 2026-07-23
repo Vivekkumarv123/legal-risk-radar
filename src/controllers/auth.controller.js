@@ -1,4 +1,6 @@
-import  {User}  from "@/models/user.model.js"; // Our new Firestore Model
+import { User } from "@/models/user.model.js"; // Our new Firestore Model
+import { Subscription } from "@/models/subscription.model.js";
+import { db } from "@/lib/firebaseAdmin";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -6,9 +8,44 @@ import { sendEmail } from "@/utils/email.utils";
 import { generatePassword } from "@/utils/password.utils";
 import { generateOTP } from "@/utils/otp.utils";
 import { generateAccessToken, generateRefreshToken } from "@/utils/token.utils";
-import { getSignupEmailHtml } from "@/utils/email-templates";
+import { getSignupEmailHtml, getGoogleSignupEmailHtml, getGoogleSignupEmailText } from "@/utils/email-templates";
+import crypto from "crypto";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
+
+/**
+ * Helper function to automatically subscribe new users to newsletter
+ */
+async function autoSubscribeToNewsletter(email, name) {
+  try {
+    const subscriptionsRef = db.collection('newsletterSubscriptions');
+    
+    // Check if already subscribed
+    const existingSnapshot = await subscriptionsRef.where('email', '==', email).limit(1).get();
+    
+    if (existingSnapshot.empty) {
+      // Create newsletter subscription
+      const unsubscribeToken = crypto.randomBytes(32).toString('hex');
+      await subscriptionsRef.add({
+        email,
+        name: name || '',
+        categories: ['all'],
+        frequency: 'daily', // Default to daily
+        isActive: true,
+        unsubscribeToken,
+        subscribedAt: new Date(),
+        lastSentAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      console.log(`✅ Auto-subscribed ${email} to newsletter`);
+    }
+  } catch (error) {
+    console.error('Failed to auto-subscribe to newsletter:', error);
+    // Don't fail signup if newsletter subscription fails
+  }
+}
 
 export const authController = {
   // 1. SIGNUP
@@ -22,7 +59,7 @@ export const authController = {
     const rawPassword = generatePassword(name);
     const hashedPassword = await bcrypt.hash(rawPassword, 8);
 
-    await User.create({
+    const newUser = await User.create({
       name,
       email: normalizedEmail,
       password: hashedPassword,
@@ -30,11 +67,41 @@ export const authController = {
       role: "user",
     });
 
+    // ✅ CREATE DEFAULT BASIC SUBSCRIPTION FOR NEW USERS
+    try {
+      await Subscription.create({
+        userId: newUser.id,
+        planId: "basic",
+        planName: "Basic",
+        status: "active",
+        price: 0,
+        currency: "INR",
+        features: {
+          aiQueries: 5, // Daily limit
+          documentAnalysis: true,
+          voiceQueries: false,
+          pdfReports: false,
+          prioritySupport: false,
+          apiAccess: false,
+          teamCollaboration: 0,
+          contractComparison: true,
+          chromeExtension: false,
+          newsletter: false,
+        }
+      });
+    } catch (subErr) {
+      console.error("Failed to create subscription for new user:", subErr);
+      // Don't fail signup even if subscription creation fails
+    }
+
+    // ✅ AUTO-SUBSCRIBE TO NEWSLETTER
+    await autoSubscribeToNewsletter(normalizedEmail, name);
+
     // Generate the professional HTML content
     const emailHtml = getSignupEmailHtml(name, normalizedEmail, rawPassword);
 
     // Send email asynchronously using the object syntax
-    sendEmail({
+    await sendEmail({
       to: normalizedEmail,
       subject: "Welcome to Legal Advisor - Your Credentials",
       html: emailHtml, // Pass the HTML here
@@ -71,14 +138,17 @@ export const authController = {
       idToken,
       audience: process.env.GOOGLE_WEB_CLIENT_ID,
     });
-    const payload = ticket.getPayload();
 
-    if (!payload.email_verified) throw new Error("Email not verified by Google");
+    const payload = ticket.getPayload();
+    if (!payload.email_verified) {
+      throw new Error("Email not verified by Google");
+    }
 
     const email = payload.email.toLowerCase();
     let user = await User.findOne({ email });
-
+    let isFirstGoogleSignup = false;
     if (!user) {
+      // First-time Google user
       user = await User.create({
         name: payload.name,
         email,
@@ -86,16 +156,70 @@ export const authController = {
         provider: "google",
         role: "user",
       });
+      isFirstGoogleSignup = true;
+
+      // ✅ CREATE DEFAULT BASIC SUBSCRIPTION FOR NEW GOOGLE USERS
+      try {
+        await Subscription.create({
+          userId: user.id,
+          planId: "basic",
+          planName: "Basic",
+          status: "active",
+          price: 0,
+          currency: "INR",
+          features: {
+            aiQueries: 5, // Daily limit
+            documentAnalysis: true,
+            voiceQueries: false,
+            pdfReports: false,
+            prioritySupport: false,
+            apiAccess: false,
+            teamCollaboration: 0,
+            contractComparison: true,
+            chromeExtension: false,
+            newsletter: false,
+          }
+        });
+      } catch (subErr) {
+        console.error("Failed to create subscription for new Google user:", subErr);
+        // Don't fail login even if subscription creation fails
+      }
+
+      // ✅ AUTO-SUBSCRIBE TO NEWSLETTER
+      await autoSubscribeToNewsletter(email, payload.name);
+    } else {
+      // 🔑 LINK GOOGLE to existing account
+      if (!user.provider.includes("google")) {
+        await User.update(user.id, {
+          provider: user.provider === "local"
+            ? "local,google"
+            : "google",
+          avatar: payload.picture || user.avatar,
+        });
+      }
+    }
+
+    if (isFirstGoogleSignup) {
+      await sendEmail({
+        to: email,
+        subject: "Welcome to Legal Advisor",
+        html: getGoogleSignupEmailHtml(payload.name, email),
+        text: getGoogleSignupEmailText(payload.name, email),
+      }).catch(err => console.error("Google signup email error:", err));
     }
 
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    // ✅ FIX 3: Use Model.update() here too
     await User.update(user.id, { refreshToken });
 
-    return { accessToken, refreshToken, message: "Google login successful" };
+    return {
+      accessToken,
+      refreshToken,
+      message: "Google login successful",
+    };
   },
+
 
   // 4. REFRESH TOKEN
   async refreshAccessToken(tokenFromCookie) {
@@ -107,7 +231,7 @@ export const authController = {
     try {
       const decoded = jwt.verify(tokenFromCookie, process.env.JWT_REFRESH_SECRET);
       if (!decoded.id) throw new Error("Invalid token payload");
-      
+
       const newAccessToken = generateAccessToken(decoded.id);
       return { accessToken: newAccessToken };
     } catch (err) {
@@ -128,7 +252,7 @@ export const authController = {
     if (!user) throw new Error("User not found");
 
     const otp = generateOTP();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); 
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await User.update(user.id, {
       resetOtp: otp,
@@ -165,7 +289,7 @@ export const authController = {
   // 8. GET PROFILE
   async getMyProfile(userId) {
     if (!userId) throw new Error("Not authenticated");
-    
+
     const user = await User.findById(userId);
     if (!user) throw new Error("User not found");
 

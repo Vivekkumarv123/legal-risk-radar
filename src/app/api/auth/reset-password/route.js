@@ -1,10 +1,21 @@
 import { User } from '@/models/user.model.js';
 import bcrypt from 'bcryptjs';
+import { validatePassword } from '@/utils/password.utils';
 
 export async function POST(req) {
   try {
     const { email, otp, newPassword, confirmPassword } = await req.json();
-    if (newPassword !== confirmPassword) return Response.json({ message: 'Passwords do not match' }, { status: 400 });
+    
+    // Validate password match
+    if (newPassword !== confirmPassword) {
+      return Response.json({ message: 'Passwords do not match' }, { status: 400 });
+    }
+    
+    // Validate password strength
+    const validation = validatePassword(newPassword);
+    if (!validation.valid) {
+      return Response.json({ message: validation.message }, { status: 400 });
+    }
 
     const normalized = email?.toLowerCase?.() || '';
     const user = await User.findOne({ email: normalized });

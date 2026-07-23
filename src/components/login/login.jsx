@@ -130,7 +130,7 @@ export default function LoginPage() {
             <div className="mt-12 p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
                 <p className="italic text-slate-300 mb-4">"LegalAI saved me hours of reading and potential legal trouble. A must-have tool!"</p>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500"></div>
+                    <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-400 to-indigo-500"></div>
                     <div>
                         <p className="font-bold text-sm">Aditya Verma</p>
                         <p className="text-xs text-slate-400">Freelance Designer</p>

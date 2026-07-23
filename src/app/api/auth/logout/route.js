@@ -30,7 +30,6 @@ export async function POST(req) {
         }
       } catch (err) {
         // If token is expired/invalid, we don't care, the cookie is already deleted.
-        console.log("Logout: Token was invalid or expired, but cookie cleared.");
       }
     }
 

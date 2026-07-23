@@ -17,7 +17,7 @@ export async function GET(req) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userId = decoded.id;
       } catch (err) {
-        console.log("Header token invalid");
+        // Header token invalid
       }
     }
 

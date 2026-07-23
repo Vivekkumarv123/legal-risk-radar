@@ -1,80 +1,378 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { TypeAnimation } from "react-type-animation";
 import { 
-    Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, 
-    Menu, LogOut, MessageSquare, User, Plus, Lock, ArrowRight 
+    Send, Paperclip, X, AlertCircle, Shield, 
+    Plus, Lock, ArrowRight, Share2, Sparkles, FileText, ChevronDown, Check,
+    AlertTriangle, ShieldAlert, Info, ListTodo, HelpCircle
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
+import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
 // ============================================
 // UTILITY: Guest ID Generator
 // ============================================
 const getGuestId = () => {
     if (typeof window === 'undefined') return '';
-    let id = localStorage.getItem('guest_id');
+    
+    // Use sessionStorage for per-session guest ID (fresh each time)
+    let id = window.__guestId;
     if (!id) {
         id = crypto.randomUUID();
-        localStorage.setItem('guest_id', id);
+        window.__guestId = id;
+        // Also store in sessionStorage as backup
+        try {
+            sessionStorage.setItem('guest_id', id);
+        } catch (e) {
+            console.warn('sessionStorage not available');
+        }
     }
     return id;
 };
 
 // ============================================
-// DATA NORMALIZER
+// DATA NORMALIZER with Fallback Parsing
 // ============================================
 function normalizeAnalysis(raw) {
     if (!raw) return null;
+
+    const decisionSummary = raw.decisionSummary || raw.decision_summary || {};
+    const clauses = Array.isArray(raw.clauses) ? raw.clauses : [];
+
     return {
-        summary: raw.summary || "Analysis complete.",
-        clauses: (raw.clauses || []).map(c => {
-            const rawLevel = c.risk_level ? c.risk_level.toLowerCase() : "low";
+        summary: raw.executiveSummary || raw.executive_summary || raw.summary || "Analysis complete.",
+        decisionSummary: {
+            finalDecision: decisionSummary.finalDecision || decisionSummary.final_decision || "Review Before Signing",
+            decisionScore: decisionSummary.decisionScore ?? decisionSummary.decision_score,
+            overallRisk: decisionSummary.overallRisk || decisionSummary.overall_risk || "MEDIUM"
+        },
+        clauses: clauses.map(c => {
+            const rawLevel = (c.riskLevel || c.risk_level || "low").toLowerCase();
             let normalizedLevel = rawLevel;
             if (rawLevel === "critical") normalizedLevel = "high";
             if (rawLevel === "beneficial") normalizedLevel = "low";
 
             return {
-                clause: c.clause_snippet || c.clause || "Clause text missing",
+                clause: c.clause || c.clause_snippet || "Clause text missing",
                 risk_level: normalizedLevel,
                 explanation: c.explanation || "No explanation provided.",
                 recommendation: c.recommendation || "No recommendation."
             };
         }),
-        missing_protections: raw.missing_clauses || []
+        missingProtections: raw.missingProtections || raw.missing_protections || raw.missing_clauses || []
     };
 }
 
+// Enhanced Text Response with Markdown Support
+function TextResponseCard({ content }) {
+    if (!content) return null;
+
+    // Determine Overall Risk Level from the text content
+    const extractRiskLevel = (text) => {
+        if (text.match(/high\s+risk/i) || text.match(/🚨/) || text.match(/DO NOT sign/i)) return "HIGH";
+        if (text.match(/low\s+risk/i) || text.match(/✅/)) return "LOW";
+        return "MEDIUM";
+    };
+
+    const riskLevel = extractRiskLevel(content);
+    const riskStyles = {
+        HIGH: { 
+            color: 'text-rose-600 border-rose-200 bg-rose-50/50', 
+            badge: 'bg-rose-100 text-rose-800 border border-rose-200', 
+            bannerBg: 'from-rose-50 to-rose-100/50 border-rose-200',
+            icon: <ShieldAlert className="w-8 h-8 text-rose-600" />
+        },
+        MEDIUM: { 
+            color: 'text-amber-600 border-amber-200 bg-amber-50/50', 
+            badge: 'bg-amber-100 text-amber-800 border border-amber-200', 
+            bannerBg: 'from-amber-50 to-amber-100/50 border-amber-200',
+            icon: <AlertTriangle className="w-8 h-8 text-amber-600" />
+        },
+        LOW: { 
+            color: 'text-emerald-600 border-emerald-200 bg-emerald-50/50', 
+            badge: 'bg-emerald-100 text-emerald-800 border border-emerald-200', 
+            bannerBg: 'from-emerald-50 to-emerald-100/50 border-emerald-200',
+            icon: <Shield className="w-8 h-8 text-emerald-600" />
+        }
+    };
+
+    const activeStyle = riskStyles[riskLevel];
+
+    // Split sections by the section separators •\n-- or --- or similar
+    const rawSections = content.split(/\s*(?:•\s*\n\s*-+|-{3,}|•\s*-+)\s*/);
+    
+    // Parse helper for bold markdown text
+    const formatBold = (text) => {
+        if (!text) return "";
+        const parts = text.split(/\*\*(.*?)\*\*/g);
+        return parts.map((part, i) => 
+            i % 2 === 1 ? <strong key={i} className="font-bold text-gray-900">{part}</strong> : part
+        );
+    };
+
+    // Clean up title text by removing ###, formatting bold, and trimming
+    const cleanTitle = (title) => {
+        return title.replace(/^###\s*/, '').replace(/[*⚠️🚨✅]/g, '').trim();
+    };
+
+    // Banner / Intro Section (Section 0)
+    const bannerSection = rawSections[0] || "";
+    const bannerLines = bannerSection.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    const cleanBannerTitle = bannerLines.find(l => l.toLowerCase().includes('risk') || l.toLowerCase().includes('caution') || l.toLowerCase().includes('safe')) || `${riskLevel.charAt(0) + riskLevel.slice(1).toLowerCase()} Risk Analysis`;
+    const cleanBannerDesc = bannerLines.filter(l => !l.toLowerCase().includes('risk') && !l.toLowerCase().includes('caution') && !l.toLowerCase().includes('safe') && l !== '⚠️' && l !== '🚨' && l !== '✅');
+
+    // Process all other sections
+    const formattedSections = [];
+    for (let i = 1; i < rawSections.length; i++) {
+        const rawSec = rawSections[i].trim();
+        if (!rawSec) continue;
+
+        const rawLines = rawSec.split('\n').map(l => l.trim()).filter(Boolean);
+        if (rawLines.length === 0) continue;
+
+        let lines = [];
+        rawLines.forEach(rl => {
+            if (rl.startsWith('###')) {
+                lines.push(rl);
+            } else {
+                const hasInlineBullets = rl.match(/(?:^\s*[\*•✓✔]\s+)|(?:\s+[\*•✓✔]\s+)/);
+                const hasInlineNumbers = rl.match(/^\d+\.\s+/) || rl.match(/\s+\d+\.\s+/);
+
+                if (hasInlineBullets) {
+                    const splitParts = rl.split(/(?:^\s*[\*•✓✔]\s+)|(?:\s+[\*•✓✔]\s+)/).map(p => p.trim()).filter(Boolean);
+                    lines.push(...splitParts);
+                } else if (hasInlineNumbers) {
+                    const splitParts = rl.split(/(?:^\s*\d+\.\s+)|(?:\s+\d+\.\s+)/).map(p => p.trim()).filter(Boolean);
+                    lines.push(...splitParts);
+                } else {
+                    lines.push(rl);
+                }
+            }
+        });
+
+        // The first line starting with ### (or any non-list line) is the header
+        let titleLine = "";
+        let contentLines = [];
+
+        if (lines[0] && (lines[0].startsWith('###') || !lines[0].match(/^[-*•✓✔\d]/))) {
+            titleLine = lines[0];
+            contentLines = lines.slice(1);
+        } else {
+            contentLines = lines;
+        }
+
+        const titleText = cleanTitle(titleLine);
+
+        // Parse items (lists, recommendations, or raw text)
+        const parsedItems = [];
+        let disclaimerText = "";
+
+        contentLines.forEach(line => {
+            // Check for disclaimer
+            if (line.toLowerCase().includes('disclaimer') || line.startsWith('***')) {
+                disclaimerText = line.replace(/^[-*•✓✔\s]+/, '').replace(/\*+$/, '').trim();
+                return;
+            }
+
+            const cleanedLine = line.replace(/^[-*•✓✔]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+            if (!cleanedLine) return;
+
+            const headerMatch = line.match(/^#+\s*(.*)/) || cleanedLine.match(/^#+\s*(.*)/);
+            if (headerMatch) {
+                parsedItems.push({
+                    type: 'subtitle',
+                    content: headerMatch[1].replace(/[*⚠️🚨✅]/g, '').trim()
+                });
+                return;
+            }
+
+            // Strip bold markers from start/end of the key if present
+            const cleanKey = (key) => key.replace(/^\*\*|\*\*$/g, '').trim();
+            
+            const boldMatch = cleanedLine.match(/^(\*\*.*?\*\*)\s*[:-]\s*(.*)/);
+            const colonMatch = cleanedLine.match(/^(.*?)\s*:\s*(.*)/);
+
+            if (boldMatch) {
+                parsedItems.push({
+                    type: 'pair',
+                    title: cleanKey(boldMatch[1]),
+                    desc: boldMatch[2].trim()
+                });
+            } else if (colonMatch && colonMatch[1].length < 40) {
+                parsedItems.push({
+                    type: 'pair',
+                    title: cleanKey(colonMatch[1]),
+                    desc: colonMatch[2].trim()
+                });
+            } else {
+                // Check for inline blocks like "Final Recommendation: DO NOT sign"
+                const recMatch = cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points):\*\*(.*)/i) || 
+                                 cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points)\*\*:(.*)/i) ||
+                                 cleanedLine.match(/^(Final Recommendation|Why|Suggested Negotiation Points):\s*(.*)/i);
+                if (recMatch) {
+                    parsedItems.push({
+                        type: 'highlight',
+                        label: recMatch[1].trim(),
+                        content: recMatch[2].trim()
+                    });
+                } else {
+                    parsedItems.push({
+                        type: 'text',
+                        content: cleanedLine
+                    });
+                }
+            }
+        });
+
+        formattedSections.push({
+            title: titleText,
+            items: parsedItems,
+            disclaimer: disclaimerText
+        });
+    }
+
+    return (
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all w-full">
+            {/* Risk Banner Header */}
+            <div className={`bg-gradient-to-br ${activeStyle.bannerBg} px-8 py-8 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm border border-gray-100 shrink-0">
+                        {activeStyle.icon}
+                    </div>
+                    <div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${activeStyle.badge} mb-1.5`}>
+                            {riskLevel} RISK LEVEL
+                        </span>
+                        <h2 className="text-2xl font-bold text-gray-900 leading-tight">
+                            {cleanBannerTitle}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            {/* Banner Description */}
+            {cleanBannerDesc && cleanBannerDesc.length > 0 && (
+                <div className="px-8 py-6 bg-slate-50/50 border-b border-gray-100 space-y-2">
+                    {cleanBannerDesc.map((paragraph, pIdx) => (
+                        <p key={pIdx} className="text-gray-600 text-sm leading-relaxed font-medium">
+                            {formatBold(paragraph)}
+                        </p>
+                    ))}
+                </div>
+            )}
+
+            {/* Rendered Sections */}
+            <div className="px-8 py-8 space-y-8">
+                {formattedSections.map((sec, secIdx) => {
+                    return (
+                        <div key={secIdx} className="space-y-4">
+                            {sec.title && (
+                                <h3 className="text-lg font-bold text-gray-950 flex items-center gap-2 border-b border-gray-100 pb-2">
+                                    <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
+                                    {sec.title}
+                                </h3>
+                            )}
+
+                            <div className="space-y-3.5">
+                                {sec.items.map((item, itemIdx) => {
+                                    if (item.type === 'pair') {
+                                        return (
+                                            <div key={itemIdx} className="flex gap-3 bg-slate-50/70 border border-slate-100 p-4 rounded-2xl hover:bg-slate-50 transition-colors">
+                                                <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <span className="text-[10px] text-blue-700 font-bold">✓</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <h4 className="text-sm font-semibold text-gray-900">
+                                                        {item.title}
+                                                    </h4>
+                                                    <p className="text-xs text-gray-600 leading-relaxed font-normal">
+                                                        {formatBold(item.desc)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (item.type === 'subtitle') {
+                                        return (
+                                            <h4 key={itemIdx} className="text-sm font-bold text-gray-900 mt-4 mb-2">
+                                                {formatBold(item.content)}
+                                            </h4>
+                                        );
+                                    }
+
+                                    if (item.type === 'highlight') {
+                                        const isActionable = item.label.toLowerCase().includes('recommendation');
+                                        const cardBg = isActionable 
+                                            ? 'bg-rose-50/60 border-rose-100 text-rose-950' 
+                                            : 'bg-indigo-50/60 border-indigo-100 text-indigo-950';
+                                        const labelColor = isActionable ? 'text-rose-700' : 'text-indigo-700';
+
+                                        return (
+                                            <div key={itemIdx} className={`border p-5 rounded-2xl space-y-2 ${cardBg}`}>
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${labelColor}`}>
+                                                    {item.label}
+                                                </span>
+                                                <p className="text-sm leading-relaxed font-semibold">
+                                                    {formatBold(item.content)}
+                                                </p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <p key={itemIdx} className="text-sm text-gray-700 leading-relaxed pl-1">
+                                            {formatBold(item.content)}
+                                        </p>
+                                    );
+                                })}
+                            </div>
+
+                            {sec.disclaimer && (
+                                <div className="mt-4 p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-2.5">
+                                    <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                                    <p className="text-[11px] text-slate-500 leading-relaxed italic">
+                                        {formatBold(sec.disclaimer)}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 // ============================================
-// MODAL: LIMIT REACHED (NEW)
+// MODAL: LIMIT REACHED
 // ============================================
 function LimitModal({ isOpen, router }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 scale-100 animate-in zoom-in-95 duration-300 text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Lock className="w-8 h-8 text-blue-600" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-200">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <Lock className="w-10 h-10 text-white" />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">Free Limit Reached</h3>
-                <p className="text-gray-600 mb-8 leading-relaxed">
-                    You have used your free tries for today. To continue analyzing documents and asking questions, please create a free account.
+                <h3 className="text-2xl font-semibold text-gray-900 mb-3 text-center">Free Trial Complete</h3>
+                <p className="text-gray-600 mb-8 leading-relaxed text-center">
+                    You've explored the power of our AI legal advisor. Create a free account to continue analyzing documents and get unlimited access.
                 </p>
 
                 <div className="space-y-3">
                     <button 
-                        onClick={() => router.push('/pages/signup')} // Redirect to Login/Signup
-                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-blue-500/30 flex items-center justify-center gap-2"
+                        onClick={() => router.push('/pages/signup')}
+                        className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                     >
                         Create Free Account <ArrowRight className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => router.push('/')} 
-                        className="w-full py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
+                        className="w-full py-3.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-xl transition-all"
                     >
-                        Log In
+                        Sign In Instead
                     </button>
                 </div>
             </div>
@@ -83,22 +381,25 @@ function LimitModal({ isOpen, router }) {
 }
 
 // ============================================
-// FILE UPLOAD COMPONENTS (Kept same as provided)
+// FILE UPLOAD COMPONENTS
 // ============================================
 function FilePreview({ file, onRemove, index }) {
     return (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-3 animate-fadeIn">
+        <div className="group bg-white border border-gray-200 rounded-2xl p-3 flex items-center justify-between gap-3 hover:border-blue-300 hover:shadow-sm transition-all">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                    <Paperclip className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                    <FileText className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 text-sm truncate">{file.name}</p>
                     <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
             </div>
-            <button onClick={onRemove} className="p-1.5 hover:bg-blue-200 rounded-lg transition-all shrink-0">
-                <X className="w-4 h-4 text-gray-600" />
+            <button 
+                onClick={onRemove} 
+                className="p-2 hover:bg-red-50 rounded-lg transition-all shrink-0 opacity-0 group-hover:opacity-100"
+            >
+                <X className="w-4 h-4 text-red-500" />
             </button>
         </div>
     );
@@ -106,36 +407,29 @@ function FilePreview({ file, onRemove, index }) {
 
 function FileUploadArea({ files, onAdd, onRemove }) {
     const fileInputRef = useRef(null);
+    
+    if (files.length === 0) return null;
+    
     return (
         <div className="mb-3 space-y-2">
-            <div className="flex flex-col gap-2">
-                {files.map((file, idx) => (
-                    <FilePreview key={`${file.name}-${idx}`} file={file} index={idx} onRemove={() => onRemove(idx)} />
-                ))}
-            </div>
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,image/*"
-                multiple
-                onChange={(e) => {
-                    const selected = Array.from(e.target.files);
-                    if (files.length + selected.length > 2) return alert("Max 2 files allowed");
-                    selected.forEach(f => onAdd(f));
-                    e.target.value = '';
-                }}
-                className="hidden"
-            />
+            {files.map((file, idx) => (
+                <FilePreview 
+                    key={`${file.name}-${idx}`} 
+                    file={file} 
+                    index={idx} 
+                    onRemove={() => onRemove(idx)} 
+                />
+            ))}
         </div>
     );
 }
 
 // ============================================
-// INDICATORS (Kept same)
+// TYPING INDICATOR
 // ============================================
 function TypingIndicator() {
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5 px-4 py-3">
             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
@@ -144,30 +438,49 @@ function TypingIndicator() {
 }
 
 function ProcessingIndicator({ stage }) {
-    const stages = ["Reading document...", "Analyzing risks...", "Finalizing results..."];
+    const stages = [
+        { text: "Reading document", icon: "📄" },
+        { text: "Analyzing clauses", icon: "🔍" },
+        { text: "Finalizing results", icon: "✨" }
+    ];
+    
     return (
-        <div className="flex items-center gap-3 py-2">
-            <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <span className="text-sm text-gray-600">{stages[stage]}</span>
+        <div className="flex items-center gap-3 px-4 py-3">
+            <div className="relative">
+                <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center text-xs">
+                    {stages[stage].icon}
+                </div>
+            </div>
+            <span className="text-sm text-gray-600 font-medium">{stages[stage].text}...</span>
         </div>
     );
 }
 
 // ============================================
-// RESULT COMPONENTS (Kept same)
+// RESULT CARD COMPONENTS
 // ============================================
 function RiskBadge({ level, count, onClick }) {
     const styles = {
-        low: "bg-green-100 text-green-700 border-green-300",
-        medium: "bg-yellow-100 text-yellow-700 border-yellow-300",
-        high: "bg-red-100 text-red-700 border-red-300"
+        low: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+        medium: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+        high: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
     };
-    const icons = { low: "🟢", medium: "🟡", high: "🔴" };
+    
+    const icons = { 
+        low: <div className="w-2 h-2 rounded-full bg-emerald-500"></div>, 
+        medium: <div className="w-2 h-2 rounded-full bg-amber-500"></div>, 
+        high: <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+    };
+    
     return (
-        <button onClick={onClick} className={`${styles[level]} border px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 hover:shadow-md transition-all`}>
-            <span>{icons[level]}</span>
+        <button 
+            onClick={onClick} 
+            className={`${styles[level]} border-2 px-4 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 transition-all shadow-sm hover:shadow-md`}
+        >
+            {icons[level]}
             <span className="capitalize">{level} Risk</span>
-            <span className="bg-white bg-opacity-70 px-2 py-0.5 rounded-full text-xs font-semibold">{count}</span>
+            <span className="bg-white/80 px-2.5 py-0.5 rounded-full text-xs font-bold ml-1">{count}</span>
         </button>
     );
 }
@@ -178,41 +491,152 @@ function ResultCard({ analysis, scrollToClause }) {
         medium: analysis.clauses.filter(c => c.risk_level === 'medium').length,
         high: analysis.clauses.filter(c => c.risk_level === 'high').length
     };
+    
     const overallRisk = riskCounts.high > 0 ? 'High' : riskCounts.medium > 2 ? 'Medium' : 'Low';
-    const riskColor = overallRisk === 'High' ? 'text-red-600' : overallRisk === 'Medium' ? 'text-yellow-600' : 'text-green-600';
+    
+    const riskStyles = {
+        High: { color: 'text-rose-600', bg: 'from-rose-50 to-rose-100', icon: '🚨' },
+        Medium: { color: 'text-amber-600', bg: 'from-amber-50 to-amber-100', icon: '⚠️' },
+        Low: { color: 'text-emerald-600', bg: 'from-emerald-50 to-emerald-100', icon: '✅' }
+    };
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6 max-w-3xl shadow-sm">
-            <div className="text-center py-8 bg-linear-to-br from-blue-50 to-indigo-50 rounded-xl">
-                <Shield className={`w-16 h-16 mx-auto mb-3 ${riskColor}`} />
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Overall Risk: {overallRisk}</h2>
-                <p className="text-gray-600 px-6 max-w-2xl mx-auto">{analysis.summary}</p>
+        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+            {/* Header Section */}
+            <div className={`bg-gradient-to-br ${riskStyles[overallRisk].bg} px-8 py-10 text-center border-b border-gray-200`}>
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
+                    <Shield className={`w-8 h-8 ${riskStyles[overallRisk].color}`} />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                    <span className="text-2xl mr-2">{riskStyles[overallRisk].icon}</span>
+                    Overall Risk: {overallRisk}
+                </h2>
+                <p className="text-gray-700 text-base max-w-2xl mx-auto leading-relaxed">{analysis.summary}</p>
             </div>
-            <div className="flex flex-wrap gap-2 justify-center">
+
+            {/* Risk Badges */}
+            <div className="px-8 py-6 flex flex-wrap gap-3 justify-center border-b border-gray-100">
                 {['low', 'medium', 'high'].map(lvl => riskCounts[lvl] > 0 && (
-                    <RiskBadge key={lvl} level={lvl} count={riskCounts[lvl]} onClick={() => scrollToClause(lvl)} />
+                    <RiskBadge 
+                        key={lvl} 
+                        level={lvl} 
+                        count={riskCounts[lvl]} 
+                        onClick={() => scrollToClause(lvl)} 
+                    />
                 ))}
             </div>
-            <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Identified Clauses</h3>
-                {analysis.clauses.map((clause, idx) => (
-                    <div key={idx} id={`clause-${clause.risk_level}-${idx}`} className={`border-l-4 p-4 rounded-lg ${clause.risk_level === 'high' ? 'border-red-500 bg-red-50' : clause.risk_level === 'medium' ? 'border-yellow-500 bg-yellow-50' : 'border-green-500 bg-green-50'}`}>
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                            <h4 className="font-semibold text-gray-900 text-sm flex-1">{clause.clause}</h4>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase ${clause.risk_level === 'high' ? 'bg-red-200 text-red-800' : clause.risk_level === 'medium' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>{clause.risk_level}</span>
-                        </div>
-                        <p className="text-gray-700 text-sm leading-relaxed">{clause.explanation}</p>
-                    </div>
-                ))}
+
+            {/* Clauses Section */}
+            <div className="px-8 py-6 space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <AlertCircle className="w-5 h-5 text-gray-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Identified Clauses</h3>
+                    <span className="ml-auto text-sm text-gray-500">{analysis.clauses.length} total</span>
+                </div>
+                
+                <div className="space-y-3">
+                    {analysis.clauses.map((clause, idx) => {
+                        const clauseStyles = {
+                            high: { border: 'border-rose-200', bg: 'bg-rose-50/50', badge: 'bg-rose-100 text-rose-700' },
+                            medium: { border: 'border-amber-200', bg: 'bg-amber-50/50', badge: 'bg-amber-100 text-amber-700' },
+                            low: { border: 'border-emerald-200', bg: 'bg-emerald-50/50', badge: 'bg-emerald-100 text-emerald-700' }
+                        };
+                        
+                        return (
+                            <div 
+                                key={idx} 
+                                id={`clause-${clause.risk_level}-${idx}`}
+                                className={`border-l-4 ${clauseStyles[clause.risk_level].border} ${clauseStyles[clause.risk_level].bg} p-5 rounded-xl hover:shadow-sm transition-all`}
+                            >
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                    <h4 className="font-semibold text-gray-900 flex-1 leading-snug">
+                                        {clause.clause}
+                                    </h4>
+                                    <span className={`${clauseStyles[clause.risk_level].badge} px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shrink-0`}>
+                                        {clause.risk_level}
+                                    </span>
+                                </div>
+                                <p className="text-gray-700 leading-relaxed text-sm">
+                                    {clause.explanation}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
 }
 
 // ============================================
-// MAIN PAGE COMPONENT (Try)
+// WELCOME SCREEN
 // ============================================
+function WelcomeScreen({ onFileClick }) {
+    const suggestions = [
+        { icon: "📄", text: "Review my employment contract" },
+        { icon: "🏠", text: "Analyze lease agreement terms" },
+        { icon: "💼", text: "Check NDA for red flags" },
+        { icon: "🤝", text: "Explain partnership agreement" }
+    ];
 
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-12">
+            <div className="max-w-2xl w-full text-center space-y-8">
+                {/* Logo and Title */}
+                <div className="space-y-4">
+                    {/* <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-4">
+                        <Sparkles className="w-10 h-10 text-white" />
+                    </div> */}
+                    <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
+                        Legal AI Assistant
+                    </h1>
+                    <p className="text-lg text-gray-600 max-w-md mx-auto">
+                        Upload contracts, ask legal questions, and get instant AI-powered analysis
+                    </p>
+                </div>
+
+                {/* Suggestion Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-xl mx-auto pt-4">
+                    {suggestions.map((suggestion, idx) => (
+                        <button
+                            key={idx}
+                            className="group p-4 bg-white border-2 border-gray-200 rounded-2xl hover:border-blue-500 hover:shadow-lg transition-all text-left"
+                            onClick={() => {
+                                // This will be handled by the parent component
+                                const event = new CustomEvent('suggestion-click', { detail: suggestion.text });
+                                window.dispatchEvent(event);
+                            }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">{suggestion.icon}</span>
+                                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                    {suggestion.text}
+                                </span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Upload Prompt */}
+                <div className="pt-4">
+                    <button
+                        onClick={onFileClick}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-2xl transition-all group"
+                    >
+                        <Paperclip className="w-5 h-5 text-gray-500 group-hover:text-blue-600" />
+                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                            Upload a document to get started
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function Try() {
     const router = useRouter(); 
     const [messages, setMessages] = useState([]);
@@ -221,128 +645,134 @@ export default function Try() {
     const [loading, setLoading] = useState(false);
     const [processingStage, setProcessingStage] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    
-    // NEW: Limit State
     const [showLimitModal, setShowLimitModal] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
     const textareaRef = useRef(null);
 
-    // Initialize Guest ID
-    useEffect(() => {
-        getGuestId(); 
-    }, []);
-
+    useEffect(() => { getGuestId(); }, []);
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-    const animateAssistantContent = (fullText) => {
-        if (!fullText) {
-            setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-            setIsGenerating(false);
-            return;
-        }
-        let msgIdx = -1;
-        setMessages(prev => {
-            const newArr = [...prev, { role: 'assistant', content: '' }];
-            msgIdx = newArr.length - 1;
-            return newArr;
-        });
-        let charIndex = 0;
-        const step = () => {
-            if (!isGenerating) return;
-            charIndex += 2;
-            const current = fullText.slice(0, charIndex);
-            setMessages(prev => {
-                const copy = [...prev];
-                if (copy[msgIdx]) copy[msgIdx] = { ...copy[msgIdx], content: current };
-                return copy;
-            });
-            if (charIndex < fullText.length) setTimeout(step, 20);
-            else setIsGenerating(false);
+    // Handle suggestion clicks
+    useEffect(() => {
+        const handleSuggestion = (e) => {
+            setInputText(e.detail);
+            textareaRef.current?.focus();
         };
-        step();
+        window.addEventListener('suggestion-click', handleSuggestion);
+        return () => window.removeEventListener('suggestion-click', handleSuggestion);
+    }, []);
+
+    const animateAssistantContent = (fullText) => {
+        const textToType = fullText || "I processed your request, but received no text response.";
+        setIsGenerating(true);
+        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+        let charIndex = 0;
+        const speed = 10;
+
+        const intervalId = setInterval(() => {
+            charIndex += 2;
+            if (charIndex >= textToType.length) {
+                clearInterval(intervalId);
+                setIsGenerating(false);
+                setMessages(prev => {
+                    const newArr = [...prev];
+                    const lastIdx = newArr.length - 1;
+                    if (lastIdx >= 0) newArr[lastIdx] = { ...newArr[lastIdx], content: textToType };
+                    return newArr;
+                });
+            } else {
+                setMessages(prev => {
+                    const newArr = [...prev];
+                    const lastIdx = newArr.length - 1;
+                    if (lastIdx >= 0) newArr[lastIdx] = { ...newArr[lastIdx], content: textToType.slice(0, charIndex) };
+                    return newArr;
+                });
+            }
+        }, speed);
     };
 
     const handleSend = async () => {
         if (!inputText.trim() && files.length === 0) return;
 
         const textToSend = inputText || "Analyze this document";
-        const guestId = getGuestId(); // Get ID
+        const guestId = getGuestId();
 
-        // Add user message
         setMessages(prev => [...prev, { role: "user", content: textToSend, files: files.map(f => f.name) }]);
         setInputText("");
         const currentFiles = [...files];
         setFiles([]);
         setLoading(true);
-        setIsGenerating(true);
 
         try {
+            let documentText = "";
+
             if (currentFiles.length > 0) {
-                // 1. OCR Upload
                 setProcessingStage(0);
                 const formData = new FormData();
                 currentFiles.forEach(file => formData.append("file", file));
 
                 const ocrRes = await fetch("/api/ocr", { method: "POST", body: formData });
+                if (!ocrRes.ok) throw new Error("OCR Upload failed");
                 const ocrData = await ocrRes.json();
+                documentText = ocrData.text;
+            }
 
-                // 2. AI Analysis
-                setProcessingStage(1);
-                const aiRes = await fetch("/api/generate-content", {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "x-guest-id": guestId // PASS GUEST ID
-                    },
-                    body: JSON.stringify({ documentText: ocrData.text, message: textToSend }),
-                });
+            setProcessingStage(1);
+            
+            const apiBody = {
+                message: textToSend,
+                ...(documentText && { documentText })
+            };
 
-                // HANDLE LIMIT REACHED
-                if (aiRes.status === 403) {
-                    setLoading(false);
-                    setIsGenerating(false);
-                    setShowLimitModal(true); // Open Modal
-                    return;
+            const aiRes = await fetch("/api/generate-content", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "x-guest-id": guestId
+                },
+                body: JSON.stringify(apiBody),
+            });
+            
+            if (aiRes.status === 403) {
+                const errorData = await aiRes.json();
+                if (errorData.limitType === 'guest_limit') {
+                    setShowLimitModal(true);
                 }
+                setLoading(false);
+                return;
+            }
 
-                const aiData = await aiRes.json();
-                setProcessingStage(2);
-                
+            if (!aiRes.ok) throw new Error("AI Generation failed");
+
+            const aiData = await aiRes.json();
+            setProcessingStage(2);
+
+            const hasClauses = aiData.data?.clauses && Array.isArray(aiData.data.clauses) && aiData.data.clauses.length > 0;
+
+            setLoading(false);
+
+            if (hasClauses) {
                 const normalized = normalizeAnalysis(aiData.data);
                 setMessages(prev => [...prev, { role: "assistant", analysis: normalized }]);
-                
             } else {
-                // Text Only
-                const aiRes = await fetch("/api/generate-content", {
-                    method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "x-guest-id": guestId // PASS GUEST ID
-                    },
-                    body: JSON.stringify({ message: textToSend }),
-                });
-
-                // HANDLE LIMIT REACHED
-                if (aiRes.status === 403) {
-                    setLoading(false);
-                    setIsGenerating(false);
-                    setShowLimitModal(true); // Open Modal
-                    return;
-                }
-
-                const data = await aiRes.json();
-                let content = data.data?.summary || data.data?.response || JSON.stringify(data.data);
-                animateAssistantContent(content);
+                const responseText = 
+                    aiData.data?.executiveSummary || 
+                    aiData.data?.summary || 
+                    aiData.data?.response || 
+                    aiData.data?.text || 
+                    (typeof aiData.data === 'string' ? aiData.data : "I processed the document but couldn't find specific risks to list.");
+                
+                animateAssistantContent(responseText);
             }
+
         } catch (error) {
-            console.error(error);
-            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, error processing request." }]);
-        } finally {
+            console.error("Handle Send Error:", error);
             setLoading(false);
-            if(files.length > 0) setIsGenerating(false); // Text animation handles its own state
+            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again." }]);
         }
     };
 
@@ -351,94 +781,206 @@ export default function Try() {
         element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
-    const handleNewChat = () => {
-        setMessages([]);
-        setFiles([]);
-        setLoading(false);
-    };
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+        }
+    }, [inputText]);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col relative">
+        <div className="min-h-screen border border-red-500 bg-gradient-to-b from-gray-50 to-white flex flex-col">
             
-            {/* LIMIT REACHED MODAL */}
             <LimitModal isOpen={showLimitModal} router={router} />
+            <ShareChatModal 
+                isOpen={showShareModal} 
+                onClose={() => setShowShareModal(false)} 
+                chatId="guest-chat" 
+                chatTitle="Legal Consultation (Guest)" 
+            />
 
             {/* Header */}
-            <header className="border-b border-gray-200 sticky top-0 z-10 bg-white/80 backdrop-blur-md">
-                <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Image src="/logo.svg" width={40} height={40} alt="Logo" className="w-10 h-10" />
-                        <h1 className="text-xl font-bold text-gray-900">Legal Advisor <span className="text-blue-600 text-sm font-normal bg-blue-50 px-2 py-0.5 rounded-full ml-2">Free Trial</span></h1>
-                    </div>
-                    <div className="flex gap-3">
-                        <button onClick={() => router.push('/')} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Log In</button>
-                        <button onClick={() => router.push('/pages/signup')} className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm">Sign Up Free</button>
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-6 h-6 invert" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-bold text-gray-900">Legal AI</h1>
+                                <span className="text-xs text-gray-500 font-medium">Free Trial</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {messages.length > 0 && (
+                                <>
+                                    <button
+                                        onClick={() => setShowShareModal(true)}
+                                        className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                                    >
+                                        <Share2 className="w-4 h-4" />
+                                        Share
+                                    </button>
+                                    <button
+                                        onClick={() => { setMessages([]); setFiles([]); }}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span className="hidden sm:inline">New</span>
+                                    </button>
+                                </>
+                            )}
+                            <button 
+                                onClick={() => router.push('/')} 
+                                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-all hidden sm:block"
+                            >
+                                Sign In
+                            </button>
+                            <button 
+                                onClick={() => router.push('/pages/signup')} 
+                                className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl"
+                            >
+                                Sign Up
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            {/* Chat Area */}
+            {/* Main Chat Area */}
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-4 py-8">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6">
                     {messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center mt-10">
-                            <Image src="/logo.svg" width={80} height={80} alt="Logo" className="mb-6 opacity-90" />
-                            <h2 className="text-3xl font-bold text-gray-900 mb-3">Try Legal AI for Free</h2>
-                            <p className="text-gray-500 max-w-md">Upload a contract snippet or ask a legal question to see how it works. (Limited to 3 tries)</p>
-                        </div>
+                        <WelcomeScreen onFileClick={() => fileInputRef.current?.click()} />
                     ) : (
-                        <div className="space-y-6 pb-20">
+                        <div className="space-y-6 py-8 pb-32">
                             {messages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div 
+                                    key={idx} 
+                                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                                    style={{ animationDelay: `${idx * 50}ms` }}
+                                >
                                     {msg.role === 'user' ? (
-                                        <div className="bg-blue-600 text-white rounded-2xl px-5 py-3 max-w-2xl shadow-sm">
-                                            {msg.files && msg.files.length > 0 && (
-                                                <div className="text-xs text-blue-100 mb-2 flex items-center gap-2"><Paperclip className="w-3 h-3" /> {msg.files[0]}</div>
-                                            )}
-                                            <p>{msg.content}</p>
+                                        <div className="flex gap-3 max-w-3xl">
+                                            <div className="flex-1">
+                                                {msg.files && msg.files.length > 0 && (
+                                                    <div className="mb-2 flex items-center gap-2 text-xs text-gray-500">
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        <span>{msg.files[0]}</span>
+                                                    </div>
+                                                )}
+                                                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-3xl rounded-tr-md px-6 py-4 shadow-lg">
+                                                    <p className="leading-relaxed">{msg.content}</p>
+                                                </div>
+                                            </div>
+                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 mt-1">
+                                                <span className="text-sm">👤</span>
+                                            </div>
                                         </div>
                                     ) : msg.analysis ? (
-                                        <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
+                                        <div className="flex gap-3 w-full max-w-4xl">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 mt-1 shadow-lg">
+                                                <Sparkles className="w-4 h-4 text-white" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
+                                            </div>
+                                        </div>
                                     ) : (
-                                        <div className="bg-white border border-gray-200 text-gray-800 rounded-2xl px-6 py-4 max-w-3xl shadow-sm"><p>{msg.content}</p></div>
+                                        <div className="flex gap-3 max-w-4xl w-full">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 mt-1 shadow-lg">
+                                                <Sparkles className="w-4 h-4 text-white" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <TextResponseCard content={msg.content} />
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             ))}
+                            
                             {loading && (
-                                <div className="flex justify-start">
-                                    <div className="bg-gray-100 rounded-2xl px-5 py-3">
+                                <div className="flex gap-3 animate-in fade-in duration-300">
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg">
+                                        <Sparkles className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="bg-white border border-gray-200 rounded-3xl rounded-tl-md shadow-sm">
                                         {files.length > 0 ? <ProcessingIndicator stage={processingStage} /> : <TypingIndicator />}
                                     </div>
                                 </div>
                             )}
+                            
+                            <div ref={messagesEndRef} />
                         </div>
                     )}
-                    <div ref={messagesEndRef} />
                 </div>
             </div>
 
-            {/* Input Area */}
-            <div className="pb-6 pt-4 bg-transparent">
-                <div className="max-w-3xl mx-auto px-4">
-                    <FileUploadArea files={files} onAdd={(f) => setFiles(prev => [...prev, f])} onRemove={(i) => setFiles(p => p.filter((_, idx) => idx !== i))} />
+            {/* Input Area - Fixed at Bottom */}
+            <div className="sticky bottom-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6">
+                    <FileUploadArea 
+                        files={files} 
+                        onAdd={(f) => setFiles(prev => [...prev, f])} 
+                        onRemove={(i) => setFiles(p => p.filter((_, idx) => idx !== i))} 
+                    />
                     
-                    <div className="bg-white border border-gray-300 rounded-3xl shadow-lg flex items-end gap-2 p-3">
-                        <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><Paperclip className="w-5 h-5" /></button>
-                        <input ref={fileInputRef} type="file" accept=".pdf,image/*" multiple onChange={(e) => { const s = Array.from(e.target.files); if(files.length+s.length>2)return; setFiles(p=>[...p,...s]); e.target.value=''; }} className="hidden" />
+                    <div className="relative">
+                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 focus-within:border-blue-500 rounded-3xl shadow-lg hover:shadow-xl transition-all flex items-end gap-2 p-2">
+                            <input 
+                                ref={fileInputRef} 
+                                type="file" 
+                                accept=".pdf,image/*" 
+                                multiple 
+                                onChange={(e) => { 
+                                    const s = Array.from(e.target.files); 
+                                    if(files.length+s.length>2) return alert("Maximum 2 files allowed"); 
+                                    setFiles(p=>[...p,...s]); 
+                                    e.target.value=''; 
+                                }} 
+                                className="hidden" 
+                            />
+                            
+                            <button 
+                                onClick={() => fileInputRef.current?.click()} 
+                                className="p-3 hover:bg-gray-100 rounded-2xl text-gray-500 hover:text-gray-700 transition-all shrink-0"
+                                title="Attach file"
+                            >
+                                <Paperclip className="w-5 h-5" />
+                            </button>
+                            
+                            <textarea 
+                                ref={textareaRef}
+                                value={inputText} 
+                                onChange={(e) => setInputText(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey && !isGenerating && !loading) {
+                                        e.preventDefault();
+                                        handleSend();
+                                    }
+                                }}
+                                placeholder="Ask anything about your legal document..." 
+                                className="flex-1 bg-transparent resize-none outline-none py-3 px-2 text-gray-900 placeholder-gray-400 max-h-[200px] min-h-[24px]"
+                                rows={1}
+                                style={{ lineHeight: '1.5' }}
+                            />
+                            
+                            <button 
+                                onClick={handleSend} 
+                                disabled={isGenerating || loading || (!inputText.trim() && !files.length)} 
+                                className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl disabled:shadow-none shrink-0"
+                                title="Send message"
+                            >
+                                <Send className="w-5 h-5" />
+                            </button>
+                        </div>
                         
-                        <textarea 
-                            ref={textareaRef}
-                            value={inputText} 
-                            onChange={(e) => setInputText(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !isGenerating && (e.preventDefault(), handleSend())}
-                            placeholder="Ask legal questions..." 
-                            className="flex-1 bg-transparent resize-none outline-none py-2 max-h-32 text-gray-900"
-                            rows={1}
-                        />
-                        
-                        <button onClick={handleSend} disabled={isGenerating || loading || (!inputText && !files.length)} className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 transition-all"><Send className="w-5 h-5" /></button>
+                        <p className="text-xs text-center text-gray-400 mt-3">
+                            Free trial • Your data is not saved
+                        </p>
                     </div>
-                    <p className="text-xs text-center text-gray-400 mt-2">Free trial mode. Data is not saved to an account.</p>
                 </div>
             </div>
         </div>
