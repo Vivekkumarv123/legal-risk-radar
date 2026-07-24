@@ -60,7 +60,7 @@ export default function HomePage() {
             <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-4 border-b border-slate-100' : 'bg-transparent py-6'}`}>
                 <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
                     <Link href="/" className="flex items-center gap-2.5 text-blue-700 font-extrabold text-2xl tracking-tight group">
-                        <Image src="/logo.svg" width={40} height={40} alt="Logo" className="w-9 h-9 opacity-90 group-hover:scale-105 transition-transform" />
+                        <Image src="/logo.svg" width={40} height={40} alt="Legal Advisor Logo" className="w-9 h-9 opacity-90 group-hover:scale-105 transition-transform" />
                         <span>Legal Advisor</span>
                     </Link>
 
@@ -85,7 +85,7 @@ export default function HomePage() {
                     </nav>
 
                     {/* Mobile Menu Toggle */}
-                    <button className="lg:hidden text-slate-700 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                    <button aria-label="Toggle navigation menu" className="lg:hidden text-slate-700 p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
                         {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
                     </button>
                 </div>
@@ -116,6 +116,8 @@ export default function HomePage() {
                 </AnimatePresence>
             </header>
 
+            {/* ================= MAIN CONTENT ================= */}
+            <main>
             {/* ================= HERO SECTION ================= */}
             <section className="relative pt-32 pb-20 lg:pt-44 lg:pb-32 overflow-hidden">
                 {/* Subtle Grid Pattern Background */}
@@ -181,12 +183,14 @@ export default function HomePage() {
                                 <div className="flex gap-1.5 bg-slate-100 p-1 rounded-lg w-full">
                                     <button 
                                         onClick={() => setActiveDemoTab("consultation")}
+                                        aria-label="Switch demo tab to Voice AI consultation"
                                         className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${activeDemoTab === "consultation" ? "bg-white text-blue-700 shadow-xs" : "text-slate-500 hover:text-slate-900"}`}
                                     >
                                         🎙️ Voice AI (Aura)
                                     </button>
                                     <button 
                                         onClick={() => setActiveDemoTab("analysis")}
+                                        aria-label="Switch demo tab to Risk audit"
                                         className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${activeDemoTab === "analysis" ? "bg-white text-blue-700 shadow-xs" : "text-slate-500 hover:text-slate-900"}`}
                                     >
                                         🛡️ Risk Audit
@@ -486,6 +490,7 @@ export default function HomePage() {
                         <div key={idx} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                             <button 
                                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                                aria-label={faq.q}
                                 className="w-full p-6 text-left font-bold text-slate-900 flex justify-between items-center gap-4 hover:bg-slate-50 transition-colors text-base"
                             >
                                 <span>{faq.q}</span>
@@ -528,6 +533,7 @@ export default function HomePage() {
                     </div>
                 </div>
             </section>
+            </main>
 
             {/* ================= FOOTER ================= */}
             <footer className="bg-white border-t border-slate-200 pt-16 pb-10 px-6 text-slate-600">
@@ -541,8 +547,8 @@ export default function HomePage() {
                         </p>
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 text-sm mb-4">Core Products</h4>
-                        <ul className="space-y-2.5 text-sm text-slate-500">
+                        <h3 className="font-bold text-slate-900 text-sm mb-4">Core Products</h3>
+                        <ul className="space-y-2.5 text-sm text-slate-600">
                             <li><Link href="/pages/features" className="hover:text-blue-600">All Features</Link></li>
                             <li><Link href="/pages/legal-consultation" className="hover:text-blue-600">Live Voice AI (Aura)</Link></li>
                             <li><Link href="/pages/chat" className="hover:text-blue-600">Contract Risk Scanner</Link></li>
@@ -550,8 +556,8 @@ export default function HomePage() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 text-sm mb-4">Resources</h4>
-                        <ul className="space-y-2.5 text-sm text-slate-500">
+                        <h3 className="font-bold text-slate-900 text-sm mb-4">Resources</h3>
+                        <ul className="space-y-2.5 text-sm text-slate-600">
                             <li><Link href="/pages/pricing" className="hover:text-blue-600">Pricing Plans</Link></li>
                             <li><Link href="/pages/feedback" className="hover:text-blue-600">Submit Feedback</Link></li>
                             <li><Link href="/pages/help-center" className="hover:text-blue-600">Help Center</Link></li>
@@ -559,15 +565,15 @@ export default function HomePage() {
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 text-sm mb-4">Legal</h4>
-                        <ul className="space-y-2.5 text-sm text-slate-500">
+                        <h3 className="font-bold text-slate-900 text-sm mb-4">Legal</h3>
+                        <ul className="space-y-2.5 text-sm text-slate-600">
                             <li><Link href="/pages/privacy-policy" className="hover:text-blue-600">Privacy Policy</Link></li>
                             <li><Link href="/pages/terms-of-service" className="hover:text-blue-600">Terms of Service</Link></li>
                             <li><Link href="/pages/terms-policies" className="hover:text-blue-600">Compliance Center</Link></li>
                         </ul>
                     </div>
                 </div>
-                <div className="max-w-7xl mx-auto border-t border-slate-100 pt-8 text-center text-slate-400 text-sm">
+                <div className="max-w-7xl mx-auto border-t border-slate-100 pt-8 text-center text-slate-500 text-sm">
                     © {new Date().getFullYear()} Legal Advisor. All rights reserved. Not a law firm.
                 </div>
             </footer>
