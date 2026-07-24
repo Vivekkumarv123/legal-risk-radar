@@ -3,7 +3,7 @@
  * Automatically generates /sitemap.xml for search engine indexing.
  */
 export default async function sitemap() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://legalriskradar.com';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://legal-risk-radar.vercel.app';
 
   // Define public and indexed routes in the application
   const routes = [
