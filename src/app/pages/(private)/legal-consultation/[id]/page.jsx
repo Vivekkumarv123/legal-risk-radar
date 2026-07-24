@@ -81,8 +81,8 @@ export default function LegalConsultationRoom({ params }) {
     },
     onError: (err) => {
       console.error('Google Sign-In failed:', err);
-      setAccessToken('ya29.mock_hackathon_developer_token');
-      setIsGoogleConnected(true);
+      setIsGoogleConnected(false);
+      setAccessToken('');
     },
     scope: 'https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file'
   });

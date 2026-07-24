@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import { verifyToken } from '@/middleware/auth.middleware';
 
 /**
  * GET: Retrieves the complete session state of a single consultation by its ID
  */
 export async function GET(req, { params }) {
   try {
+    const authResult = await verifyToken(req);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error || 'Unauthorized' }, { status: 401 });
+    }
+
     const resolvedParams = await params;
     const { id } = resolvedParams;
 
@@ -20,9 +26,14 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: 'Consultation not found' }, { status: 404 });
     }
 
+    const data = doc.data();
+    if (data.userId && data.userId !== authResult.user.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to access this consultation' }, { status: 403 });
+    }
+
     return NextResponse.json({
       success: true,
-      data: doc.data()
+      data
     });
   } catch (error) {
     console.error('Error retrieving consultation details:', error);
@@ -35,6 +46,11 @@ export async function GET(req, { params }) {
  */
 export async function DELETE(req, { params }) {
   try {
+    const authResult = await verifyToken(req);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error || 'Unauthorized' }, { status: 401 });
+    }
+
     const resolvedParams = await params;
     const { id } = resolvedParams;
 
@@ -47,6 +63,11 @@ export async function DELETE(req, { params }) {
 
     if (!doc.exists) {
       return NextResponse.json({ error: 'Consultation not found' }, { status: 404 });
+    }
+
+    const data = doc.data();
+    if (data.userId && data.userId !== authResult.user.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete this consultation' }, { status: 403 });
     }
 
     await docRef.delete();

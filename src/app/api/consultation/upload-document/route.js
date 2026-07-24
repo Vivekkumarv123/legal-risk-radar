@@ -3,6 +3,7 @@ import { db } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { createWorker } from 'tesseract.js';
 import { getCachedDocumentText, setCachedDocumentText } from '@/lib/documentCache';
+import { verifyToken } from '@/middleware/auth.middleware';
 import PDFParser from 'pdf2json';
 
 // pdf2json helper function for stable PDF text parsing
@@ -29,6 +30,11 @@ function parsePdfBuffer(buffer) {
  */
 export async function POST(req) {
   try {
+    const authResult = await verifyToken(req);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error || 'Unauthorized' }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file');
     const consultationId = formData.get('consultationId');
@@ -43,6 +49,17 @@ export async function POST(req) {
     // Sanitize and validate consultationId parameter format
     if (typeof consultationId !== 'string' || !/^[a-zA-Z0-9_-]{4,50}$/.test(consultationId)) {
       return NextResponse.json({ error: 'Invalid consultationId format' }, { status: 400 });
+    }
+
+    // Verify consultation existence and ownership
+    const docRef = db.collection('consultations').doc(consultationId);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+      return NextResponse.json({ error: 'Consultation session not found' }, { status: 404 });
+    }
+    const sessionData = docSnap.data();
+    if (sessionData.userId && sessionData.userId !== authResult.user.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to upload documents to this consultation' }, { status: 403 });
     }
 
     // File validation: caps size to 10MB to avoid server memory overload
@@ -159,8 +176,6 @@ export async function POST(req) {
     }
 
     // 3. Save document references in the consultations collection in Firestore
-    const docRef = db.collection('consultations').doc(consultationId);
-    
     const newDocItem = {
       googleFileId: driveFile.id,
       name: driveFile.name,

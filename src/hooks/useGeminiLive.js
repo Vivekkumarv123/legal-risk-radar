@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { syncTranscript, syncTimelineEvent } from '@/lib/firebase';
+import { authenticatedFetch } from '@/utils/auth.utils';
 
 /**
  * Custom hook to manage the Gemini Live WebSocket connection and Audio playout.
@@ -63,7 +64,7 @@ export function useGeminiLive({ sessionId, accessToken, onStateChange }) {
       console.log('[WSS Live] connect() called, requesting ephemeral token for session', configRef.current.sessionId);
       
       // 1. Fetch short-lived token and context from the Next.js API
-      const tokenRes = await fetch('/api/auth/live-token', {
+      const tokenRes = await authenticatedFetch('/api/auth/live-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: configRef.current.sessionId })

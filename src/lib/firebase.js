@@ -4,6 +4,8 @@
  * This secures Firestore operations and uses the Firebase Admin SDK on the backend.
  */
 
+import { authenticatedFetch } from '@/utils/auth.utils';
+
 const API_BASE = '/api/consultation';
 
 /**
@@ -13,7 +15,7 @@ const API_BASE = '/api/consultation';
  */
 export async function createConsultation(userId) {
   try {
-    const res = await fetch(API_BASE, {
+    const res = await authenticatedFetch(API_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
@@ -38,7 +40,7 @@ export async function createConsultation(userId) {
  */
 export async function getConsultation(consultationId) {
   try {
-    const res = await fetch(`${API_BASE}/${consultationId}`);
+    const res = await authenticatedFetch(`${API_BASE}/${consultationId}`);
     
     if (!res.ok) {
       if (res.status === 404) return null;
@@ -96,7 +98,7 @@ export async function saveDecisionBrief(consultationId, decisionBrief) {
  */
 async function syncSession(consultationId, payload) {
   try {
-    const res = await fetch(`${API_BASE}/sync`, {
+    const res = await authenticatedFetch(`${API_BASE}/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ consultationId, ...payload }),

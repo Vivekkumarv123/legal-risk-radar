@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { authenticatedFetch } from '@/utils/auth.utils';
 
 /**
  * SharedWorkspace: Central document drop area and screen share manager.
@@ -48,7 +49,7 @@ export default function SharedWorkspace({ consultationId, accessToken, onDocumen
       formData.append('consultationId', consultationId);
       formData.append('accessToken', accessToken);
 
-      const res = await fetch('/api/consultation/upload-document', {
+      const res = await authenticatedFetch('/api/consultation/upload-document', {
         method: 'POST',
         body: formData
       });

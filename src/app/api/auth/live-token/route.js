@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { WEBSOCKET_LIVE_MODEL } from '@/lib/gemini';
+import { verifyToken } from '@/middleware/auth.middleware';
 
 // Extract keys from backend environment
 const API_KEYS = [
@@ -23,6 +24,11 @@ function getRotatedKey() {
  */
 export async function POST(req) {
   try {
+    const authResult = await verifyToken(req);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error || 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { sessionId } = body;
 
@@ -39,6 +45,10 @@ export async function POST(req) {
     }
 
     const sessionData = docSnap.data();
+
+    if (sessionData.userId && sessionData.userId !== authResult.user.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to access this live session' }, { status: 403 });
+    }
 
     // 2. Fetch key from load-balanced rotation pool
     const apiKey = getRotatedKey();

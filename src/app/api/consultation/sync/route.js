@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { verifyToken } from '@/middleware/auth.middleware';
 
 /**
  * POST: Syncs consultation updates.
@@ -8,6 +9,11 @@ import { FieldValue } from 'firebase-admin/firestore';
  */
 export async function POST(req) {
   try {
+    const authResult = await verifyToken(req);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error || 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { 
       consultationId, 
@@ -29,6 +35,11 @@ export async function POST(req) {
     const docSnap = await docRef.get();
     if (!docSnap.exists) {
       return NextResponse.json({ error: 'Consultation session not found' }, { status: 404 });
+    }
+
+    const sessionData = docSnap.data();
+    if (sessionData.userId && sessionData.userId !== authResult.user.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to modify this consultation' }, { status: 403 });
     }
 
     const updates = {
