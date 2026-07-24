@@ -1,7 +1,9 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { createWorker } from "tesseract.js";
 import PDFParser from "pdf2json";
+import { getCachedDocumentText, setCachedDocumentText } from "@/lib/documentCache";
 
 const MAX_FILE_SIZE_MB = 15;
 
@@ -39,6 +41,18 @@ export async function POST(req) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    
+    // 1. Try Cache Lookup (SHA-256 hash comparison)
+    const cachedText = getCachedDocumentText(buffer);
+    if (cachedText) {
+      return Response.json({
+        success: true,
+        text: cachedText,
+        ocrConfidence: 100,
+        cached: true
+      });
+    }
+
     let extractedText = "";
     let ocrConfidence = null;
 
@@ -47,20 +61,20 @@ export async function POST(req) {
       extractedText = await parsePdfBuffer(buffer);
 
       if (!extractedText || extractedText.trim().length < 20) {
-        console.log("PDF scanned or empty — OCR fallback");
+        console.log("PDF scanned or empty — GCP Vision OCR / Tesseract fallback");
 
         try {
+          // Attempt GCP Vision API OCR Annotation
+          const { detectTextFromBuffer } = await import("@/services/gcpVisionService");
+          extractedText = await detectTextFromBuffer(buffer);
+          ocrConfidence = 99;
+        } catch (gcpErr) {
+          console.warn("GCP Vision OCR failed, falling back to local Tesseract OCR:", gcpErr.message);
           const worker = await createWorker("eng");
           const result = await worker.recognize(buffer);
           extractedText = result.data.text;
           ocrConfidence = result.data.confidence;
           await worker.terminate();
-        } catch (ocrError) {
-          console.error("OCR failed:", ocrError);
-          return Response.json(
-            { error: "OCR processing failed", details: ocrError.message },
-            { status: 500 }
-          );
         }
       }
     }
@@ -68,17 +82,17 @@ export async function POST(req) {
     // 🖼️ Image
     else if (file.type.startsWith("image/")) {
       try {
+        // Attempt GCP Vision API OCR Annotation
+        const { detectTextFromBuffer } = await import("@/services/gcpVisionService");
+        extractedText = await detectTextFromBuffer(buffer);
+        ocrConfidence = 99;
+      } catch (gcpErr) {
+        console.warn("GCP Vision OCR failed, falling back to local Tesseract OCR:", gcpErr.message);
         const worker = await createWorker("eng");
         const result = await worker.recognize(buffer);
         extractedText = result.data.text;
         ocrConfidence = result.data.confidence;
         await worker.terminate();
-      } catch (ocrError) {
-        console.error("OCR failed:", ocrError);
-        return Response.json(
-          { error: "OCR processing failed", details: ocrError.message },
-          { status: 500 }
-        );
       }
     }
 
@@ -106,10 +120,14 @@ export async function POST(req) {
       );
     }
 
+    // 2. Save result to SHA-256 Cache
+    setCachedDocumentText(buffer, cleanText);
+
     return Response.json({
       success: true,
       text: cleanText,
       ocrConfidence,
+      cached: false
     });
 
   } catch (err) {

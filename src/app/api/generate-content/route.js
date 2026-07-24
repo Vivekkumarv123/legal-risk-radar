@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { callGemini, generateChatTitle } from "@/lib/gemini";
-import { db } from "@/lib/firebaseAdmin"; 
+import { db } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
-import { headers, cookies } from "next/headers"; 
+import { headers, cookies } from "next/headers";
 import { verifyToken } from "@/middleware/auth.middleware";
 import { checkUsageLimit, trackUsage } from "@/middleware/usage.middleware";
 import { DecisionAnalysis } from "@/models/chat.model";
 
 // CONFIGURATION
-const GUEST_DAILY_LIMIT = 3; 
+const GUEST_DAILY_LIMIT = 3;
 
 function sanitizeForFirestore(value) {
   if (Array.isArray(value)) {
@@ -79,7 +79,7 @@ export async function POST(req) {
   try {
     const body = await req.json();
     let { documentText, message, userRole, docType, fileUrl, chatId } = body;
-    
+
     // Validate Input
     if (!documentText && !message) {
       console.log('❌ No text or message');
@@ -101,7 +101,7 @@ export async function POST(req) {
 
     // Use the same verifyToken function as other APIs
     const authResult = await verifyToken(req);
-    
+
     if (authResult.success && authResult.user?.uid) {
       userId = authResult.user.uid;
       isGuest = false;
@@ -120,7 +120,7 @@ export async function POST(req) {
         trackerId = `guest_${guestIdHeader}`;
       }
     }
-    
+
     // Sanity check - should never happen but let's be safe
     if (!trackerId) {
       console.error('❌ ERROR: No tracker ID generated!');
@@ -131,7 +131,7 @@ export async function POST(req) {
     // Check Limits
     const usageRef = db.collection("usage_limits").doc(trackerId);
     let currentCount = 0;
-    
+
     if (isGuest) {
       const doc = await usageRef.get();
       if (doc.exists) {
@@ -148,11 +148,11 @@ export async function POST(req) {
         tomorrow.setHours(0, 0, 0, 0);
         const hoursUntilReset = Math.floor((tomorrow - now) / (1000 * 60 * 60));
         const minutesUntilReset = Math.floor(((tomorrow - now) % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         console.log('⛔ Guest limit exceeded');
-        
-        return NextResponse.json({ 
-          error: "Daily limit reached", 
+
+        return NextResponse.json({
+          error: "Daily limit reached",
           isLimitReached: true,
           limitType: 'guest_limit',
           currentUsage: currentCount,
@@ -166,7 +166,7 @@ export async function POST(req) {
     } else {
       // Check authenticated user limits
       const usageCheck = await checkUsageLimit(userId, 'ai_query');
-      
+
       if (!usageCheck.allowed) {
         console.log('⛔ Usage limit exceeded');
         // Calculate time until midnight (reset time for daily limits)
@@ -176,7 +176,7 @@ export async function POST(req) {
         tomorrow.setHours(0, 0, 0, 0);
         const hoursUntilReset = Math.floor((tomorrow - now) / (1000 * 60 * 60));
         const minutesUntilReset = Math.floor(((tomorrow - now) % (1000 * 60 * 60)) / (1000 * 60));
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: usageCheck.message,
           isLimitReached: true,
           upgradeRequired: usageCheck.upgradeRequired,
@@ -200,30 +200,30 @@ export async function POST(req) {
 
     // Retrieve context and chat history from DB if this is a follow-up
     if (!isGuest && currentChatId && !documentText) {
-        const chatDoc = await db.collection("chats").doc(currentChatId).get();
-        if (chatDoc.exists && chatDoc.data().documentContext) {
-            contextToAnalyze = chatDoc.data().documentContext; 
-        }
-        
-        // Get recent chat history for context (last 5 messages instead of 10)
-        const messagesSnapshot = await db.collection("chats")
-            .doc(currentChatId)
-            .collection("messages")
-            .orderBy("createdAt", "desc")
-            .limit(5) // Reduced from 10 to 5
-            .get();
-        
-        if (!messagesSnapshot.empty) {
-            chatHistory = messagesSnapshot.docs
-                .map(doc => {
-                    const data = doc.data();
-                    return data;
-                })
-                .reverse() // Reverse to get chronological order
-                .filter(msg => msg.content) // Filter out messages without content
-                .map(msg => `${msg.role}: ${msg.content}`)
-                .join('\n');
-        }
+      const chatDoc = await db.collection("chats").doc(currentChatId).get();
+      if (chatDoc.exists && chatDoc.data().documentContext) {
+        contextToAnalyze = chatDoc.data().documentContext;
+      }
+
+      // Get recent chat history for context (last 5 messages instead of 10)
+      const messagesSnapshot = await db.collection("chats")
+        .doc(currentChatId)
+        .collection("messages")
+        .orderBy("createdAt", "desc")
+        .limit(5) // Reduced from 10 to 5
+        .get();
+
+      if (!messagesSnapshot.empty) {
+        chatHistory = messagesSnapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            return data;
+          })
+          .reverse() // Reverse to get chronological order
+          .filter(msg => msg.content) // Filter out messages without content
+          .map(msg => `${msg.role}: ${msg.content}`)
+          .join('\n');
+      }
     }
 
     // ============================================================
@@ -233,34 +233,34 @@ export async function POST(req) {
     // ============================================================
     const userQuery = message || "Explain the risks.";
     const fileContext = fileUrl ? `(File URL provided: ${fileUrl})` : "";
-    
+
     // LOGIC: It is a "Standard Analysis" (JSON) if:
     // 1. User provided documentText (any new document analysis)
     // 2. OR query explicitly starts with "analyze"
-    const isStandardAnalysis = 
-        !!documentText || 
-        userQuery.toLowerCase().startsWith("analyze");
-    
+    const isStandardAnalysis =
+      !!documentText ||
+      userQuery.toLowerCase().startsWith("analyze");
+
     console.log(isStandardAnalysis ? '🎯 ANALYSIS' : '💬 CHAT');
 
     // ✅ FIX: If analyzing but no separate documentText, the message IS the document.
     if (isStandardAnalysis && !contextToAnalyze) {
-        const prefix = "Analyze the following legal text and identify risks/clauses:\n\n";
-        if (userQuery.startsWith(prefix)) {
-            contextToAnalyze = userQuery.replace(prefix, "");
-        } else {
-            contextToAnalyze = userQuery; // Fallback
-        }
+      const prefix = "Analyze the following legal text and identify risks/clauses:\n\n";
+      if (userQuery.startsWith(prefix)) {
+        contextToAnalyze = userQuery.replace(prefix, "");
+      } else {
+        contextToAnalyze = userQuery; // Fallback
+      }
     }
 
     const sanitizedDoc = (contextToAnalyze || "").replace(/"""/g, "'''");
     let prompt;
 
     if (isStandardAnalysis) {
-        // --- MODE A: ANALYST (Strict JSON) ---
-        // Configures the analysis system instructions to extract legal risks,
-        // identify missing protections, and return a structured JSON schema response.
-        prompt = `
+      // --- MODE A: ANALYST (Strict JSON) ---
+      // Configures the analysis system instructions to extract legal risks,
+      // identify missing protections, and return a structured JSON schema response.
+      prompt = `
           You are LegalAdvisor AI, an AI-powered Legal Decision Intelligence Assistant.
 
 Your goal is NOT just to analyze legal documents.
@@ -351,20 +351,20 @@ Rules:
 - Decision score must be between 0-100.
 - Severity must be between 1-10.
 `;
-}
-        
-     else {
-        // --- MODE B: CHAT COMPANION (Simple Text) ---
-        // Configures system guidelines defining conversational constraints
-        // to behave as a helpful legal assistant.
-        const chatHistoryContext = chatHistory ? `
+    }
+
+    else {
+      // --- MODE B: CHAT COMPANION (Simple Text) ---
+      // Configures system guidelines defining conversational constraints
+      // to behave as a helpful legal assistant.
+      const chatHistoryContext = chatHistory ? `
           PREVIOUS CONVERSATION:
           """
           ${chatHistory}
           """
         ` : "";
-        
-        prompt = `
+
+      prompt = `
           You are LegalAdvisor AI, an AI-powered Legal Decision Intelligence Assistant.
 
 Your job is to help users understand legal documents and make better legal decisions.
@@ -408,46 +408,60 @@ Do NOT return JSON.
 
 Respond naturally using headings and bullet points where appropriate.
 `;
-}
+    }
 
     // ============================================================
     // STEP 5: CALL GEMINI API
     // ============================================================
+    const startTime = Date.now();
     const rawResult = await callGemini(prompt);
+    const latencyMs = Date.now() - startTime;
     let parsedResult;
-    
+
     if (isStandardAnalysis) {
+      try {
+        const cleanedJson = rawResult.replace(/```json|```/g, '').trim();
+        let parsedJson;
         try {
-            const cleanedJson = rawResult.replace(/```json|```/g, '').trim();
-            let parsedJson;
-            try {
-                parsedJson = JSON.parse(cleanedJson);
-            } catch (e) {
-                console.warn('⚠️ JSON parse failed');
-                parsedJson = { executiveSummary: cleanedJson };
-            }
-            parsedResult = normalizeDecisionAnalysis(parsedJson);
+          parsedJson = JSON.parse(cleanedJson);
         } catch (e) {
-            console.error("❌ Analysis validation error", e);
-            parsedResult = normalizeDecisionAnalysis({ executiveSummary: rawResult });
+          console.warn('⚠️ JSON parse failed');
+          parsedJson = { executiveSummary: cleanedJson };
         }
+        parsedResult = normalizeDecisionAnalysis(parsedJson);
+      } catch (e) {
+        console.error("❌ Analysis validation error", e);
+        parsedResult = normalizeDecisionAnalysis({ executiveSummary: rawResult });
+      }
     } else {
-        // Return Text for Chat Bubble
-        parsedResult = { 
-            response: rawResult, 
-            clauses: [] // Empty clauses = Frontend shows text bubble
-        };
+      // Return Text for Chat Bubble
+      parsedResult = {
+        response: rawResult,
+        clauses: [] // Empty clauses = Frontend shows text bubble
+      };
     }
+
+    // Stream audit logging event to BigQuery asynchronously (non-blocking)
+    const riskScore = typeof parsedResult?.decisionSummary?.decisionScore === 'number' ? parsedResult.decisionSummary.decisionScore : 0;
+    import("@/services/bigqueryService").then(({ logAuditAnalyticsEvent }) => {
+      logAuditAnalyticsEvent({
+        eventType: isStandardAnalysis ? "document_analysis" : "chat_query",
+        docType: docType || (documentText ? "legal_contract" : "text_clause"),
+        riskScore: riskScore,
+        latencyMs: latencyMs,
+        userType: isGuest ? "guest" : "user"
+      });
+    }).catch(err => console.error("BigQuery log invoke failed:", err));
 
     // ============================================================
     // STEP 6: SAVE TO FIRESTORE & TRACK USAGE
     // Persists the conversation and usage data to Firebase Firestore
     // to track API query limits and save session messages.
     // ============================================================
-    const usageData = { 
-      count: isGuest ? currentCount + 1 : 0, 
-      lastUsed: FieldValue.serverTimestamp(), 
-      type: isGuest ? "guest" : "user" 
+    const usageData = {
+      count: isGuest ? currentCount + 1 : 0,
+      lastUsed: FieldValue.serverTimestamp(),
+      type: isGuest ? "guest" : "user"
     };
     await usageRef.set(usageData, { merge: true });
 
@@ -457,69 +471,69 @@ Respond naturally using headings and bullet points where appropriate.
     }
 
     if (!isGuest && userId) {
-        const chatsRef = db.collection("chats");
-        // Ensure we save the context if we just extracted it
-        const contextToSave = documentText || contextToAnalyze || "";
+      const chatsRef = db.collection("chats");
+      // Ensure we save the context if we just extracted it
+      const contextToSave = documentText || contextToAnalyze || "";
 
-        if (!currentChatId) {
-            // Generate intelligent title based on content
-            const chatTitle = await generateChatTitle(message, contextToSave);
-            
-            const newChatData = { 
-                userId, 
-                title: chatTitle, 
-                documentContext: contextToSave, 
-                createdAt: FieldValue.serverTimestamp(), 
-                updatedAt: FieldValue.serverTimestamp() 
-            };
-            
-            const newChat = await chatsRef.add(newChatData);
-            currentChatId = newChat.id;
-            console.log('✅ Chat created:', currentChatId);
-        } else {
-            const updateData = { updatedAt: FieldValue.serverTimestamp() };
-            if (contextToSave) updateData.documentContext = contextToSave;
-            await chatsRef.doc(currentChatId).update(updateData);
-        }
+      if (!currentChatId) {
+        // Generate intelligent title based on content
+        const chatTitle = await generateChatTitle(message, contextToSave);
 
-        const messagesRef = chatsRef.doc(currentChatId).collection("messages");
-        const userMessageData = { 
-          role: "user", 
-          content: message, 
-          attachmentUrl: fileUrl || null, 
-          createdAt: FieldValue.serverTimestamp() 
+        const newChatData = {
+          userId,
+          title: chatTitle,
+          documentContext: contextToSave,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
         };
-        await messagesRef.add(userMessageData);
-        
-        // Save the appropriate content based on response type
-        let assistantContent;
-        if (isStandardAnalysis) {
-            assistantContent = parsedResult.executiveSummary;
-            const detailedContent = `Analysis Summary: ${parsedResult.executiveSummary}\n\nDecision: ${parsedResult.decisionSummary.finalDecision}\n\nRisk: ${parsedResult.decisionSummary.overallRisk}\n\nKey Issues: ${parsedResult.clauses?.map(c => c.explanation).join('; ') || 'None'}`;
-            
-            const sanitizedAnalysisData = sanitizeForFirestore(parsedResult);
-            const analysisMessageData = { 
-                role: "assistant",
-                content: detailedContent,
-                displayContent: assistantContent,
-                analysisData: sanitizedAnalysisData, 
-                createdAt: FieldValue.serverTimestamp() 
-            };
-            
-            await messagesRef.add(analysisMessageData);
-            console.log('✅ Analysis saved');
-        } else {
-            assistantContent = parsedResult.response;
-            const chatMessageData = { 
-                role: "assistant", 
-                content: assistantContent, 
-                analysisData: null, 
-                createdAt: FieldValue.serverTimestamp() 
-            };
-            
-            await messagesRef.add(chatMessageData);
-            console.log('✅ Chat response saved');
-        }
+
+        const newChat = await chatsRef.add(newChatData);
+        currentChatId = newChat.id;
+        console.log('✅ Chat created:', currentChatId);
+      } else {
+        const updateData = { updatedAt: FieldValue.serverTimestamp() };
+        if (contextToSave) updateData.documentContext = contextToSave;
+        await chatsRef.doc(currentChatId).update(updateData);
+      }
+
+      const messagesRef = chatsRef.doc(currentChatId).collection("messages");
+      const userMessageData = {
+        role: "user",
+        content: message,
+        attachmentUrl: fileUrl || null,
+        createdAt: FieldValue.serverTimestamp()
+      };
+      await messagesRef.add(userMessageData);
+
+      // Save the appropriate content based on response type
+      let assistantContent;
+      if (isStandardAnalysis) {
+        assistantContent = parsedResult.executiveSummary;
+        const detailedContent = `Analysis Summary: ${parsedResult.executiveSummary}\n\nDecision: ${parsedResult.decisionSummary.finalDecision}\n\nRisk: ${parsedResult.decisionSummary.overallRisk}\n\nKey Issues: ${parsedResult.clauses?.map(c => c.explanation).join('; ') || 'None'}`;
+
+        const sanitizedAnalysisData = sanitizeForFirestore(parsedResult);
+        const analysisMessageData = {
+          role: "assistant",
+          content: detailedContent,
+          displayContent: assistantContent,
+          analysisData: sanitizedAnalysisData,
+          createdAt: FieldValue.serverTimestamp()
+        };
+
+        await messagesRef.add(analysisMessageData);
+        console.log('✅ Analysis saved');
+      } else {
+        assistantContent = parsedResult.response;
+        const chatMessageData = {
+          role: "assistant",
+          content: assistantContent,
+          analysisData: null,
+          createdAt: FieldValue.serverTimestamp()
+        };
+
+        await messagesRef.add(chatMessageData);
+        console.log('✅ Chat response saved');
+      }
     }
 
     const responseData = {
@@ -528,41 +542,41 @@ Respond naturally using headings and bullet points where appropriate.
       chatId: currentChatId,
       remainingTries: isGuest ? Math.max(0, GUEST_DAILY_LIMIT - (currentCount + 1)) : "Unlimited"
     };
-    
+
     console.log('✅ Response sent');
-    
+
     return NextResponse.json(responseData);
 
   } catch (err) {
     console.error("❌ Error:", err.message);
-    
+
     // Provide user-friendly error messages based on error type
     if (err.message.includes('503') || err.message.includes('overloaded')) {
-      return NextResponse.json({ 
-        error: "AI service is temporarily overloaded. Please try again in a few moments.", 
+      return NextResponse.json({
+        error: "AI service is temporarily overloaded. Please try again in a few moments.",
         details: "The AI model is experiencing high traffic. This usually resolves within 1-2 minutes.",
         retryAfter: 60000 // Suggest retry after 1 minute
       }, { status: 503 });
     }
-    
+
     if (err.message.includes('quota exceeded') || err.message.includes('rate limit')) {
-      return NextResponse.json({ 
-        error: "API quota exceeded. Please try again later.", 
+      return NextResponse.json({
+        error: "API quota exceeded. Please try again later.",
         details: "Daily API limit reached. Please upgrade your plan or try again tomorrow.",
         upgradeRequired: true
       }, { status: 429 });
     }
-    
+
     if (err.message.includes('authentication') || err.message.includes('API key')) {
-      return NextResponse.json({ 
-        error: "Service configuration error. Please contact support.", 
+      return NextResponse.json({
+        error: "Service configuration error. Please contact support.",
         details: "There's an issue with the AI service configuration."
       }, { status: 500 });
     }
-    
+
     // Generic error for other cases
-    return NextResponse.json({ 
-      error: "Processing failed. Please try again.", 
+    return NextResponse.json({
+      error: "Processing failed. Please try again.",
       details: err.message,
       canRetry: true
     }, { status: 500 });

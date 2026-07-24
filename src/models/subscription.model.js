@@ -1,6 +1,7 @@
 import { db } from "@/lib/firebaseAdmin"; 
 import { z } from "zod"; 
 import { FieldValue } from "firebase-admin/firestore";
+import { PLANS } from "@/constants/plans";
 
 // ==========================================
 // 1. ZOD SCHEMAS
@@ -268,92 +269,6 @@ class UsageModel {
   }
 }
 
-// ==========================================
-// 4. PLAN DEFINITIONS
-// ==========================================
-export const PLANS = {
-  basic: {
-    id: "basic",
-    name: "Basic",
-    price: 0,
-    currency: "INR",
-    interval: "month",
-    description: "Essential legal guidance for individuals",
-    features: {
-      aiQueries: 5, // 5 per day
-      documentAnalysis: false,
-      voiceQueries: false,
-      pdfReports: false,
-      prioritySupport: false,
-      apiAccess: false,
-      teamCollaboration: 0,
-      contractComparison: false,
-      chromeExtension: false,
-      newsletter: false,
-    },
-    limits: {
-      dailyQueries: 5,
-      monthlyDocuments: 0,
-      pdfReportsMonthly: 0,
-      dailyContractComparisons: 1,
-      dailyGlossaryLookups: 10,
-    }
-  },
-  pro: {
-    id: "pro",
-    name: "Pro Advisor",
-    price: 499,
-    currency: "INR",
-    interval: "month",
-    description: "For freelancers and proactive professionals",
-    features: {
-      aiQueries: -1, // Unlimited
-      documentAnalysis: true,
-      voiceQueries: true,
-      pdfReports: true,
-      prioritySupport: true,
-      apiAccess: false,
-      teamCollaboration: 0,
-      contractComparison: true,
-      chromeExtension: true,
-      newsletter: false,
-    },
-    limits: {
-      dailyQueries: -1, // Unlimited
-      monthlyDocuments: 50,
-      pdfReportsMonthly: 20,
-      dailyContractComparisons: -1,
-      dailyGlossaryLookups: -1,
-    }
-  },
-  enterprise: {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 2499,
-    currency: "INR",
-    interval: "month",
-    description: "For small firms and legal teams",
-    features: {
-      aiQueries: -1, // Unlimited
-      documentAnalysis: true,
-      voiceQueries: true,
-      pdfReports: true,
-      prioritySupport: true,
-      apiAccess: true,
-      teamCollaboration: 5,
-      contractComparison: true,
-      chromeExtension: true,
-      newsletter: true,
-    },
-    limits: {
-      dailyQueries: -1, // Unlimited
-      monthlyDocuments: -1, // Unlimited
-      pdfReportsMonthly: -1, // Unlimited
-      dailyContractComparisons: -1,
-      dailyGlossaryLookups: -1,
-    }
-  }
-};
-
 export const Subscription = new SubscriptionModel();
 export const Usage = new UsageModel();
+export { PLANS } from "@/constants/plans";

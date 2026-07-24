@@ -133,12 +133,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Legal Risk Radar: Analysis successful');
             
             // Store result
+            const lastAnalysisObj = {
+                ...analysis,
+                timestamp: Date.now()
+            };
             await chrome.storage.local.set({ 
-                lastAnalysis: {
-                    ...analysis,
-                    timestamp: Date.now()
-                }
+                lastAnalysis: lastAnalysisObj
             });
+            renderLastAnalysis(lastAnalysisObj);
             
             // Show brief result with app promotion
             const riskScore = analysis.analysis?.overall_risk_score || 'N/A';
@@ -170,6 +172,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check if PDF has already been analyzed
                 const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPDFAnalysis' });
                 if (response && response.analysis) {
+                    const lastAnalysisObj = {
+                        analysis: response.analysis,
+                        timestamp: Date.now()
+                    };
+                    renderLastAnalysis(lastAnalysisObj);
                     const riskScore = response.analysis.overall_risk_score || 'N/A';
                     showStatus(`PDF analyzed! Risk Score: ${riskScore}/10`, 'success');
                 }
@@ -245,16 +252,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load and display last analysis info
     chrome.storage.local.get(['lastAnalysis']).then((result) => {
         if (result.lastAnalysis && result.lastAnalysis.timestamp) {
-            const analysisTime = new Date(result.lastAnalysis.timestamp).toLocaleTimeString();
-            showStatus(`Last analysis: ${analysisTime}`, 'info');
+            renderLastAnalysis(result.lastAnalysis);
+            const analysisTime = new Date(result.lastAnalysis.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            showStatus(`Loaded recent report (${analysisTime})`, 'info');
         } else {
             // Show welcome message for first-time users
-            showStatus('Select text on any webpage, then click Analyze', 'info');
+            showStatus('Select contract text on page, then click Analyze', 'info');
         }
     }).catch((error) => {
         console.log('Legal Risk Radar: No previous analysis found');
         showStatus('Ready to analyze legal text!', 'info');
     });
+
+    function renderLastAnalysis(analysis) {
+        const container = document.getElementById('lastAnalysisContainer');
+        if (!container) return;
+        
+        const data = analysis.analysis || (analysis.result && analysis.result.analysis) || {};
+        if (!data || !data.overall_risk_score) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        const score = parseInt(data.overall_risk_score || 0);
+        const riskLevel = score >= 7 ? 'High' : score >= 4 ? 'Medium' : 'Low';
+        const riskClass = score >= 7 ? 'high-risk' : score >= 4 ? 'medium-risk' : 'low-risk';
+        
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div class="result-card">
+                <div class="result-header">
+                    <div class="result-title-group">
+                        <span class="pulse-indicator ${riskClass}"></span>
+                        <span>RECENT RISK REPORT</span>
+                    </div>
+                    <span class="result-time">${new Date(analysis.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+                <div class="score-row">
+                    <div class="score-pill ${riskClass}">${score}/10 ${riskLevel} Risk</div>
+                </div>
+                <div class="summary-text">${data.summary || 'No issues detected.'}</div>
+            </div>
+        `;
+    }
 
     console.log('Legal Risk Radar: Popup script initialized successfully');
 });

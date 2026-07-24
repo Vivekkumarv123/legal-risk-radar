@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { verifyToken } from '@/middleware/auth.middleware';
 import { checkUsageLimit, trackUsage } from '@/middleware/usage.middleware';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request) {
     try {
@@ -52,7 +52,7 @@ async function handleVoiceAnalysis(data, userId) {
         return NextResponse.json({ error: 'Transcript is required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
     
     const prompt = `
     Analyze this voice input for legal content and provide a response in ${language}:
@@ -75,9 +75,11 @@ async function handleVoiceAnalysis(data, userId) {
     }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    const text = result.text;
     
     try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -110,7 +112,7 @@ async function handleGlossaryLookup(data, userId) {
         return NextResponse.json({ error: 'Term is required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
     
     const prompt = `
     Provide a comprehensive definition for the legal term "${term}" in the context of Indian law.
@@ -134,9 +136,11 @@ async function handleGlossaryLookup(data, userId) {
     }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    const text = result.text;
     
     try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -180,7 +184,7 @@ async function handlePDFDataGeneration(data, userId) {
         return NextResponse.json({ error: 'Analysis text is required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
     
     const prompt = `
     Based on this legal analysis, generate structured data for a PDF report:
@@ -218,9 +222,11 @@ async function handlePDFDataGeneration(data, userId) {
     }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    const text = result.text;
     
     try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -255,7 +261,7 @@ async function handleMultiLanguageResponse(data, userId) {
         return NextResponse.json({ error: 'Text and target language are required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
     
     const languageMap = {
         'hi-IN': 'Hindi',
@@ -288,9 +294,11 @@ async function handleMultiLanguageResponse(data, userId) {
     Provide only the translated text, no additional formatting.
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const translatedText = response.text();
+    const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    const translatedText = result.text;
     
     return NextResponse.json({
         originalText: text,

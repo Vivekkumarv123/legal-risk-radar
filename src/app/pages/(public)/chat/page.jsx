@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { 
-    Send, Paperclip, X, AlertCircle, Shield, 
+import {
+    Send, Paperclip, X, AlertCircle, Shield,
     Plus, Lock, ArrowRight, Share2, Sparkles, FileText, ChevronDown, Check,
     AlertTriangle, ShieldAlert, Info, ListTodo, HelpCircle
 } from "lucide-react";
@@ -13,7 +13,7 @@ import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
 // ============================================
 const getGuestId = () => {
     if (typeof window === 'undefined') return '';
-    
+
     // Use sessionStorage for per-session guest ID (fresh each time)
     let id = window.__guestId;
     if (!id) {
@@ -75,21 +75,21 @@ function TextResponseCard({ content }) {
 
     const riskLevel = extractRiskLevel(content);
     const riskStyles = {
-        HIGH: { 
-            color: 'text-rose-600 border-rose-200 bg-rose-50/50', 
-            badge: 'bg-rose-100 text-rose-800 border border-rose-200', 
+        HIGH: {
+            color: 'text-rose-600 border-rose-200 bg-rose-50/50',
+            badge: 'bg-rose-100 text-rose-800 border border-rose-200',
             bannerBg: 'from-rose-50 to-rose-100/50 border-rose-200',
             icon: <ShieldAlert className="w-8 h-8 text-rose-600" />
         },
-        MEDIUM: { 
-            color: 'text-amber-600 border-amber-200 bg-amber-50/50', 
-            badge: 'bg-amber-100 text-amber-800 border border-amber-200', 
+        MEDIUM: {
+            color: 'text-amber-600 border-amber-200 bg-amber-50/50',
+            badge: 'bg-amber-100 text-amber-800 border border-amber-200',
             bannerBg: 'from-amber-50 to-amber-100/50 border-amber-200',
             icon: <AlertTriangle className="w-8 h-8 text-amber-600" />
         },
-        LOW: { 
-            color: 'text-emerald-600 border-emerald-200 bg-emerald-50/50', 
-            badge: 'bg-emerald-100 text-emerald-800 border border-emerald-200', 
+        LOW: {
+            color: 'text-emerald-600 border-emerald-200 bg-emerald-50/50',
+            badge: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
             bannerBg: 'from-emerald-50 to-emerald-100/50 border-emerald-200',
             icon: <Shield className="w-8 h-8 text-emerald-600" />
         }
@@ -99,12 +99,12 @@ function TextResponseCard({ content }) {
 
     // Split sections by the section separators •\n-- or --- or similar
     const rawSections = content.split(/\s*(?:•\s*\n\s*-+|-{3,}|•\s*-+)\s*/);
-    
+
     // Parse helper for bold markdown text
     const formatBold = (text) => {
         if (!text) return "";
         const parts = text.split(/\*\*(.*?)\*\*/g);
-        return parts.map((part, i) => 
+        return parts.map((part, i) =>
             i % 2 === 1 ? <strong key={i} className="font-bold text-gray-900">{part}</strong> : part
         );
     };
@@ -187,7 +187,7 @@ function TextResponseCard({ content }) {
 
             // Strip bold markers from start/end of the key if present
             const cleanKey = (key) => key.replace(/^\*\*|\*\*$/g, '').trim();
-            
+
             const boldMatch = cleanedLine.match(/^(\*\*.*?\*\*)\s*[:-]\s*(.*)/);
             const colonMatch = cleanedLine.match(/^(.*?)\s*:\s*(.*)/);
 
@@ -205,9 +205,9 @@ function TextResponseCard({ content }) {
                 });
             } else {
                 // Check for inline blocks like "Final Recommendation: DO NOT sign"
-                const recMatch = cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points):\*\*(.*)/i) || 
-                                 cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points)\*\*:(.*)/i) ||
-                                 cleanedLine.match(/^(Final Recommendation|Why|Suggested Negotiation Points):\s*(.*)/i);
+                const recMatch = cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points):\*\*(.*)/i) ||
+                    cleanedLine.match(/^\*\*(Final Recommendation|Why|Suggested Negotiation Points)\*\*:(.*)/i) ||
+                    cleanedLine.match(/^(Final Recommendation|Why|Suggested Negotiation Points):\s*(.*)/i);
                 if (recMatch) {
                     parsedItems.push({
                         type: 'highlight',
@@ -302,8 +302,8 @@ function TextResponseCard({ content }) {
 
                                     if (item.type === 'highlight') {
                                         const isActionable = item.label.toLowerCase().includes('recommendation');
-                                        const cardBg = isActionable 
-                                            ? 'bg-rose-50/60 border-rose-100 text-rose-950' 
+                                        const cardBg = isActionable
+                                            ? 'bg-rose-50/60 border-rose-100 text-rose-950'
                                             : 'bg-indigo-50/60 border-indigo-100 text-indigo-950';
                                         const labelColor = isActionable ? 'text-rose-700' : 'text-indigo-700';
 
@@ -355,21 +355,21 @@ function LimitModal({ isOpen, router }) {
                 <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <Lock className="w-10 h-10 text-white" />
                 </div>
-                
+
                 <h3 className="text-2xl font-semibold text-gray-900 mb-3 text-center">Free Trial Complete</h3>
                 <p className="text-gray-600 mb-8 leading-relaxed text-center">
                     You've explored the power of our AI legal advisor. Create a free account to continue analyzing documents and get unlimited access.
                 </p>
 
                 <div className="space-y-3">
-                    <button 
+                    <button
                         onClick={() => router.push('/pages/signup')}
                         className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                     >
                         Create Free Account <ArrowRight className="w-4 h-4" />
                     </button>
-                    <button 
-                        onClick={() => router.push('/')} 
+                    <button
+                        onClick={() => router.push('/')}
                         className="w-full py-3.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-xl transition-all"
                     >
                         Sign In Instead
@@ -395,8 +395,8 @@ function FilePreview({ file, onRemove, index }) {
                     <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
             </div>
-            <button 
-                onClick={onRemove} 
+            <button
+                onClick={onRemove}
                 className="p-2 hover:bg-red-50 rounded-lg transition-all shrink-0 opacity-0 group-hover:opacity-100"
             >
                 <X className="w-4 h-4 text-red-500" />
@@ -407,17 +407,17 @@ function FilePreview({ file, onRemove, index }) {
 
 function FileUploadArea({ files, onAdd, onRemove }) {
     const fileInputRef = useRef(null);
-    
+
     if (files.length === 0) return null;
-    
+
     return (
         <div className="mb-3 space-y-2">
             {files.map((file, idx) => (
-                <FilePreview 
-                    key={`${file.name}-${idx}`} 
-                    file={file} 
-                    index={idx} 
-                    onRemove={() => onRemove(idx)} 
+                <FilePreview
+                    key={`${file.name}-${idx}`}
+                    file={file}
+                    index={idx}
+                    onRemove={() => onRemove(idx)}
                 />
             ))}
         </div>
@@ -443,7 +443,7 @@ function ProcessingIndicator({ stage }) {
         { text: "Analyzing clauses", icon: "🔍" },
         { text: "Finalizing results", icon: "✨" }
     ];
-    
+
     return (
         <div className="flex items-center gap-3 px-4 py-3">
             <div className="relative">
@@ -466,16 +466,16 @@ function RiskBadge({ level, count, onClick }) {
         medium: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
         high: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
     };
-    
-    const icons = { 
-        low: <div className="w-2 h-2 rounded-full bg-emerald-500"></div>, 
-        medium: <div className="w-2 h-2 rounded-full bg-amber-500"></div>, 
+
+    const icons = {
+        low: <div className="w-2 h-2 rounded-full bg-emerald-500"></div>,
+        medium: <div className="w-2 h-2 rounded-full bg-amber-500"></div>,
         high: <div className="w-2 h-2 rounded-full bg-rose-500"></div>
     };
-    
+
     return (
-        <button 
-            onClick={onClick} 
+        <button
+            onClick={onClick}
             className={`${styles[level]} border-2 px-4 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2.5 transition-all shadow-sm hover:shadow-md`}
         >
             {icons[level]}
@@ -491,9 +491,9 @@ function ResultCard({ analysis, scrollToClause }) {
         medium: analysis.clauses.filter(c => c.risk_level === 'medium').length,
         high: analysis.clauses.filter(c => c.risk_level === 'high').length
     };
-    
+
     const overallRisk = riskCounts.high > 0 ? 'High' : riskCounts.medium > 2 ? 'Medium' : 'Low';
-    
+
     const riskStyles = {
         High: { color: 'text-rose-600', bg: 'from-rose-50 to-rose-100', icon: '🚨' },
         Medium: { color: 'text-amber-600', bg: 'from-amber-50 to-amber-100', icon: '⚠️' },
@@ -517,11 +517,11 @@ function ResultCard({ analysis, scrollToClause }) {
             {/* Risk Badges */}
             <div className="px-8 py-6 flex flex-wrap gap-3 justify-center border-b border-gray-100">
                 {['low', 'medium', 'high'].map(lvl => riskCounts[lvl] > 0 && (
-                    <RiskBadge 
-                        key={lvl} 
-                        level={lvl} 
-                        count={riskCounts[lvl]} 
-                        onClick={() => scrollToClause(lvl)} 
+                    <RiskBadge
+                        key={lvl}
+                        level={lvl}
+                        count={riskCounts[lvl]}
+                        onClick={() => scrollToClause(lvl)}
                     />
                 ))}
             </div>
@@ -533,7 +533,7 @@ function ResultCard({ analysis, scrollToClause }) {
                     <h3 className="text-lg font-semibold text-gray-900">Identified Clauses</h3>
                     <span className="ml-auto text-sm text-gray-500">{analysis.clauses.length} total</span>
                 </div>
-                
+
                 <div className="space-y-3">
                     {analysis.clauses.map((clause, idx) => {
                         const clauseStyles = {
@@ -541,10 +541,10 @@ function ResultCard({ analysis, scrollToClause }) {
                             medium: { border: 'border-amber-200', bg: 'bg-amber-50/50', badge: 'bg-amber-100 text-amber-700' },
                             low: { border: 'border-emerald-200', bg: 'bg-emerald-50/50', badge: 'bg-emerald-100 text-emerald-700' }
                         };
-                        
+
                         return (
-                            <div 
-                                key={idx} 
+                            <div
+                                key={idx}
                                 id={`clause-${clause.risk_level}-${idx}`}
                                 className={`border-l-4 ${clauseStyles[clause.risk_level].border} ${clauseStyles[clause.risk_level].bg} p-5 rounded-xl hover:shadow-sm transition-all`}
                             >
@@ -588,7 +588,7 @@ function WelcomeScreen({ onFileClick }) {
                         <Sparkles className="w-10 h-10 text-white" />
                     </div> */}
                     <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
-                        Legal AI Assistant
+                        Legal Advisor Assistant
                     </h1>
                     <p className="text-lg text-gray-600 max-w-md mx-auto">
                         Upload contracts, ask legal questions, and get instant AI-powered analysis
@@ -638,7 +638,7 @@ function WelcomeScreen({ onFileClick }) {
 // MAIN COMPONENT
 // ============================================
 export default function Try() {
-    const router = useRouter(); 
+    const router = useRouter();
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
     const [files, setFiles] = useState([]);
@@ -722,7 +722,7 @@ export default function Try() {
             }
 
             setProcessingStage(1);
-            
+
             const apiBody = {
                 message: textToSend,
                 ...(documentText && { documentText })
@@ -730,13 +730,13 @@ export default function Try() {
 
             const aiRes = await fetch("/api/generate-content", {
                 method: "POST",
-                headers: { 
+                headers: {
                     "Content-Type": "application/json",
                     "x-guest-id": guestId
                 },
                 body: JSON.stringify(apiBody),
             });
-            
+
             if (aiRes.status === 403) {
                 const errorData = await aiRes.json();
                 if (errorData.limitType === 'guest_limit') {
@@ -759,13 +759,13 @@ export default function Try() {
                 const normalized = normalizeAnalysis(aiData.data);
                 setMessages(prev => [...prev, { role: "assistant", analysis: normalized }]);
             } else {
-                const responseText = 
-                    aiData.data?.executiveSummary || 
-                    aiData.data?.summary || 
-                    aiData.data?.response || 
-                    aiData.data?.text || 
+                const responseText =
+                    aiData.data?.executiveSummary ||
+                    aiData.data?.summary ||
+                    aiData.data?.response ||
+                    aiData.data?.text ||
                     (typeof aiData.data === 'string' ? aiData.data : "I processed the document but couldn't find specific risks to list.");
-                
+
                 animateAssistantContent(responseText);
             }
 
@@ -791,13 +791,13 @@ export default function Try() {
 
     return (
         <div className="min-h-screen border border-red-500 bg-gradient-to-b from-gray-50 to-white flex flex-col">
-            
+
             <LimitModal isOpen={showLimitModal} router={router} />
-            <ShareChatModal 
-                isOpen={showShareModal} 
-                onClose={() => setShowShareModal(false)} 
-                chatId="guest-chat" 
-                chatTitle="Legal Consultation (Guest)" 
+            <ShareChatModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                chatId="guest-chat"
+                chatTitle="Legal Consultation (Guest)"
             />
 
             {/* Header */}
@@ -809,7 +809,7 @@ export default function Try() {
                                 <Image src="/logo.svg" width={24} height={24} alt="Logo" className="w-6 h-6 invert" />
                             </div>
                             <div>
-                                <h1 className="text-lg font-bold text-gray-900">Legal AI</h1>
+                                <h1 className="text-lg font-bold text-gray-900">Legal Advisor</h1>
                                 <span className="text-xs text-gray-500 font-medium">Free Trial</span>
                             </div>
                         </div>
@@ -832,14 +832,14 @@ export default function Try() {
                                     </button>
                                 </>
                             )}
-                            <button 
-                                onClick={() => router.push('/')} 
+                            <button
+                                onClick={() => router.push('/')}
                                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-all hidden sm:block"
                             >
                                 Sign In
                             </button>
-                            <button 
-                                onClick={() => router.push('/pages/signup')} 
+                            <button
+                                onClick={() => router.push('/pages/signup')}
                                 className="px-4 py-2 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl"
                             >
                                 Sign Up
@@ -857,8 +857,8 @@ export default function Try() {
                     ) : (
                         <div className="space-y-6 py-8 pb-32">
                             {messages.map((msg, idx) => (
-                                <div 
-                                    key={idx} 
+                                <div
+                                    key={idx}
                                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}
                                     style={{ animationDelay: `${idx * 50}ms` }}
                                 >
@@ -900,7 +900,7 @@ export default function Try() {
                                     )}
                                 </div>
                             ))}
-                            
+
                             {loading && (
                                 <div className="flex gap-3 animate-in fade-in duration-300">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg">
@@ -911,7 +911,7 @@ export default function Try() {
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div ref={messagesEndRef} />
                         </div>
                     )}
@@ -921,39 +921,39 @@ export default function Try() {
             {/* Input Area - Fixed at Bottom */}
             <div className="sticky bottom-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6">
-                    <FileUploadArea 
-                        files={files} 
-                        onAdd={(f) => setFiles(prev => [...prev, f])} 
-                        onRemove={(i) => setFiles(p => p.filter((_, idx) => idx !== i))} 
+                    <FileUploadArea
+                        files={files}
+                        onAdd={(f) => setFiles(prev => [...prev, f])}
+                        onRemove={(i) => setFiles(p => p.filter((_, idx) => idx !== i))}
                     />
-                    
+
                     <div className="relative">
                         <div className="bg-white border-2 border-gray-200 hover:border-gray-300 focus-within:border-blue-500 rounded-3xl shadow-lg hover:shadow-xl transition-all flex items-end gap-2 p-2">
-                            <input 
-                                ref={fileInputRef} 
-                                type="file" 
-                                accept=".pdf,image/*" 
-                                multiple 
-                                onChange={(e) => { 
-                                    const s = Array.from(e.target.files); 
-                                    if(files.length+s.length>2) return alert("Maximum 2 files allowed"); 
-                                    setFiles(p=>[...p,...s]); 
-                                    e.target.value=''; 
-                                }} 
-                                className="hidden" 
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf,image/*"
+                                multiple
+                                onChange={(e) => {
+                                    const s = Array.from(e.target.files);
+                                    if (files.length + s.length > 2) return alert("Maximum 2 files allowed");
+                                    setFiles(p => [...p, ...s]);
+                                    e.target.value = '';
+                                }}
+                                className="hidden"
                             />
-                            
-                            <button 
-                                onClick={() => fileInputRef.current?.click()} 
+
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
                                 className="p-3 hover:bg-gray-100 rounded-2xl text-gray-500 hover:text-gray-700 transition-all shrink-0"
                                 title="Attach file"
                             >
                                 <Paperclip className="w-5 h-5" />
                             </button>
-                            
-                            <textarea 
+
+                            <textarea
                                 ref={textareaRef}
-                                value={inputText} 
+                                value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey && !isGenerating && !loading) {
@@ -961,22 +961,22 @@ export default function Try() {
                                         handleSend();
                                     }
                                 }}
-                                placeholder="Ask anything about your legal document..." 
+                                placeholder="Ask anything about your legal document..."
                                 className="flex-1 bg-transparent resize-none outline-none py-3 px-2 text-gray-900 placeholder-gray-400 max-h-[200px] min-h-[24px]"
                                 rows={1}
                                 style={{ lineHeight: '1.5' }}
                             />
-                            
-                            <button 
-                                onClick={handleSend} 
-                                disabled={isGenerating || loading || (!inputText.trim() && !files.length)} 
+
+                            <button
+                                onClick={handleSend}
+                                disabled={isGenerating || loading || (!inputText.trim() && !files.length)}
                                 className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl disabled:shadow-none shrink-0"
                                 title="Send message"
                             >
                                 <Send className="w-5 h-5" />
                             </button>
                         </div>
-                        
+
                         <p className="text-xs text-center text-gray-400 mt-3">
                             Free trial • Your data is not saved
                         </p>

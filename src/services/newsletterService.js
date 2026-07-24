@@ -1,61 +1,169 @@
 import { executeWithKeyRotation } from "@/lib/geminiKeyRotation";
+import { db } from "@/lib/firebaseAdmin";
+
+/**
+ * Get day-of-week theme for newsletter
+ */
+export function getTodayTheme(date = new Date()) {
+    const day = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const themes = {
+        0: "Tax, Financial Regulations & Legal Technology Trends",
+        1: "Corporate & Startup Law, Contracts & M&A",
+        2: "Consumer Rights, E-Commerce & Consumer Protection",
+        3: "Cyber Law, AI Regulations & Data Privacy (DPDP Act)",
+        4: "Property, Real Estate & RERA Regulations",
+        5: "Labour, Employment & Workplace Regulations",
+        6: "Supreme Court, High Courts & Tribunal Decisions"
+    };
+    return themes[day] || "Indian Legal System Updates";
+}
+
+/**
+ * Get recent newsletter topics from Firestore (last N days)
+ */
+export async function getRecentNewsletterTopics(days = 7) {
+    try {
+        if (!db) return [];
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+
+        const snapshot = await db.collection('newsletter_history')
+            .where('generatedAt', '>=', cutoff)
+            .orderBy('generatedAt', 'desc')
+            .limit(15)
+            .get();
+
+        if (snapshot.empty) return [];
+
+        const topics = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.headline) topics.push(data.headline);
+            if (Array.isArray(data.topics)) {
+                topics.push(...data.topics);
+            }
+        });
+
+        return [...new Set(topics)]; // Return unique topics
+    } catch (error) {
+        console.error('Error fetching recent newsletter topics:', error);
+        return [];
+    }
+}
+
+/**
+ * Save generated newsletter metadata to Firestore history
+ */
+export async function saveNewsletterHistory({ type = 'daily', theme = '', headline = '', topics = [], summary = '', content = '' }) {
+    try {
+        if (!db) return;
+        await db.collection('newsletter_history').add({
+            type,
+            theme,
+            headline,
+            topics,
+            summary: summary || headline,
+            generatedAt: new Date(),
+            contentLength: content ? content.length : 0
+        });
+        console.log(`✅ Saved ${type} newsletter metadata to history`);
+    } catch (error) {
+        console.error('Failed to save newsletter history:', error);
+    }
+}
 
 /**
  * Generate daily legal newsletter content using Gemini AI with key rotation
  */
 export async function generateDailyNewsletter() {
     try {
-        const result = await executeWithKeyRotation(async (genAI) => {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const todayDateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const theme = getTodayTheme();
+        const recentTopics = await getRecentNewsletterTopics(7);
 
-            const prompt = `Generate a concise, engaging daily legal newsletter for ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}.
+        const result = await executeWithKeyRotation(async (ai) => {
+            const recentTopicsConstraint = recentTopics.length > 0
+                ? `\nRECENTLY COVERED TOPICS (DO NOT REPEAT THESE):\n${recentTopics.map(t => `- ${t}`).join('\n')}\n`
+                : '';
 
-IMPORTANT: Keep it SHORT and SCANNABLE. Use simple language.
+            const prompt = `Generate a super crisp, ultra-concise 60-second daily legal briefing for ${todayDateStr}.
 
-Include ONLY these 3 sections:
+PRIMARY THEME TODAY: ${theme}
+${recentTopicsConstraint}
+STRICT LENGTH CONSTRAINT: Maximum 150-180 words TOTAL for the ENTIRE newsletter.
+Keep every sentence short, impactful, and easy to read on a mobile phone.
 
-1. **📰 Top Legal Story** (100 words max)
-   - One major legal development today
-   - Case name or bill name
-   - Why it matters in 1-2 sentences
-   - Keep it simple and clear
+SECTIONS (Keep content brief and minimal):
 
-2. **⚡ Quick Updates** (3 items, 40 words each)
-   - Brief legal news from different areas
-   - Use bullet points
-   - Focus on practical impact
+1. **📰 Top Story** (Max 2 sentences)
+   - One key Indian legal development today & why it matters.
 
-3. **💡 Legal Tip** (60 words max)
-   - One practical tip for individuals or businesses
-   - Actionable advice
-   - Easy to understand
+2. **⚡ Quick Hits** (Exactly 2 short bullet points, 1 sentence each)
+   - Two brief legal updates.
 
-FORMAT RULES:
-- Use simple, clear language (avoid legal jargon)
-- Keep sentences short
-- Use emojis for visual appeal
-- Make it scannable
-- Focus on Indian legal system
-- NO lengthy explanations
-- NO complex legal terminology
+3. **💡 Actionable Tip** (Max 1 sentence)
+   - One quick practical tip.
 
-Write in a friendly, conversational tone like you're explaining to a friend.`;
+RULES:
+- Total word count MUST NOT exceed 180 words.
+- Use simple plain English without legalese.
+- No long paragraphs or walls of text.`;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const content = response.text();
+            let response;
+            let usedGrounding = true;
+
+            // Attempt 1: With Google Search Grounding
+            try {
+                response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: prompt,
+                    config: {
+                        temperature: 0.85,
+                        tools: [{ googleSearch: {} }]
+                    }
+                });
+            } catch (groundingError) {
+                console.warn('⚠️ Search Grounding failed, falling back to standard generation:', groundingError.message);
+                usedGrounding = false;
+                // Attempt 2: Fallback without search grounding
+                response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: prompt,
+                    config: {
+                        temperature: 0.85
+                    }
+                });
+            }
+
+            const content = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+            // Extract headline from content
+            const headlineMatch = content.match(/\*\*📰 Top Story\*\*[\s\S]*?(?:Headline:|Case:|-)?\s*([^\n]+)/i);
+            const headline = headlineMatch ? headlineMatch[1].replace(/[*#]/g, '').trim() : `Daily Legal Update - ${todayDateStr}`;
+
+            // Save metadata to history
+            await saveNewsletterHistory({
+                type: 'daily',
+                theme,
+                headline,
+                topics: [headline, theme],
+                summary: `Daily newsletter for ${todayDateStr} (${theme})`,
+                content
+            });
 
             return {
                 success: true,
-                content: content,
+                content,
                 generatedAt: new Date(),
-                title: `Legal Newsletter - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                grounded: usedGrounding,
+                theme,
+                title: `Legal Newsletter - ${todayDateStr}`
             };
         });
 
         return result;
     } catch (error) {
-        console.error('Error generating newsletter:', error);
+        console.error('Error generating daily newsletter:', error);
         return {
             success: false,
             error: error.message
@@ -64,13 +172,98 @@ Write in a friendly, conversational tone like you're explaining to a friend.`;
 }
 
 /**
+ * Generate weekly legal roundup digest
+ */
+export async function generateWeeklyNewsletter() {
+    try {
+        const todayDateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const recentTopics = await getRecentNewsletterTopics(7);
+
+        const result = await executeWithKeyRotation(async (ai) => {
+            const prompt = `Generate a crisp, high-impact 2-minute Weekly Legal Digest for the week ending ${todayDateStr}.
+
+${recentTopics.length > 0 ? `RECENT TOPICS OF INTEREST:\n${recentTopics.map(t => `- ${t}`).join('\n')}\n` : ''}
+
+STRICT LENGTH CONSTRAINT: Maximum 250-300 words TOTAL for the ENTIRE digest.
+
+SECTIONS:
+
+1. **📰 Top 3 Weekly Highlights** (1 short sentence each)
+   - The 3 biggest legal developments in India this week.
+
+2. **⚖️ Major Ruling / Policy Shift** (Max 3 sentences)
+   - Key Supreme Court/High Court judgment or government notification.
+
+3. **💡 Compliance & Deadline Alert** (Max 2 sentences)
+   - Key upcoming deadline or actionable compliance tip.
+
+RULES:
+- Total word count MUST NOT exceed 300 words.
+- Super scannable, mobile-friendly layout with bullet points and bold section headers.
+- Practical focus on Indian Law.`;
+
+            let response;
+            let usedGrounding = true;
+
+            try {
+                response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: prompt,
+                    config: {
+                        temperature: 0.8,
+                        tools: [{ googleSearch: {} }]
+                    }
+                });
+            } catch (err) {
+                console.warn('⚠️ Search Grounding failed for weekly newsletter, falling back:', err.message);
+                usedGrounding = false;
+                response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: prompt,
+                    config: {
+                        temperature: 0.8
+                    }
+                });
+            }
+
+            const content = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+            await saveNewsletterHistory({
+                type: 'weekly',
+                theme: 'Weekly Legal Roundup Digest',
+                headline: `Weekly Legal Digest - ${todayDateStr}`,
+                topics: recentTopics,
+                summary: `Weekly digest for ${todayDateStr}`,
+                content
+            });
+
+            return {
+                success: true,
+                content,
+                generatedAt: new Date(),
+                grounded: usedGrounding,
+                title: `Weekly Legal Digest - ${todayDateStr}`
+            };
+        });
+
+        return result;
+    } catch (error) {
+        console.error('Error generating weekly newsletter:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+
+
+/**
  * Generate category-specific newsletter
  */
 export async function generateCategoryNewsletter(category) {
     try {
-        const result = await executeWithKeyRotation(async (genAI) => {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
+        const result = await executeWithKeyRotation(async (ai) => {
             const categoryNames = {
                 criminal: 'Criminal Law',
                 civil: 'Civil Law',
@@ -93,9 +286,11 @@ Include:
 
 Make it informative and relevant to legal professionals and interested individuals.`;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const content = response.text();
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: prompt,
+            });
+            const content = response.text;
 
             return {
                 success: true,
@@ -208,7 +403,8 @@ export function getNewsletterTemplate(content, subscriberName = 'Legal Enthusias
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">
                         <tr>
                             <td align="center">
-                                <h1 class="header-text serif" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 30px; color: #002b49; text-transform: uppercase; letter-spacing: 2px; font-weight: 400; border-bottom: 1px solid #d4af37; padding-bottom: 20px; display: inline-block;">
+                                <div style="font-size: 36px; line-height: 1; margin-bottom: 10px; color: #002b49;">⚖️</div>
+                                <h1 class="header-text serif" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 28px; color: #002b49; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; border-bottom: 2px solid #d4af37; padding-bottom: 15px; display: inline-block;">
                                     LEGAL ADVISOR
                                 </h1>
                             </td>

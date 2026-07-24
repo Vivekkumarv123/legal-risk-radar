@@ -117,7 +117,7 @@ export default function LoginPage() {
                 {[
                     "Instant Document Analysis",
                     "Risk Detection & Alerts",
-                    "24/7 AI Legal Assistant"
+                    "24/7 AI Legal Decision Intelligence Platform"
                 ].map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3 text-slate-200 font-medium">
                         <CheckCircle size={20} className="text-green-400" />
@@ -173,6 +173,7 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         disabled={loading || isGoogleLoading}
+                        suppressHydrationWarning={true}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                 </div>

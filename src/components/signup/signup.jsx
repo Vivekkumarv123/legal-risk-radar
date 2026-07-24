@@ -205,6 +205,7 @@ export default function SignupPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         disabled={loading || isGoogleLoading}
+                        suppressHydrationWarning={true}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition-all disabled:opacity-50"
                     />
                 </div>

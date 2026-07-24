@@ -9,7 +9,7 @@ const UserSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().optional(), // Optional if provider is 'google'
   
-  provider: z.enum(["local", "google"]).default("local"),
+  provider: z.string().default("local"),
   role: z.string().default("user"),
   plan: z.string().default("free"),
   

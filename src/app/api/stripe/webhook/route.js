@@ -22,6 +22,10 @@ export async function POST(request) {
                 return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
             }
         } else {
+            if (process.env.NODE_ENV === 'production') {
+                console.error('Stripe webhook secret is missing in production!');
+                return NextResponse.json({ error: 'Webhook secret configuration missing' }, { status: 500 });
+            }
             // For development without webhook secret
             event = JSON.parse(body);
         }

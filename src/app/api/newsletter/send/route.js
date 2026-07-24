@@ -1,20 +1,28 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
-import { generateDailyNewsletter, getNewsletterTemplate } from '@/services/newsletterService';
+import { generateDailyNewsletter, generateWeeklyNewsletter, getNewsletterTemplate } from '@/services/newsletterService';
 import { sendBulkNewsletters } from '@/services/emailService';
+
+function getISOWeekIdentifier(date = new Date()) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
 
 // Manual trigger for newsletter sending (admin only)
 export async function POST(request) {
     try {
-        // TODO: Add admin authentication check here
         const body = await request.json();
-        const { type } = body; // 'daily' or 'weekly'
+        const { type, force = false } = body; // 'daily' or 'weekly', force = true to ignore idempotency
 
         if (type === 'daily') {
-            const result = await sendDailyNewsletter();
+            const result = await sendDailyNewsletter(force);
             return NextResponse.json(result);
         } else if (type === 'weekly') {
-            const result = await sendWeeklyNewsletter();
+            const result = await sendWeeklyNewsletter(force);
             return NextResponse.json(result);
         } else {
             return NextResponse.json(
@@ -33,10 +41,12 @@ export async function POST(request) {
 }
 
 /**
- * Send daily newsletters to all active subscribers
+ * Send daily newsletters to active subscribers
  */
-async function sendDailyNewsletter() {
+async function sendDailyNewsletter(force = false) {
     try {
+        const todayDateString = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
         const subscribersSnapshot = await db.collection('newsletterSubscriptions')
             .where('isActive', '==', true)
             .where('frequency', '==', 'daily')
@@ -50,10 +60,37 @@ async function sendDailyNewsletter() {
             };
         }
 
-        const subscribers = subscribersSnapshot.docs.map(doc => ({
+        const allSubscribers = subscribersSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+
+        const eligibleSubscribers = force
+            ? allSubscribers
+            : allSubscribers.filter(sub => sub.lastNewsletterDate !== todayDateString);
+
+        if (eligibleSubscribers.length === 0) {
+            return {
+                success: true,
+                message: `All subscribers already received daily newsletter today (${todayDateString})`,
+                sent: 0
+            };
+        }
+
+        const recipientMap = new Map();
+        eligibleSubscribers.forEach(sub => {
+            const normalizedEmail = (sub.email || '').toLowerCase().trim();
+            if (normalizedEmail && !recipientMap.has(normalizedEmail)) {
+                recipientMap.set(normalizedEmail, {
+                    id: sub.id,
+                    email: normalizedEmail,
+                    name: sub.name || 'Legal Enthusiast',
+                    unsubscribeToken: sub.unsubscribeToken
+                });
+            }
+        });
+
+        const recipients = Array.from(recipientMap.values());
 
         const newsletterData = await generateDailyNewsletter();
 
@@ -63,12 +100,6 @@ async function sendDailyNewsletter() {
                 error: 'Failed to generate newsletter content'
             };
         }
-
-        const recipients = subscribers.map(sub => ({
-            email: sub.email,
-            name: sub.name || 'Legal Enthusiast',
-            unsubscribeToken: sub.unsubscribeToken
-        }));
 
         const subject = `Legal Newsletter - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
         
@@ -83,9 +114,13 @@ async function sendDailyNewsletter() {
         );
 
         const batch = db.batch();
-        subscribers.forEach(sub => {
-            const docRef = db.collection('newsletterSubscriptions').doc(sub.id);
-            batch.update(docRef, { lastSentAt: new Date() });
+        recipients.forEach(rec => {
+            const docRef = db.collection('newsletterSubscriptions').doc(rec.id);
+            batch.update(docRef, {
+                lastNewsletterDate: todayDateString,
+                lastSentAt: new Date(),
+                updatedAt: new Date()
+            });
         });
         await batch.commit();
 
@@ -93,7 +128,8 @@ async function sendDailyNewsletter() {
             success: true,
             message: 'Daily newsletter sent successfully',
             stats: {
-                subscribers: subscribers.length,
+                todayDateString,
+                subscribers: recipients.length,
                 sent: results.sent,
                 failed: results.failed
             }
@@ -111,8 +147,10 @@ async function sendDailyNewsletter() {
 /**
  * Send weekly newsletters
  */
-async function sendWeeklyNewsletter() {
+async function sendWeeklyNewsletter(force = false) {
     try {
+        const currentWeekId = getISOWeekIdentifier();
+
         const subscribersSnapshot = await db.collection('newsletterSubscriptions')
             .where('isActive', '==', true)
             .where('frequency', '==', 'weekly')
@@ -126,27 +164,48 @@ async function sendWeeklyNewsletter() {
             };
         }
 
-        const subscribers = subscribersSnapshot.docs.map(doc => ({
+        const allSubscribers = subscribersSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
 
-        const newsletterData = await generateDailyNewsletter();
+        const eligibleSubscribers = force
+            ? allSubscribers
+            : allSubscribers.filter(sub => sub.lastWeeklyNewsletterDate !== currentWeekId);
+
+        if (eligibleSubscribers.length === 0) {
+            return {
+                success: true,
+                message: `All subscribers already received weekly newsletter for ${currentWeekId}`,
+                sent: 0
+            };
+        }
+
+        const recipientMap = new Map();
+        eligibleSubscribers.forEach(sub => {
+            const normalizedEmail = (sub.email || '').toLowerCase().trim();
+            if (normalizedEmail && !recipientMap.has(normalizedEmail)) {
+                recipientMap.set(normalizedEmail, {
+                    id: sub.id,
+                    email: normalizedEmail,
+                    name: sub.name || 'Legal Enthusiast',
+                    unsubscribeToken: sub.unsubscribeToken
+                });
+            }
+        });
+
+        const recipients = Array.from(recipientMap.values());
+
+        const newsletterData = await generateWeeklyNewsletter();
 
         if (!newsletterData.success) {
             return {
                 success: false,
-                error: 'Failed to generate newsletter content'
+                error: 'Failed to generate weekly newsletter content'
             };
         }
 
-        const recipients = subscribers.map(sub => ({
-            email: sub.email,
-            name: sub.name || 'Legal Enthusiast',
-            unsubscribeToken: sub.unsubscribeToken
-        }));
-
-        const subject = `Weekly Legal Roundup - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        const subject = `Weekly Legal Roundup Digest - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
         
         const results = await sendBulkNewsletters(
             recipients,
@@ -159,9 +218,13 @@ async function sendWeeklyNewsletter() {
         );
 
         const batch = db.batch();
-        subscribers.forEach(sub => {
-            const docRef = db.collection('newsletterSubscriptions').doc(sub.id);
-            batch.update(docRef, { lastSentAt: new Date() });
+        recipients.forEach(rec => {
+            const docRef = db.collection('newsletterSubscriptions').doc(rec.id);
+            batch.update(docRef, {
+                lastWeeklyNewsletterDate: currentWeekId,
+                lastSentAt: new Date(),
+                updatedAt: new Date()
+            });
         });
         await batch.commit();
 
@@ -169,7 +232,8 @@ async function sendWeeklyNewsletter() {
             success: true,
             message: 'Weekly newsletter sent successfully',
             stats: {
-                subscribers: subscribers.length,
+                currentWeekId,
+                subscribers: recipients.length,
                 sent: results.sent,
                 failed: results.failed
             }
@@ -183,3 +247,4 @@ async function sendWeeklyNewsletter() {
         };
     }
 }
+

@@ -5,14 +5,15 @@ import toast from "react-hot-toast";
 import { TypeAnimation } from "react-type-animation";
 import ReactMarkdown from 'react-markdown';
 import {
-    Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, BookOpen,MessageCircle ,
+    Mic, MicOff, Send, Paperclip, X, AlertCircle, Shield, BookOpen, MessageCircle,
     Menu, LogOut, MessageSquare, BrainCircuit, Plus, AlertTriangle,
     Loader2, Clock, Trash2, UserX, Volume2, StopCircle, Phone,
     Share2, Crown, Scale, Sparkles, ChevronDown, ChevronRight, Info,
     Briefcase, FileCode, Users, ArrowRight, Globe, PlusCircle,
     Settings as SettingsIcon, HelpCircle, Download, Keyboard, Bug,
     Home, CreditCard, Bell, FileQuestion, Zap, Book, CheckCircle,
-    ArrowLeft, ShieldAlert, ShieldOff, ArrowUpRight, TrendingUp, Lightbulb
+    ArrowLeft, ShieldAlert, ShieldOff, ArrowUpRight, TrendingUp, Lightbulb,
+    FileText, Wand2
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -48,7 +49,7 @@ function RiskBadge({ level, size = "sm" }) {
         </span>
     );
 }
- 
+
 const getRiskTheme = (risk) => {
     switch (risk?.toUpperCase()) {
         case 'HIGH': return { bg: 'from-rose-600 via-rose-700 to-rose-900', ring: 'ring-rose-300/40', dot: 'bg-rose-400' };
@@ -56,37 +57,37 @@ const getRiskTheme = (risk) => {
         default: return { bg: 'from-amber-500 via-amber-600 to-orange-700', ring: 'ring-amber-300/40', dot: 'bg-amber-400' };
     }
 };
- 
+
 // Font helpers (arbitrary Tailwind values so no tailwind.config changes are required)
 const F_DISPLAY = "font-[\"Fraunces\",ui-serif,serif]";
 const F_MONO = "font-[\"IBM_Plex_Mono\",ui-monospace,monospace]";
- 
+
 // ==========================================
 // 2. MAIN COMPONENT: ResultCard
 // ==========================================
- 
+
 export function ResultCard({ analysis }) {
     const [openSections, setOpenSections] = useState({ clauses: true });
     const [openClause, setOpenClause] = useState(0);
- 
+
     if (!analysis || !analysis.decisionSummary) return null;
- 
+
     const {
         decisionSummary, executiveSummary, keyRisks = [], missingProtections = [],
         nextBestActions = [], clauses = [], whatIfSuggestions = [],
         recommendations = [], followUpQuestions = []
     } = analysis;
- 
+
     const risk = decisionSummary.overallRisk?.toUpperCase() || 'MEDIUM';
     const theme = getRiskTheme(risk);
     const score = Number(decisionSummary.decisionScore) || 0;
     const confidence = Number(decisionSummary.confidence) || 0;
- 
+
     // Sidebar Stats Calculation
     const highRiskCount = clauses.filter(c => c.riskLevel?.toUpperCase() === 'HIGH').length;
     const medRiskCount = clauses.filter(c => c.riskLevel?.toUpperCase() === 'MEDIUM').length;
     const lowRiskCount = clauses.filter(c => c.riskLevel?.toUpperCase() === 'LOW').length;
- 
+
     const sectionDefs = [
         { id: 'clauses', title: 'Clause-by-clause analysis', icon: FileCode, count: clauses.length },
         { id: 'recs', title: 'Recommendations', icon: CheckCircle, count: recommendations.length },
@@ -96,14 +97,14 @@ export function ResultCard({ analysis }) {
         { id: 'whatif', title: 'What-if scenarios', icon: Lightbulb, count: whatIfSuggestions.length },
         { id: 'followup', title: 'Questions to ask', icon: HelpCircle, count: followUpQuestions.length },
     ].filter(s => s.count > 0);
- 
+
     const allOpen = sectionDefs.every(s => openSections[s.id]);
     const toggleAll = () => {
         if (allOpen) { setOpenSections({}); }
         else { setOpenSections(Object.fromEntries(sectionDefs.map(s => [s.id, true]))); }
     };
     const toggleSection = (id) => setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
- 
+
     // Reusable Accordion Component (now supports multiple sections open at once,
     // which is friendlier for people who want to compare risks next to recommendations)
     const DashboardSection = ({ id, title, icon: Icon, count, children }) => {
@@ -144,11 +145,11 @@ export function ResultCard({ analysis }) {
             </div>
         );
     };
- 
+
     return (
         <div className='w-full max-w-7xl mx-auto p-3 sm:p-6 lg:p-8 font-["Inter",ui-sans-serif,sans-serif] pb-28 lg:pb-8'>
             <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
- 
+
                 {/* VERDICT — shown FIRST on mobile so the headline lands immediately,
                     sticky on the right for desktop readers scrolling through detail */}
                 <aside className="order-first lg:order-last lg:w-[340px] shrink-0">
@@ -162,7 +163,7 @@ export function ResultCard({ analysis }) {
                             <p className="text-xs font-bold uppercase tracking-widest opacity-80">Final verdict</p>
                             <RiskBadge level={risk} />
                         </div>
- 
+
                         {/* Seal — the one distinctive signature element on the page */}
                         <div className="flex items-center gap-5 mb-7">
                             <div className="relative shrink-0 w-24 h-24 sm:w-28 sm:h-28">
@@ -181,7 +182,7 @@ export function ResultCard({ analysis }) {
                             </div>
                             <h3 className={`${F_DISPLAY} text-2xl sm:text-3xl font-semibold leading-tight`}>{decisionSummary.finalDecision}</h3>
                         </div>
- 
+
                         <div className="mb-7">
                             <div className="flex justify-between text-[11px] uppercase tracking-widest opacity-80 mb-1.5">
                                 <span>Confidence</span>
@@ -196,7 +197,7 @@ export function ResultCard({ analysis }) {
                                 />
                             </div>
                         </div>
- 
+
                         <div className="space-y-3 mb-7 text-sm">
                             <div className="flex justify-between items-center border-b border-white/15 pb-2.5">
                                 <span className="opacity-80">Total clauses reviewed</span>
@@ -215,7 +216,7 @@ export function ResultCard({ analysis }) {
                                 <span className={`${F_MONO} font-semibold`}>{lowRiskCount}</span>
                             </div>
                         </div>
- 
+
                         {nextBestActions.length > 0 && (
                             <div className="mb-7">
                                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-3">Do this next</p>
@@ -228,7 +229,7 @@ export function ResultCard({ analysis }) {
                                 </ul>
                             </div>
                         )}
- 
+
                         {/* Buttons hidden on mobile — the sticky bottom bar below covers small screens */}
                         <div className="hidden lg:flex flex-col gap-3">
                             <button className="w-full bg-white text-slate-900 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-100 active:scale-[0.98] transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
@@ -243,10 +244,10 @@ export function ResultCard({ analysis }) {
                         </div>
                     </motion.div>
                 </aside>
- 
+
                 {/* MAIN COLUMN */}
                 <div className="flex-1 space-y-5 min-w-0 order-last lg:order-first">
- 
+
                     {/* Executive Summary Hero */}
                     <motion.div
                         initial={{ opacity: 0, y: 8 }}
@@ -260,7 +261,7 @@ export function ResultCard({ analysis }) {
                         </div>
                         <h2 className={`${F_DISPLAY} text-xl sm:text-2xl font-semibold text-slate-900 mb-4`}>Executive summary</h2>
                         <p className="text-slate-600 leading-relaxed text-sm sm:text-base mb-7">{executiveSummary}</p>
- 
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                             {[
                                 { label: 'Risks found', val: keyRisks.length, col: 'text-rose-600 bg-rose-50 border-rose-100' },
@@ -275,7 +276,7 @@ export function ResultCard({ analysis }) {
                             ))}
                         </div>
                     </motion.div>
- 
+
                     {/* Expand / collapse control */}
                     {sectionDefs.length > 1 && (
                         <div className="flex items-center justify-between px-1">
@@ -288,10 +289,10 @@ export function ResultCard({ analysis }) {
                             </button>
                         </div>
                     )}
- 
+
                     {/* DASHBOARD ACCORDIONS */}
                     <div className="space-y-3.5">
- 
+
                         {/* 1. Clause Analysis */}
                         {clauses.length > 0 && (
                             <DashboardSection id="clauses" title="Clause-by-clause analysis" icon={FileCode} count={clauses.length}>
@@ -343,7 +344,7 @@ export function ResultCard({ analysis }) {
                                 </div>
                             </DashboardSection>
                         )}
- 
+
                         {/* 2. Recommendations */}
                         {recommendations.length > 0 && (
                             <DashboardSection id="recs" title="Recommendations" icon={CheckCircle} count={recommendations.length}>
@@ -360,7 +361,7 @@ export function ResultCard({ analysis }) {
                                 </div>
                             </DashboardSection>
                         )}
- 
+
                         {/* 3. Missing Protections */}
                         {missingProtections.length > 0 && (
                             <DashboardSection id="missing" title="Missing protections" icon={ShieldAlert} count={missingProtections.length}>
@@ -373,7 +374,7 @@ export function ResultCard({ analysis }) {
                                 </ul>
                             </DashboardSection>
                         )}
- 
+
                         {/* 4. Key Risks */}
                         {keyRisks.length > 0 && (
                             <DashboardSection id="risks" title="Key risks" icon={AlertTriangle} count={keyRisks.length}>
@@ -386,7 +387,7 @@ export function ResultCard({ analysis }) {
                                 </ul>
                             </DashboardSection>
                         )}
- 
+
                         {/* 5. Next Best Actions */}
                         {nextBestActions.length > 0 && (
                             <DashboardSection id="actions" title="Next best actions" icon={TrendingUp} count={nextBestActions.length}>
@@ -400,7 +401,7 @@ export function ResultCard({ analysis }) {
                                 </ul>
                             </DashboardSection>
                         )}
- 
+
                         {/* 6. What-if Scenarios */}
                         {whatIfSuggestions.length > 0 && (
                             <DashboardSection id="whatif" title="What-if scenarios" icon={Lightbulb} count={whatIfSuggestions.length}>
@@ -414,7 +415,7 @@ export function ResultCard({ analysis }) {
                                 </div>
                             </DashboardSection>
                         )}
- 
+
                         {/* 7. Follow-up Questions */}
                         {followUpQuestions.length > 0 && (
                             <DashboardSection id="followup" title="Questions to ask" icon={HelpCircle} count={followUpQuestions.length}>
@@ -430,7 +431,7 @@ export function ResultCard({ analysis }) {
                     </div>
                 </div>
             </div>
- 
+
             {/* MOBILE STICKY ACTION BAR — always-reachable primary actions on small screens */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-slate-200 p-3 flex gap-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
                 <button className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm active:scale-[0.98] transition-all">
@@ -446,13 +447,13 @@ export function ResultCard({ analysis }) {
         </div>
     );
 }
- 
+
 // ==========================================
 // 3. PREMIUM PDF GENERATOR ENGINE
 //    Same data fields consumed as before — only the visual
 //    layout and polish have been improved.
 // ==========================================
- 
+
 export const generatePremiumPDF = (data) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -460,7 +461,7 @@ export const generatePremiumPDF = (data) => {
     const margin = 20;
     const contentWidth = pageWidth - (margin * 2);
     let yPos = 0;
- 
+
     // --- Styling Config ---
     const FONT = "helvetica";
     const colors = {
@@ -476,7 +477,7 @@ export const generatePremiumPDF = (data) => {
         emerald: [5, 150, 105],
         indigo: [79, 70, 229]
     };
- 
+
     // --- PDF Engine Helpers ---
     const checkPageBreak = (neededHeight) => {
         if (yPos + neededHeight > pageHeight - margin) {
@@ -486,7 +487,7 @@ export const generatePremiumPDF = (data) => {
         }
         return false;
     };
- 
+
     const drawWrappedText = (text, x, y, maxWidth, fontSize, fontStyle, color) => {
         doc.setFont(FONT, fontStyle);
         doc.setFontSize(fontSize);
@@ -495,7 +496,7 @@ export const generatePremiumPDF = (data) => {
         doc.text(lines, x, y);
         return y + (lines.length * (fontSize * 0.45));
     };
- 
+
     const drawTitle = (text, fontSize, spacingAfter) => {
         checkPageBreak(fontSize + spacingAfter);
         doc.setFont(FONT, "bold");
@@ -508,7 +509,7 @@ export const generatePremiumPDF = (data) => {
         doc.line(margin, yPos + 2.5, margin + 8, yPos + 2.5);
         yPos += spacingAfter;
     };
- 
+
     const drawBulletList = (items, color = colors.secondary) => {
         if (!items || items.length === 0) return;
         items.forEach(item => {
@@ -518,7 +519,7 @@ export const generatePremiumPDF = (data) => {
         });
         yPos += 5;
     };
- 
+
     const drawNumberedList = (items, color = colors.secondary) => {
         if (!items || items.length === 0) return;
         items.forEach((item, idx) => {
@@ -529,17 +530,17 @@ export const generatePremiumPDF = (data) => {
         });
         yPos += 5;
     };
- 
+
     // ==========================================
     // PAGE 1: COVER & EXECUTIVE SUMMARY
     // ==========================================
- 
+
     // Header Banner
     doc.setFillColor(...colors.brand);
     doc.rect(0, 0, pageWidth, 48, 'F');
     doc.setFillColor(...colors.gold);
     doc.rect(0, 46, pageWidth, 2, 'F');
- 
+
     doc.setTextColor(255, 255, 255);
     doc.setFont(FONT, "bold");
     doc.setFontSize(23);
@@ -548,14 +549,14 @@ export const generatePremiumPDF = (data) => {
     doc.setFont(FONT, "normal");
     doc.setTextColor(220, 230, 228);
     doc.text(`Generated on ${new Date().toLocaleDateString()}  •  Prepared for your review`, margin, 36);
- 
+
     yPos = 65;
- 
+
     // Overall Assessment Box
     doc.setDrawColor(...colors.border);
     doc.setFillColor(...colors.bgLight);
     doc.roundedRect(margin, yPos, contentWidth, 32, 3, 3, 'FD');
- 
+
     doc.setFontSize(9);
     doc.setFont(FONT, "bold");
     doc.setTextColor(...colors.muted);
@@ -563,117 +564,117 @@ export const generatePremiumPDF = (data) => {
     doc.setFontSize(17);
     doc.setTextColor(...colors.primary);
     doc.text(data.decisionSummary.finalDecision, margin + 6, yPos + 22);
- 
+
     const col2 = margin + contentWidth * 0.48;
     const col3 = margin + contentWidth * 0.66;
     const col4 = margin + contentWidth * 0.84;
- 
+
     doc.setFontSize(9);
     doc.setTextColor(...colors.muted);
     doc.text("RISK", col2, yPos + 11);
     doc.setFontSize(13);
     doc.setTextColor(...colors.primary);
     doc.text(data.decisionSummary.overallRisk || 'N/A', col2, yPos + 22);
- 
+
     doc.setFontSize(9);
     doc.setTextColor(...colors.muted);
     doc.text("SCORE", col3, yPos + 11);
     doc.setFontSize(13);
     doc.setTextColor(...colors.primary);
     doc.text(`${data.decisionSummary.decisionScore}/100`, col3, yPos + 22);
- 
+
     doc.setFontSize(9);
     doc.setTextColor(...colors.muted);
     doc.text("CONFIDENCE", col4, yPos + 11);
     doc.setFontSize(13);
     doc.setTextColor(...colors.primary);
     doc.text(`${data.decisionSummary.confidence}%`, col4, yPos + 22);
- 
+
     yPos += 46;
- 
+
     // Executive Summary
     drawTitle("Executive Summary", 14, 9);
     yPos = drawWrappedText(data.executiveSummary, margin, yPos, contentWidth, 11, "normal", colors.secondary) + 10;
- 
+
     // Key Risks & Missing Protections (Page 1 Continued)
     if (data.keyRisks?.length > 0) {
         drawTitle("Key Risks Identified", 12, 9);
         drawBulletList(data.keyRisks, colors.red);
     }
- 
+
     if (data.missingProtections?.length > 0) {
         drawTitle("Missing Protections", 12, 9);
         drawBulletList(data.missingProtections, colors.amber);
     }
- 
+
     // ==========================================
     // PAGE 2: ACTIONS, RECS, & WHAT-IFS
     // ==========================================
     doc.addPage();
     yPos = margin;
- 
+
     if (data.nextBestActions?.length > 0) {
         drawTitle("Next Best Actions", 14, 9);
         drawNumberedList(data.nextBestActions, colors.emerald);
         yPos += 5;
     }
- 
+
     if (data.recommendations?.length > 0) {
         drawTitle("Recommendations", 14, 9);
         data.recommendations.forEach(r => {
             const hTitle = (doc.splitTextToSize(r.title, contentWidth - 10).length * (11 * 0.45));
             const hDesc = (doc.splitTextToSize(r.description, contentWidth - 10).length * (10 * 0.45));
             const cardHeight = 10 + hTitle + 5 + hDesc + 5;
- 
+
             checkPageBreak(cardHeight);
- 
+
             doc.setDrawColor(...colors.border);
             doc.setFillColor(...colors.bgLight);
             doc.roundedRect(margin, yPos, contentWidth, cardHeight, 3, 3, 'FD');
             doc.setFillColor(...colors.brand);
             doc.roundedRect(margin, yPos, 2.5, cardHeight, 1, 1, 'F');
- 
+
             let cy = yPos + 8;
             cy = drawWrappedText(r.title, margin + 8, cy, contentWidth - 14, 11, "bold", colors.primary) + 3;
             drawWrappedText(r.description, margin + 8, cy, contentWidth - 14, 10, "normal", colors.secondary);
- 
+
             yPos += cardHeight + 6;
         });
         yPos += 5;
     }
- 
+
     if (data.whatIfSuggestions?.length > 0) {
         drawTitle("What-If Scenarios", 14, 9);
         data.whatIfSuggestions.forEach(w => {
             const hScen = (doc.splitTextToSize(`Scenario: ${w.scenario}`, contentWidth).length * (10 * 0.45));
             const hImp = (doc.splitTextToSize(`Impact: ${w.impact}`, contentWidth).length * (10 * 0.45));
             checkPageBreak(hScen + hImp + 6);
- 
+
             let cy = yPos;
             cy = drawWrappedText(`Scenario: ${w.scenario}`, margin, cy, contentWidth, 10, "bold", colors.indigo) + 2;
             yPos = drawWrappedText(`Impact: ${w.impact}`, margin, cy, contentWidth, 10, "normal", colors.secondary) + 6;
         });
         yPos += 5;
     }
- 
+
     if (data.followUpQuestions?.length > 0) {
         drawTitle("Follow-up Questions", 14, 9);
         drawNumberedList(data.followUpQuestions, colors.primary);
     }
- 
+
     // ==========================================
     // PAGE 3+: CLAUSE-BY-CLAUSE AUDIT
     // ==========================================
     if (data.clauses?.length > 0) {
         doc.addPage();
         yPos = margin;
- 
+
         drawTitle("Detailed Clause Analysis", 16, 13);
- 
+
         data.clauses.forEach((c, idx) => {
             const cleanTitle = c.clause.replace(/^\d+[\.\-\s]*/, '').trim();
             const rLevel = (c.riskLevel || 'MEDIUM').toUpperCase();
- 
+
             // Calculate Box Height beforehand to prevent splitting!
             const hTitle = (doc.splitTextToSize(`${idx + 1}. ${cleanTitle}`, contentWidth - 30).length * (12 * 0.45));
             const hExp = (doc.splitTextToSize(c.explanation, contentWidth - 10).length * (10 * 0.45));
@@ -681,22 +682,22 @@ export const generatePremiumPDF = (data) => {
             const hImp = c.businessImpact ? (doc.splitTextToSize(c.businessImpact, colWidth).length * (9 * 0.45)) : 0;
             const hRec = c.recommendation ? (doc.splitTextToSize(c.recommendation, colWidth).length * (9 * 0.45)) : 0;
             const hCols = Math.max(hImp, hRec);
- 
+
             const totalHeight = 10 + hTitle + 10 + hExp + (hCols > 0 ? 10 + hCols : 0) + 10;
- 
+
             // If it doesn't fit, move entire card to next page
             checkPageBreak(totalHeight);
- 
+
             // Draw Card Background
             doc.setDrawColor(...colors.border);
             doc.setFillColor(255, 255, 255);
             doc.roundedRect(margin, yPos, contentWidth, totalHeight, 3, 3, 'FD');
- 
+
             let cy = yPos + 10;
- 
+
             // Title
             drawWrappedText(`${idx + 1}. ${cleanTitle}`, margin + 5, cy, contentWidth - 30, 12, "bold", colors.primary);
- 
+
             // Badge
             let bColor = colors.amber;
             if (rLevel === 'HIGH') bColor = colors.red;
@@ -706,14 +707,14 @@ export const generatePremiumPDF = (data) => {
             doc.setFontSize(8);
             doc.setTextColor(255, 255, 255);
             doc.text(rLevel, pageWidth - margin - 13.5, cy - 1, { align: 'center' });
- 
+
             cy += hTitle + 8;
- 
+
             // Explanation
             drawWrappedText("IN PLAIN TERMS", margin + 5, cy, contentWidth - 10, 8, "bold", colors.muted);
             cy += 5;
             cy = drawWrappedText(c.explanation, margin + 5, cy, contentWidth - 10, 10, "normal", colors.secondary) + 8;
- 
+
             // Columns (Impact & Rec)
             if (hCols > 0) {
                 const gridY = cy;
@@ -727,11 +728,11 @@ export const generatePremiumPDF = (data) => {
                     drawWrappedText(c.recommendation, midX, gridY + 5, colWidth, 9, "normal", colors.secondary);
                 }
             }
- 
+
             yPos += totalHeight + 8;
         });
     }
- 
+
     // ==========================================
     // FINAL SUMMARY PAGE
     // ==========================================
@@ -744,7 +745,7 @@ export const generatePremiumPDF = (data) => {
     if (data.decisionSummary.negotiationRequired) {
         yPos = drawWrappedText("•  Negotiation of terms is required before signing.", margin, yPos, contentWidth, 10, "normal", colors.amber) + 5;
     }
- 
+
     // --- FOOTER (All Pages) ---
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -757,10 +758,10 @@ export const generatePremiumPDF = (data) => {
         doc.setTextColor(...colors.muted);
         doc.text(`Document Analysis Report  •  Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
     }
- 
+
     doc.save("Document_Analysis_Report.pdf");
 };
- 
+
 
 // Profile Dropdown Component
 function ProfileDropdown({ isOpen, onClose, user, onUpgrade, onSettings, onLogout, onDeleteAccount, onHelpCenter, onReleaseNotes, onTerms, onReportBug, position = "top" }) {
@@ -947,16 +948,16 @@ function DeleteAccountModal({ isOpen, onClose, onConfirm, isLoading }) {
                         This action is <strong>irreversible</strong>. All your data will be permanently deleted.
                     </p>
                     <div className="flex gap-3 w-full">
-                        <button 
-                            onClick={onClose} 
-                            disabled={isLoading} 
+                        <button
+                            onClick={onClose}
+                            disabled={isLoading}
                             className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50"
                         >
                             Cancel
                         </button>
-                        <button 
-                            onClick={onConfirm} 
-                            disabled={isLoading} 
+                        <button
+                            onClick={onConfirm}
+                            disabled={isLoading}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-sm disabled:opacity-70"
                         >
                             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Forever"}
@@ -1046,6 +1047,7 @@ export default function Demo() {
     const liveCooldownRef = useRef(false);
 
     const toolItems = [
+        { id: 'doc_generator', label: 'Legal Doc Studio', icon: FileText, description: 'AI Legal document generator & drafting studio' },
         { id: 'compare_docs', label: 'Compare Docs', icon: FileCode, description: 'Compare legal documents' },
         { id: 'glossary_tool', label: 'Glossary', icon: Book, description: 'Legal terminology' },
         { id: 'community_tool', label: 'Community', icon: Users, description: 'Share and learn' },
@@ -1184,7 +1186,7 @@ export default function Demo() {
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'O') { e.preventDefault(); handleNewChat(); }
-            if (e.ctrlKey && e.shiftKey && e.key === 'L') { e.preventDefault(); setIsLiveMode(true); }
+            if (e.ctrlKey && e.shiftKey && e.key === 'L') { e.preventDefault(); router.push('/pages/legal-consultation'); }
             if (e.ctrlKey && e.key === 'k') { e.preventDefault(); setShowSearchModal(true); }
             if (e.key === 'Escape') {
                 setShowSearchModal(false);
@@ -1214,7 +1216,7 @@ export default function Demo() {
     // Speech Utils
     const getBestVoice = (text) => {
         if (!availableVoices.length) return null;
-        
+
         const isHindi = /[\u0900-\u097F]/.test(text);
         const isBengali = /[\u0980-\u09FF]/.test(text);
         const isTamil = /[\u0B80-\u0BFF]/.test(text);
@@ -1223,7 +1225,7 @@ export default function Demo() {
         const isKannada = /[\u0C80-\u0CFF]/.test(text);
         const isMalayalam = /[\u0D00-\u0D7F]/.test(text);
         const isPunjabi = /[\u0A00-\u0A7F]/.test(text);
-        
+
         if (isHindi) return availableVoices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('hindi') || v.lang === 'hi-IN') || availableVoices.find(v => v.lang.includes('en-IN')) || null;
         if (isBengali) return availableVoices.find(v => v.lang.includes('bn') || v.name.toLowerCase().includes('bengali')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
         if (isTamil) return availableVoices.find(v => v.lang.includes('ta') || v.name.toLowerCase().includes('tamil')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
@@ -1232,7 +1234,7 @@ export default function Demo() {
         if (isKannada) return availableVoices.find(v => v.lang.includes('kn') || v.name.toLowerCase().includes('kannada')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
         if (isMalayalam) return availableVoices.find(v => v.lang.includes('ml') || v.name.toLowerCase().includes('malayalam')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
         if (isPunjabi) return availableVoices.find(v => v.lang.includes('pa') || v.name.toLowerCase().includes('punjabi')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        
+
         return availableVoices.find(v => v.lang === 'en-US' || v.lang === 'en-IN' || v.name.includes('Google US English') || v.name.includes('Google UK English')) || availableVoices[0] || null;
     };
 
@@ -1247,15 +1249,15 @@ export default function Demo() {
             window.speechSynthesis.cancel();
             const cleanText = cleanMarkdown(text);
             if (!cleanText) { resolve(); return; }
-            
+
             const utterance = new SpeechSynthesisUtterance(cleanText);
             const voice = getBestVoice(cleanText);
             if (voice) utterance.voice = voice;
-            
+
             utterance.rate = 0.9;
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
-            
+
             utterance.onstart = () => setLiveStatus("speaking");
             utterance.onend = () => { setLiveStatus("idle"); resolve(); };
             utterance.onerror = () => { setLiveStatus("idle"); resolve(); };
@@ -1266,33 +1268,33 @@ export default function Demo() {
     const speakText = (text) => {
         if (!window.speechSynthesis) return toast.error('Text-to-speech not supported');
         if (!text) return;
-        
+
         window.speechSynthesis.cancel();
         const cleanText = cleanMarkdown(text);
         if (!cleanText) return;
-        
+
         const utterance = new SpeechSynthesisUtterance(cleanText);
         const voice = getBestVoice(cleanText);
         if (voice) utterance.voice = voice;
-        
+
         utterance.rate = 0.9;
         utterance.pitch = 1.0;
-        
+
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = (e) => {
             setIsSpeaking(false);
             if (e.error !== 'interrupted' && e.error !== 'canceled') console.error('Speech error:', e.error);
         };
-        
+
         window.speechSynthesis.speak(utterance);
     };
 
-    const stopSpeaking = () => { 
+    const stopSpeaking = () => {
         if (window.speechSynthesis && window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel(); 
-            setIsSpeaking(false); 
-        } 
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+        }
     };
 
     // Live Voice Recognition Hooks
@@ -1330,22 +1332,22 @@ export default function Demo() {
         if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
-            
+
             recognition.continuous = false;
             recognition.interimResults = true;
             recognition.maxAlternatives = 3;
             recognition.lang = speechLanguage;
-            
+
             recognition.onresult = (event) => {
                 let finalTranscript = '';
                 let interimTranscript = '';
-                
+
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) finalTranscript += transcript;
                     else interimTranscript += transcript;
                 }
-                
+
                 const bestTranscript = finalTranscript || interimTranscript;
                 if (bestTranscript.trim()) {
                     if (isLiveMode) handleLiveInput(bestTranscript);
@@ -1360,14 +1362,14 @@ export default function Demo() {
                     return;
                 }
                 if (event.error === 'no-speech') return;
-                
+
                 if (isLiveMode) {
                     setLiveStatus("idle");
                     const errMsg = speechLanguage.startsWith('hi') ? "मुझे समझने में कठिनाई हो रही है।" : "I'm having trouble understanding.";
                     speakText(errMsg);
                     setTimeout(() => { if (isLiveMode) startLiveLoop(); }, 1500);
-                } else { 
-                    setIsRecording(false); 
+                } else {
+                    setIsRecording(false);
                 }
             };
 
@@ -1380,13 +1382,13 @@ export default function Demo() {
                     setTimeout(() => { if (isLiveMode) startLiveLoop(); }, 1500);
                 }
             };
-            
+
             recognition.onstart = () => { if (isLiveMode) setIsRecognitionRunning(true); };
             recognition.onend = () => {
                 setIsRecognitionRunning(false);
                 if (isLiveMode && !liveCooldownRef.current) startLiveLoop();
             };
-            
+
             recognitionRef.current = recognition;
         }
     }, [isLiveMode, speechLanguage]);
@@ -1485,7 +1487,7 @@ export default function Demo() {
                 setChatHistory(prev => prev.filter(chat => chat.id !== chatToDelete));
                 if (chatId === chatToDelete) handleNewChat();
             } else throw new Error("Failed to delete");
-        } catch (error) { toast.error("Failed to delete chat"); } 
+        } catch (error) { toast.error("Failed to delete chat"); }
         finally { setIsDeletingChat(false); setChatToDelete(null); }
     };
 
@@ -1505,7 +1507,7 @@ export default function Demo() {
                 setChatHistory(prev => prev.map(chat => chat.id === chatToRename ? { ...chat, title: newChatTitle.trim() } : chat));
                 setChatToRename(null); setNewChatTitle("");
             } else throw new Error("Failed to rename");
-        } catch (error) { toast.error("Failed to rename chat"); } 
+        } catch (error) { toast.error("Failed to rename chat"); }
         finally { setIsRenamingChat(false); }
     };
 
@@ -1644,7 +1646,7 @@ export default function Demo() {
             if (data.success) {
                 setChatId(id);
                 setDocumentContext(data.documentContext || "");
-                
+
                 const formattedMessages = data.messages.map(msg => ({
                     role: msg.role || 'user',
                     content: msg.content,
@@ -1665,7 +1667,14 @@ export default function Demo() {
     const handleTerms = () => { setShowProfileDropdown(false); router.push('/pages/terms-policies'); };
     const handleReportBug = () => { setShowProfileDropdown(false); router.push('/pages/report-bug'); };
     const handleDeleteAccount = () => { setShowProfileDropdown(false); handleDeleteAccountClick(); };
-    const handleToolClick = (toolId) => { setActiveTool(toolId); if (window.innerWidth < 768) setSidebarOpen(false); };
+    const handleToolClick = (toolId) => {
+        if (toolId === 'doc_generator') {
+            router.push('/pages/legal-doc-generator');
+            return;
+        }
+        setActiveTool(toolId);
+        if (window.innerWidth < 768) setSidebarOpen(false);
+    };
     const handleCloseTool = () => { setActiveTool(null); };
 
     // 🚀 HANDLE SENDING AND PARSING RESPONSE
@@ -1757,7 +1766,7 @@ export default function Demo() {
             setProcessingStage(2);
             setTimeout(() => {
                 setLoading(false);
-                
+
                 // ✅ Check if payload has structured analysis data (DecisionAnalysis JSON)
                 if (aiData.data?.decisionSummary || (aiData.data?.clauses && aiData.data.clauses.length > 0)) {
                     setMessages(prev => [...prev, { role: "assistant", analysis: aiData.data }]);
@@ -1796,8 +1805,8 @@ export default function Demo() {
                             {liveStatus === 'idle' && <MicOff className="w-16 h-16 text-gray-400" />}
                         </div>
                         <div className="text-center space-y-2">
-                            <h2 className="text-3xl font-bold text-gray-900">{liveStatus === 'listening' ? "I'm listening..." : liveStatus === 'speaking' ? "Speaking..." : liveStatus === 'thinking' ? "Thinking..." : "Tap to Speak"}</h2>
-                            <p className="text-gray-600">Live Conversation Mode</p>
+                            <h2 className="text-3xl font-bold text-gray-900">{liveStatus === 'listening' ? "Aura is listening..." : liveStatus === 'speaking' ? "Aura is speaking..." : liveStatus === 'thinking' ? "Aura is thinking..." : "Tap to Speak with Aura"}</h2>
+                            <p className="text-gray-600 font-medium flex items-center justify-center gap-1.5"><Sparkles className="w-4 h-4 text-blue-600 inline" /> Aura Realtime Voice Legal Consultation</p>
                         </div>
                         {liveStatus === 'idle' && (
                             <div className="flex flex-col items-center gap-4">
@@ -1854,9 +1863,15 @@ export default function Demo() {
                             <div className="flex items-center gap-2"><Plus className="w-4 h-4" /> New Chat</div>
                             <span className="bg-blue-700 text-[10px] px-1.5 py-0.5 rounded text-white">Ctrl+Shift+O</span>
                         </button>
-                        <button onClick={() => setIsLiveMode(true)} className="w-full flex items-center justify-between gap-2 px-3 py-3 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-all shadow-sm">
-                            <div className="flex items-center gap-2"><BrainCircuit className="w-4 h-4 animate-pulse" /> Live Chat</div>
-                            <span className="bg-green-600 text-[10px] px-1.5 py-0.5 rounded text-white">Ctrl+Shift+L</span>
+                        <button
+                            onClick={() => router.push('/pages/legal-consultation')}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-blue-50/80 hover:bg-blue-100/80 text-blue-900 border border-blue-200/80 rounded-lg text-sm font-medium transition-all group cursor-pointer shadow-xs"
+                        >
+                            <div className="flex items-center gap-2">
+                                <BrainCircuit className="w-4 h-4 text-blue-600" />
+                                <span>Aura Voice Consult</span>
+                            </div>
+                            <span className="bg-blue-200/60 text-blue-800 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">Ctrl+Shift+L</span>
                         </button>
                         <button onClick={() => setShowSearchModal(true)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all text-sm bg-transparent hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-transparent hover:border-gray-200">
                             <div className="flex items-center gap-2"><MessageSquare className="w-4 h-4" /> <span>Search Chats</span></div>
@@ -1868,7 +1883,13 @@ export default function Demo() {
                 {sidebarCollapsed && (
                     <div className="p-2 space-y-2">
                         <button onClick={handleNewChat} className="w-full p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"><Plus className="w-5 h-5 mx-auto" /></button>
-                        <button onClick={() => setIsLiveMode(true)} className="w-full p-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all"><Phone className="w-5 h-5 mx-auto animate-pulse" /></button>
+                        <button
+                            onClick={() => router.push('/pages/legal-consultation')}
+                            className="w-full p-3 bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-all shadow-xs cursor-pointer"
+                            title="Aura Voice Consult"
+                        >
+                            <BrainCircuit className="w-5 h-5 mx-auto text-blue-600" />
+                        </button>
                         <button onClick={() => setShowSearchModal(true)} className="w-full p-3 hover:bg-gray-50 text-gray-600 rounded-lg transition-all"><MessageSquare className="w-5 h-5 mx-auto" /></button>
                     </div>
                 )}
@@ -1916,7 +1937,7 @@ export default function Demo() {
                                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
                                         </button>
                                         <div className="chat-menu hidden absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] z-50">
-                                            <button onClick={(e) => { e.stopPropagation(); startRenameChat(e, chat.id, chat.title); e.currentTarget.parentElement.classList.add('hidden'); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"><Plus className="w-4 h-4"/> Rename</button>
+                                            <button onClick={(e) => { e.stopPropagation(); startRenameChat(e, chat.id, chat.title); e.currentTarget.parentElement.classList.add('hidden'); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"><Plus className="w-4 h-4" /> Rename</button>
                                             <button onClick={(e) => { e.stopPropagation(); confirmDeleteChat(e, chat.id); e.currentTarget.parentElement.classList.add('hidden'); }} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 className="w-4 h-4" /> Delete</button>
                                         </div>
                                     </div>
@@ -2024,7 +2045,7 @@ export default function Demo() {
                                     ) : (
                                         <>
                                             <div className="w-16 h-16 bg-blue-200 rounded-2xl flex items-center justify-center mb-6 shadow-xl">
-                                                 <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
+                                                <Image src="/logo.svg" width={80} height={80} alt="Logo" className="relative z-10 w-20 h-20 animate-pulse" />
                                             </div>
                                             <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">
                                                 <TypeAnimation sequence={[`Hello ${user?.name?.split(' ')[0] || 'there'}`, 2000, "How can I help you today?", 2000]} wrapper="span" speed={50} repeat={Infinity} cursor={true} />

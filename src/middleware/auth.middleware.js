@@ -53,21 +53,8 @@ export const verifyToken = async (request) => {
       return { success: false, error: 'Access token missing' };
     }
 
-    // Try with main secret first, then refresh secret
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      if (process.env.JWT_REFRESH_SECRET) {
-        try {
-          decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-        } catch (refreshError) {
-          throw error; // Throw original error
-        }
-      } else {
-        throw error;
-      }
-    }
+    // Verify token strictly using the main access secret
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decoded.id) {
       return { success: false, error: 'User ID missing in token' };

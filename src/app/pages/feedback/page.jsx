@@ -99,7 +99,7 @@ export default function FeedbackPage() {
               transition={{ delay: 0.1 }}
               className="text-slate-500 mt-2 text-lg"
             >
-              See what the community thinks about LegalAI.
+              See what the community thinks about Legal Advisor.
             </motion.p>
           </div>
 

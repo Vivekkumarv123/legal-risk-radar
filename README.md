@@ -1,655 +1,289 @@
-# LegalAdvisor 🏛️⚖️
+# Legal Advisor 🏛️⚖️
 
-![LegalAdvisor Cover Photo](./public/cover_image.png)
+![Legal Advisor Cover Photo](./public/cover_image.png)
 
-**AI-Powered Legal Document Analysis for Everyone**
+> **Submission for the Google Cloud Gen AI Academy APAC Cohort 2 Hackathon**
 
-LegalAdvisor is a comprehensive AI-powered web application that transforms complex legal documents into simple, understandable insights. Built with Next.js 15 and powered by Google Gemini AI, it helps non-lawyers navigate legal documents safely and confidently.
-
-> **⚠️ Disclaimer:** This is not legal advice. It is a legal awareness and risk-explanation tool designed to help users understand potential risks in legal documents.
+**An AI-powered legal consultancy and decision-support platform designed to help students, individuals, small businesses, and startups understand legal documents and navigate complex legal concepts with clarity.**
 
 ---
 
-## 🌟 Why LegalAdvisor?
+## 🏆 Hackathon Context
 
-Legal documents are often:
-- **Complex and confusing** with legal jargon
-- **Risky if misunderstood** leading to financial loss
-- **Time-consuming** to review properly
-- **Expensive** to get professional analysis
+**Built for the Google Cloud Gen AI Academy APAC Cohort 2 Hackathon.**
 
-**Legal Risk Radar solves this by:**
-- 🤖 **AI-powered analysis** using Google Gemini 3 Flash
-- 📊 **Risk scoring** with HIGH/MEDIUM/LOW classifications
-- 🗣️ **Voice interface** supporting 12+ Indian languages
-- 💬 **Chat memory** for contextual conversations
-- 📄 **Document processing** for PDFs and images
-- 🔄 **Real-time analysis** with instant feedback
+Legal Advisor demonstrates how Google Cloud Generative AI and cloud infrastructure can be combined into a real-world, multi-modal legal decision-support system. By leveraging **Google Gemini 3.1 Flash Lite**, **Gemini 3.1 Flash Live Preview**, **Google Cloud Vision OCR**, **Google Cloud BigQuery**, **Firebase Firestore**, and **Google OAuth 2.0**, the platform bridges the gap between complex legal agreements and non-lawyer understanding.
+
+---
+
+## 🛑 Problem Statement
+
+Legal documents govern critical milestones for individuals, students, freelancers, and small businesses—from employment offers and university housing leases to vendor agreements and NDAs. However, standard legal review presents severe barriers:
+
+- **Opaque Legalese & Jargon:** Archaic legal language makes contracts nearly impossible for non-lawyers to evaluate accurately.
+- **Hidden & Omitted Risks:** Crucial safeguards (such as liability caps, unfair termination clauses, or indemnification shifts) are frequently buried or omitted entirely.
+- **Expensive & Slow Traditional Review:** Retaining professional legal counsel for preliminary document screening is costly and time-consuming.
+- **Fragmented Legal Tools:** Users must jump between PDF viewers, search engines for legal definitions, and drafting software to understand and act on a document.
+- **High Risk of Pre-Execution Mistakes:** Non-lawyers often sign binding agreements without fully understanding their obligations or potential financial exposure.
+
+---
+
+## 💡 Solution
+
+Legal Advisor is an **AI-powered legal decision-support and educational platform**. It transforms dense, complex contracts into clear, structured, and actionable intelligence.
+
+- **Decision Support, Not Replacement:** Legal Advisor empowers users to understand contract risks, identify missing safeguards, and prepare for discussions. It provides educational guidance and structured insights, operating strictly as a decision-support tool rather than a substitute for licensed legal counsel.
+- **Multi-Modal Document Intelligence:** Ingests digital PDFs, Word documents (`.docx`), scanned physical files, images, and browser web text using native text parsers and Google Cloud Vision OCR.
+- **Real-Time Interactive Consultation:** Features **Aura AI**, a virtual legal consultant supporting low-latency live voice and text interaction powered by Google Gemini Live models over WebSockets.
+- **Browser-Level Text Inspection:** Includes a Chrome Extension that enables instant risk scanning and legal relevance detection directly on web pages and online PDFs.
+- **Integrated Legal Workflow:** Combines document auditing, side-by-side contract comparison, an interactive legal glossary, document generation, and exportable PDF decision briefs into a single interface.
 
 ---
 
 ## ✨ Key Features
 
-### 🧠 **Advanced AI Analysis**
-- **Google Gemini Integration** with 3-model rotation for reliability
-- **Intelligent Risk Detection** with detailed explanations
-- **Missing Clause Identification** for better protection
-- **Context-Aware Responses** with chat memory
-- **Multi-language Support** (Hindi, English, Bengali, Telugu, etc.)
+### 1. AI Legal Chat & Contextual Document Analysis
+- **WHAT it does:** A conversational AI interface where users can ask questions about uploaded documents or general legal topics. Powered by `gemini-3.1-flash-lite` with a sliding context memory window and automated AI title generation.
+- **WHY it matters:** Delivers immediate, plain-English explanations for complex legal queries and specific contract clauses.
 
-### 💬 **Modern Chat Interface**
-- **ChatGPT-style UI** with typing animations
-- **Dynamic Chat Titles** generated by AI
-- **Message History** with persistent storage
-- **Voice Interface** with speech-to-text and text-to-speech
-- **File Upload Support** for PDFs and images
+### 2. Multi-Format Document Parsing & SHA-256 OCR Caching
+- **WHAT it does:** Extracts text from PDFs (`pdf2json`), Word documents (`mammoth`), scanned files, and image formats (`.png`, `.jpg`) via Google Cloud Vision OCR (`DOCUMENT_TEXT_DETECTION`) with local Tesseract.js fallback. Results are cached using SHA-256 content hashing.
+- **WHY it matters:** Ensures high-speed, reliable document analysis for any document type without redundant processing.
 
-### 🔐 **Robust Authentication**
-- **Email/Password Login** with secure JWT tokens
-- **Google OAuth Integration** for seamless signup
-- **User Profiles** with avatar support
-- **Password Reset** with OTP verification
-- **Account Management** with deletion options
+### 3. Contract Risk Scoring & Clause Classification
+- **WHAT it does:** Audits document text and assigns an overall numerical risk score (0–10) while categorizing individual clauses into **HIGH**, **MEDIUM**, or **LOW** risk levels.
+- **WHY it matters:** Instantly draws user focus to high-exposure liabilities, hidden penalties, or unfair obligations.
 
-### 💳 **Subscription System**
-- **3-Tier Plans**: Basic (Free), Pro (₹499/month), Enterprise (₹2499/month)
-- **Usage Tracking** with real-time limits
-- **Upgrade Prompts** similar to ChatGPT Plus
-- **Payment Integration** with secure processing
-- **Plan Management** with easy upgrades/downgrades
+### 4. Missing Safeguard & Missing Clause Detection
+- **WHAT it does:** Scans contracts against standard protective benchmarks to identify omitted terms—such as missing salary details, termination notice windows, or IP ownership protections.
+- **WHY it matters:** Prevents users from signing unbalanced agreements that lack essential legal protections.
 
-### 🎯 **Enhanced Features**
-- **Chat Sharing** with public URLs
-- **PDF Report Generation** for analysis results
-- **Contract Comparison** side-by-side analysis
-- **Legal Glossary** with interactive definitions
-- **Chrome Extension** for browser integration
-- **Usage Analytics** and insights
+### 5. Side-by-Side Contract Comparison
+- **WHAT it does:** Compares two contract versions (`/api/compare-contracts`), flagging structural modifications, clause additions/deletions, risk deltas, and strategic recommendations.
+- **WHY it matters:** Eliminates manual line-by-line comparison when negotiating agreement revisions.
 
-## 🏗️ **Agentic Workflow Architecture**
+### 6. Searchable Legal Glossary & Research Hub
+- **WHAT it does:** An interactive repository of 300+ legal terms across 12 legal categories (Contract, Corporate, IP, Labour, Civil, Criminal, etc.) (`/api/legal-glossary`).
+- **WHY it matters:** Builds legal literacy by explaining complex legal terms directly inside the user's workflow.
 
-LegalAdvisor is engineered using a stateful, tool-enabled multi-agent graph architecture, transitioning standard linear web pipelines into an advanced cognitive routing system.
+### 7. Aura AI / Virtual Legal Consultation Stage
+- **WHAT it does:** A 1-on-1 virtual consultation room (`/pages/(private)/legal-consultation/[id]`) featuring dynamic view switching (face-to-face video grid vs. contract split-screen viewer), an animated state-machine avatar, missing info panel, and decision brief exporting.
+- **WHY it matters:** Recreates an interactive consultation session for thorough document review.
+
+### 8. Real-Time Voice & Live Conversation
+- **WHAT it does:** Enables hands-free verbal conversation using `models/gemini-3.1-flash-live-preview` over WebSockets, supplemented by Web Speech API fallback.
+- **WHY it matters:** Offers accessible, conversational legal guidance for users who prefer speaking over typing.
+
+### 9. Chrome Browser Extension
+- **WHAT it does:** A Manifest V3 extension (`/chrome-extension`) allowing users to select legal text on any website or PDF. Evaluates legal relevance, assigns risk levels, and displays plain-English summaries in a floating overlay.
+- **WHY it matters:** Brings instant contract intelligence directly to online Terms of Service, privacy policies, and digital agreements.
+
+### 10. Legal Document Generator Suite
+- **WHAT it does:** An in-browser editing environment powered by TipTap, featuring standardized templates, CSV mail merge, a digital signature canvas, AI clause polishing, PDF export, and email dispatch.
+- **WHY it matters:** Streamlines drafting and customizing basic legal agreements.
+
+### 11. PDF Report & Decision Brief Export
+- **WHAT it does:** Generates formatted PDF reports (`jsPDF`, `html2canvas-pro`) compiling document risk scores, missing clause warnings, and consultation decision briefs.
+- **WHY it matters:** Delivers shareable, offline-ready documentation for user records or attorney reviews.
+
+### 12. Community Knowledge Platform
+- **WHAT it does:** A community forum (`/api/community`) enabling users to post questions, comment, vote, and share practical experiences.
+- **WHY it matters:** Encourages crowdsourced legal awareness and shared guidance.
+
+### 13. Google Cloud BigQuery Audit Telemetry
+- **WHAT it does:** Streams consultation events, risk scores, latency metrics, and document metadata into Google Cloud BigQuery (`legal_risk_radar.audit_logs`).
+- **WHY it matters:** Enables operational auditing, analytics data warehousing, and system performance monitoring.
+
+---
+
+## 🎙️ Aura AI / AI Legal Consultant
+
+Aura AI powers the Virtual Legal Consultation Room (`/pages/(private)/legal-consultation/[id]`), delivering a real-time advisory experience:
+
+- **Gemini Live WebSocket Integration:** Communicates directly with `models/gemini-3.1-flash-live-preview` over WebSockets for low-latency voice and text interaction.
+- **Voice-Based Interaction:** Supports hands-free verbal questions and responses, integrated with an animated avatar reflecting *Idle*, *Listening*, *Thinking*, and *Speaking* states.
+- **Dynamic Consultation Stage:** Automatically transitions layout from full video stage to a split-screen contract audit viewer when a document is uploaded.
+- **Missing Information & Risk Panel:** Real-time side panel displaying identified risks, missing parameters, and confidence metrics alongside the live dialogue.
+- **Exportable Decision Briefs:** Compiles the session findings into a structured summary report detailing overall risk scores, key findings, and recommended next steps.
+
+---
+
+## 🧩 Chrome Extension
+
+The Legal Advisor Chrome Extension (`/chrome-extension`) brings instant document intelligence to any browser window:
+
+1. **Text Selection & Context Menu:** Select legal text on any web page or online PDF and trigger analysis via the context menu or floating action button.
+2. **Legal Relevance Detection:** The backend evaluates whether the selected text contains legally binding clauses or general web content. If the text is non-legal, it provides a zero/low-risk notification.
+3. **Instant Risk Breakdown:** Displays risk ratings (HIGH, MEDIUM, LOW), plain-English explanations, missing safeguards, and recommendations within a clean overlay popup.
+4. **API Integration:** Connects directly with the Legal Advisor API endpoints (`/api/analyze`, `/api/generate-content`).
+
+> 📖 **Dedicated Documentation:** For detailed installation, unpacked developer setup, troubleshooting, and testing instructions, refer to the [Chrome Extension README](./chrome-extension/README.md).
+
+---
+
+## 🌐 Google Technologies & Gen AI
+
+Legal Advisor integrates Google Cloud services and Google AI models to power its architecture:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                         Google Technologies Stack                                │
+├───────────────────────────────┬──────────────────────────────────────────────────┤
+│ Technology                    │ Role & Contribution                              │
+├───────────────────────────────┼──────────────────────────────────────────────────┤
+│ Google Gemini 3.1 Flash Lite  │ Primary LLM (`gemini-3.1-flash-lite`) chosen for  │
+│                               │ fast structured reasoning, risk scoring, missing │
+│                               │ clause detection, and interactive legal chat.    │
+├───────────────────────────────┼──────────────────────────────────────────────────┤
+│ Google Gemini 3.1 Flash Live  │ Real-time model (`models/gemini-3.1-flash-live-  │
+│ Preview                       │ preview`) chosen for low-latency WebSocket live   │
+│                               │ voice and virtual consultation sessions.         │
+├───────────────────────────────┼──────────────────────────────────────────────────┤
+│ Google Cloud Vision OCR       │ `DOCUMENT_TEXT_DETECTION` API chosen for high-   │
+│                               │ precision text extraction from scanned PDFs and   │
+│                               │ contract images using RS256 service account OAuth.│
+├───────────────────────────────┼──────────────────────────────────────────────────┤
+│ Google Cloud BigQuery         │ Cloud data warehouse (`legal_risk_radar.audit_   │
+│                               │ logs`) chosen for streaming audit telemetry,      │
+│                               │ risk event logging, and system metrics tracking. │
+├───────────────────────────────┼──────────────────────────────────────────────────┤
+│ Firebase Firestore            │ Stateful NoSQL database chosen as the persistent │
+│                               │ memory bus for user profiles, chat history,      │
+│                               │ subscriptions, and shared reports.               │
+├───────────────────────────────┼──────────────────────────────────────────────────┤
+│ Google OAuth 2.0              │ Identity framework (`@react-oauth/google`) chosen│
+│                               │ for secure user sign-in and service authorization│
+└───────────────────────────────┴──────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏗️ Architecture
 
 ![Architecture Diagram](./public/architecture_diagram.png)
 
+### Core System Workflow
+1. **Frontend & Ingestion Layer:** Built with Next.js 15 (App Router) and React 19. Accepts document uploads (PDF, DOCX, images), user chat queries, and selection payloads from the Chrome Extension.
+2. **Document Processing & OCR:** Extracts document text natively via `pdf2json` and `mammoth`, using Google Cloud Vision OCR (`DOCUMENT_TEXT_DETECTION`) with local Tesseract.js fallback for scanned files. Extracted text is cached using SHA-256 content hashes.
+3. **Multi-Agent Gemini AI Engine:** Routes text through `gemini-3.1-flash-lite` for structured risk audits and clause extraction, while establishing WebSocket live streaming sessions via `models/gemini-3.1-flash-live-preview` for real-time voice consultations. Supported by multi-key rotation and exponential backoff retry algorithms.
+4. **Data Store & Telemetry:** Persists user sessions and state logs in Firebase Firestore, while streaming audit analytics and risk metrics into Google Cloud BigQuery (`legal_risk_radar.audit_logs`).
+5. **Outputs:** Delivers interactive risk dashboards, Aura AI live consultation stages, and exportable PDF decision briefs.
 
-### 1. The Agent Graph Workflow API Architecture
-The core backend controller acts as an Agent Graph Workflow dispatcher, routing requests down specialized execution nodes:
-*   **Triage Node**: The routing gatekeeper. It parses input length, query signatures, and file payloads to categorize intents (e.g., standard document analysis vs. quick chat vs. streaming voice input).
-*   **Auditor Node**: A high-precision processing specialist. It isolates the analysis persona by enforcing a system prompt that mandates strict compliance checks, missing clause scans, and deterministic structured JSON output.
-*   **Vernacular Synthesis Node**: A latency-sensitive voice interaction engine. It coordinates regional language formatting and controls response brevity constraints to generate responses suitable for immediate TTS compilation.
+---
+
+## 🔄 AI Workflow
 
 ![Sequence Diagram](./public/sequence_diagram.png)
 
-### 2. Custom Model Context Protocol (MCP) Server Tooling
-The Gemini client is configured to invoke deterministic plugins simulating a local Model Context Protocol (MCP) Server setup:
-*   **Tesseract.js OCR Tool**: Triggered autonomously when a raw image is ingested, extracting raw text buffers into the model's context.
-*   **Legal Glossary Fetching Script**: Provides targeted definitions of complex terminology directly to the model to avoid hallucinated legal interpretations.
-*   **Contract-Diff Endpoint**: Calculates structural changes across document versions, outputting diff streams back to the parent agent.
-
-### 3. Context Engineering & Long-Term Persistent Memory
-*   **Sliding Context Window**: To maximize context density and minimize token waste, chat session retrieval is optimized using a sliding message context window that limits history to the last 5 messages, retaining core intent while discarding noisy chat history.
-*   **Durable State Blocks (Firestore)**: Writes are formatted as deterministic state logs within Firebase Firestore. These serve as a long-term memory bridge across browser refreshes and sub-agent invocations.
-
-### 4. Human-in-the-Loop (HITL) Intercepts & Rate Limits
-*   **Validation Halt State**: High-risk contract clauses (e.g., severe liability shifts, missing termination notices, or extremely high risk scores > 8) trigger a validation halt state. In production, this pauses the agent pipeline, demanding an explicit human-in-the-loop acknowledgement or intervention.
-*   **Client-Side Load Balancing & Fallbacks**: Out-of-quota statuses trigger a self-healing cascade rotating through Gemini models (`gemini-3-flash-preview` -> `gemini-2.5-flash` -> `gemini-2.5-flash-lite`) using exponential backoff retry algorithms.
-
-### 5. Local Debugging & Trace Testing (`agents-cli eval`)
-To test agent performance, prompt changes, and tool call routing offline, execute traces with:
-```bash
-npx agents-cli eval --config ./agent-eval.config.json --suite ./tests/eval/legal-radar-suite.json
-```
-This local evaluation runner evaluates:
-1.  **Triage Node Routing Accuracy** (Ensuring text queries go to Chat and documents go to Auditor).
-2.  **JSON Schema Compliance** of the Auditor Node output.
-3.  **Latency Constraints** of the Vernacular Synthesis Node response vectors.
+1. **User Ingestion:** Document upload, chat query, or Chrome Extension text selection.
+2. **Parsing & OCR:** Native text extraction or Google Cloud Vision OCR annotation.
+3. **SHA-256 Cache Check:** Instant lookup to skip redundant processing for identical files.
+4. **Gemini AI Reasoning:** Multi-agent prompt evaluation using `gemini-3.1-flash-lite` and live WebSocket sessions.
+5. **Risk Audit & Clause Scan:** Structured JSON output categorizing HIGH, MEDIUM, and LOW risks alongside missing safeguards.
+6. **Decision Support Output:** Interactive risk dashboard, Aura AI voice guidance, and exportable PDF decision briefs.
 
 ---
 
-## 🛠️ **Technology Stack**
+## 🛡️ Responsible AI & Safety
 
-### **Frontend & Interface**
-*   **Next.js 15 (App Router)** & **React 19**
-*   **Tailwind CSS** & **Framer Motion** for premium micro-animations
-*   **React Hot Toast** & **Lucide Icons**
-
-### **Agent Runtime & Storage**
-*   **Google Generative AI SDK** (representing `genai.Client()`)
-*   **Firebase Firestore NoSQL Database** (Stateful Memory Bus)
-*   **Firebase Admin SDK** for secure server transactions
-*   **Tesseract.js** (OCR Tooling)
-*   **JWT Token Authorization** & HttpOnly cookie management
-
-### **Database Schema**
-```
-📁 Firebase Firestore Collections:
-├── users/           # User accounts and profiles
-├── chats/           # Chat sessions with messages subcollection
-├── subscriptions/   # User subscription plans
-├── usage/          # Monthly usage tracking
-└── sharedChats/    # Public chat sharing
-```
+- **Decision-Support Boundary:** Legal Advisor is an AI decision-support and educational tool, **NOT** a substitute for a qualified, licensed lawyer.
+- **Verification Notice:** Users should verify critical legal choices and binding decisions with qualified legal professionals.
+- **Error Awareness:** AI-generated outputs are probabilistic and may contain inaccuracies. The system includes confidence indicators and risk warnings to encourage human review.
+- **Accessibility & Transparency:** Designed to promote legal literacy, document transparency, and proactive risk detection for underserved communities and small businesses.
 
 ---
 
-## 🚀 **Getting Started**
+## 📈 Why It Matters
 
-### **Prerequisites**
-- Node.js 18+ 
+- **Lowers Legal Barriers:** Enables students, freelancers, and small business owners to understand complex legal documents without initial financial hurdles.
+- **Early Risk Detection:** Identifies hidden traps and missing protections before contracts are signed.
+- **Consolidated Platform:** Eliminates "app hopping" by combining chat, OCR, document comparison, glossary research, virtual voice consultation, and browser extension tools into a unified interface.
+
+---
+
+## 🔮 Future Roadmap
+
+The following features represent planned future enhancements:
+
+- 🔄 **Native Google Workspace Sync:** Direct two-way integration with Google Drive, Google Docs, and Google Calendar for document exporting and event scheduling.
+- 📱 **Mobile Application:** Cross-platform mobile app built with React Native.
+- 🌐 **Multi-Jurisdictional Frameworks:** Support for international legal systems and localized statutory rules.
+- 🏢 **Enterprise Compliance Suite:** Automated SOC 2 compliance verification and custom white-label reports.
+- 🔌 **Developer REST API:** Public API platform for external developer integrations.
+
+---
+
+## 🚀 Local Development
+
+### Prerequisites
+- Node.js 18+
 - npm or yarn
-- Google Cloud Console account
-- Firebase project
+- Google Cloud Console account (BigQuery & Vision API enabled)
+- Firebase project credentials
 
-### **Installation**
+### Setup Instructions
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/your-username/legal-risk-radar.git
-cd legal-risk-radar
-```
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/your-username/legal-risk-radar.git
+   cd legal-risk-radar
+   ```
 
-2. **Install dependencies**
-```bash
-npm install
-```
+2. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
 
-3. **Environment Setup**
-Create `.env.local` file:
-```env
-# Gemini API Keys (3 keys for rotation)
-GEMINI_API_KEY_1=your_gemini_key_1
-GEMINI_API_KEY_2=your_gemini_key_2
-GEMINI_API_KEY_3=your_gemini_key_3
+3. **Configure Environment Variables:**
+   Create a `.env.local` file in the root directory:
+   ```env
+   # Gemini API Keys (Key Rotation Support)
+   GEMINI_API_KEY_1=your_gemini_key_1
+   GEMINI_API_KEY_2=your_gemini_key_2
+   GEMINI_API_KEY_3=your_gemini_key_3
 
-# JWT Secrets
-JWT_SECRET=your_jwt_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-JWT_EXPIRATION=7d
+   # JWT Secrets
+   JWT_SECRET=your_jwt_secret
+   JWT_REFRESH_SECRET=your_refresh_secret
+   JWT_EXPIRATION=7d
 
-# Google OAuth
-NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_client_id
+   # Google OAuth Client ID
+   NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=your_google_client_id
 
-# Firebase Service Account (JSON string)
-FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"..."}
+   # Firebase / GCP Service Account JSON String
+   FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"..."}
 
-# Email Configuration (Gmail SMTP)
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-gmail-app-password
-SMTP_EMAIL=your-email@gmail.com
-SMTP_PASS=your-gmail-app-password
+   # Email Configuration (Gmail SMTP)
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASSWORD=your-gmail-app-password
+   SMTP_EMAIL=your-email@gmail.com
+   SMTP_PASS=your-gmail-app-password
 
-# Stripe Payment Integration
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+   # Stripe Payment Integration
+   STRIPE_SECRET_KEY=sk_test_your_key
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key
+   STRIPE_WEBHOOK_SECRET=whsec_your_secret
 
-# Cron Job Security
-CRON_SECRET=your_secure_random_string
+   # Cron Job Security
+   CRON_SECRET=your_cron_secret
+   ```
 
-# Cloudinary (Optional - for file storage)
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
+4. **Run the Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-**📧 Setting up Gmail for Email Notifications:**
-
-1. Go to [Google Account Security](https://myaccount.google.com/security)
-2. Enable **2-Step Verification** if not already enabled
-3. Go to **App passwords** (under "How you sign in to Google")
-4. Select **Mail** and **Other (Custom name)**
-5. Name it "LegalAdvisor"
-6. Click **Generate**
-7. Copy the 16-character password (format: `abcd efgh ijkl mnop`)
-8. Use this password (without spaces) as `EMAIL_PASSWORD` and `SMTP_PASS`
-
-**Note:** Both `EMAIL_USER`/`EMAIL_PASSWORD` and `SMTP_EMAIL`/`SMTP_PASS` are supported for backward compatibility.
-
-4. **Run the development server**
-```bash
-npm run dev
-```
-
-5. **Open in browser**
-```
-http://localhost:3000
-```
+5. **Open Application:**
+   Navigate to [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 📊 **API Endpoints**
+## 🖼️ Architecture & Diagrams
 
-### **Authentication**
-```
-POST /api/auth/login              # Email/password login
-POST /api/auth/signup             # User registration  
-POST /api/auth/google-login       # Google OAuth
-POST /api/auth/logout             # User logout
-GET  /api/auth/me                 # Get current user
-POST /api/auth/refresh            # Refresh JWT token
-POST /api/auth/reset-password     # Password reset
-```
-
-### **Document Processing**
-```
-POST /api/ocr                     # Extract text from files
-POST /api/generate-content        # AI legal analysis
-POST /api/live-conversation       # Voice chat interface
-```
-
-### **Chat Management**
-```
-GET    /api/chats                 # Get user's chat history
-GET    /api/chats/[chatId]        # Get specific chat
-DELETE /api/chats/delete          # Delete chat
-POST   /api/chats/update-title    # Update chat title
-```
-
-### **Subscription System**
-```
-GET    /api/subscription          # Get user's subscription
-POST   /api/subscription          # Create/upgrade subscription
-DELETE /api/subscription          # Cancel subscription
-GET    /api/usage                 # Get usage statistics
-```
-
-### **Enhanced Features**
-```
-POST /api/share-chat              # Share chat publicly
-GET  /api/shared/[shareId]        # Get shared chat
-POST /api/compare-contracts       # Compare documents
-GET  /api/legal-glossary          # Legal term definitions
-POST /api/enhanced-features       # Premium features
-POST /api/newsletter/subscribe    # Subscribe to newsletter
-POST /api/newsletter/unsubscribe  # Unsubscribe from newsletter
-POST /api/bug-report              # Submit bug reports
-POST /api/feedback                # Submit user feedback
-```
-
-### **Cron Jobs (Automated Tasks)**
-```
-POST /api/cron/daily-newsletter        # Send daily newsletter
-POST /api/cron/weekly-newsletter       # Send weekly newsletter
-POST /api/cron/check-expired-subscriptions  # Check subscription status
-```
-
-**Note:** Cron endpoints require `CRON_SECRET` header for security.
+- **Cover Image:** `![Cover Image](./public/cover_image.png)`
+- **Architecture Diagram:** `![Architecture](./public/architecture_diagram.png)`
+- **Sequence Diagram:** `![Sequence](./public/sequence_diagram.png)`
 
 ---
 
-## 🎯 **User Journey & Features**
-
-### **Free User Experience**
-1. **Sign Up** → Create account with Basic plan (5 queries/day)
-2. **Upload Document** → PDF/image analysis with OCR
-3. **AI Analysis** → Risk assessment with HIGH/MEDIUM/LOW levels
-4. **Chat Interface** → Ask follow-up questions with memory
-5. **Hit Limits** → Upgrade prompts and usage tracking
-
-### **Premium User Experience**
-1. **Unlimited Queries** → No daily limits
-2. **Voice Interface** → Speech-to-text in multiple languages
-3. **Advanced Features** → PDF reports, contract comparison
-4. **Priority Support** → Faster response times
-5. **Chrome Extension** → Browser integration
-
-### **Subscription Tiers**
-
-#### 🆓 **Basic Plan (Free)**
-- ✅ 5 AI queries per day
-- ✅ Basic document analysis
-- ✅ Chat interface with memory
-- ✅ Risk scoring (HIGH/MEDIUM/LOW)
-- ❌ Voice interface
-- ❌ PDF reports
-- ❌ Contract comparison
-
-#### 🚀 **Pro Plan (₹499/month)**
-- ✅ **Unlimited AI queries**
-- ✅ **Voice interface** (12+ languages)
-- ✅ **PDF report generation**
-- ✅ **Contract comparison**
-- ✅ **Chrome extension access**
-- ✅ **Priority support**
-- ✅ **Advanced analytics**
-
-#### 🏢 **Enterprise Plan (₹2499/month)**
-- ✅ **Everything in Pro**
-- ✅ **Team collaboration** (5 users)
-- ✅ **API access**
-- ✅ **Custom templates**
-- ✅ **Dedicated support**
-- ✅ **White-label reports**
-
----
-
-## 🔧 **System Architecture**
-
-### **Frontend Architecture**
-```
-📁 src/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── pages/             # Application pages
-│   └── layout.js          # Root layout
-├── components/            # Reusable components
-│   ├── ui/               # UI components (Avatar, etc.)
-│   ├── subscription/     # Subscription components
-│   └── voice-interface/  # Voice features
-├── lib/                  # Core libraries
-│   ├── gemini.js        # AI integration
-│   ├── firebaseAdmin.js # Database
-│   └── dbConnect.js     # Database connection
-├── middleware/           # Authentication & usage
-├── models/              # Data models
-├── utils/               # Utility functions
-└── styles/              # Global styles
-```
-
-### **Key Technical Features**
-
-#### **🤖 AI Integration**
-- **3-Model Rotation**: Primary + 2 fallback models
-- **Retry Mechanism**: Exponential backoff with 3 attempts
-- **Error Recovery**: Automatic fallback to alternative models
-- **Rate Limiting**: Smart usage tracking and enforcement
-
-#### **💬 Chat System**
-- **Dynamic Titles**: AI-generated based on content
-- **Message Persistence**: Firebase Firestore storage
-- **Context Memory**: Last 5 messages for continuity
-- **Real-time Updates**: Instant message synchronization
-
-#### **🔐 Security**
-- **JWT Authentication**: Secure token-based auth
-- **Cookie Management**: HttpOnly secure cookies
-- **Input Validation**: Zod schema validation
-- **Rate Limiting**: API abuse prevention
-
-#### **📱 Performance**
-- **Optimized Prompts**: Reduced token usage for faster responses
-- **Parallel Processing**: Concurrent API calls where possible
-- **Caching Strategy**: Efficient data retrieval
-- **Error Boundaries**: Graceful error handling
-
----
-
-## 🧪 **Example AI Analysis**
-
-### **Input Document**
-```
-Employment Agreement
-- No salary mentioned
-- Unlimited working hours
-- No termination clause
-- Company owns all work
-```
-
-### **AI Output**
-```json
-{
-  "summary": "This employment agreement heavily favors the employer with significant risks for the employee.",
-  "overall_risk_score": "8",
-  "missing_clauses": [
-    "Salary/Compensation Details",
-    "Working Hours Limitation", 
-    "Termination Notice Period",
-    "Intellectual Property Rights"
-  ],
-  "clauses": [
-    {
-      "clause": "Employee shall work without monetary compensation",
-      "risk_level": "HIGH",
-      "explanation": "Working without pay may violate minimum wage laws and is financially risky."
-    },
-    {
-      "clause": "Unlimited working hours as required",
-      "risk_level": "HIGH", 
-      "explanation": "No work-life balance protection. Could lead to exploitation and health issues."
-    }
-  ]
-}
-```
-
----
-
-## 🎨 **UI/UX Highlights**
-
-### **Modern Design**
-- **ChatGPT-inspired Interface** - Clean, conversational design
-- **Responsive Layout** - Works on desktop, tablet, and mobile
-- **Dark/Light Mode** - User preference support
-- **Smooth Animations** - Framer Motion transitions
-- **Professional Typography** - Readable and accessible
-
-### **User Experience**
-- **Instant Feedback** - Real-time typing indicators
-- **Progressive Disclosure** - Information revealed as needed
-- **Error Recovery** - Helpful error messages and retry options
-- **Accessibility** - Screen reader support and keyboard navigation
-- **Multilingual Voice Support** - Automatic language detection for text-to-speech
-- **Smart Speech Recognition** - Interim results and fallback mechanisms for better accuracy
-
-### **Subscription UX**
-- **Upgrade Prompts** - Non-intrusive upgrade suggestions
-- **Usage Tracking** - Clear progress indicators
-- **Payment Flow** - Secure and streamlined checkout
-- **Plan Comparison** - Clear feature differentiation
-
----
-
-## 🚀 **Recent Updates (v2.0)**
-
-### **✅ Major Features Added**
-- **Complete Subscription System** with 3 tiers
-- **Voice Interface** with 12+ Indian languages (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, etc.)
-- **Automatic Language Detection** for text-to-speech (detects Hindi, Bengali, Tamil, Telugu, and other Indian languages from text)
-- **Enhanced Speech Recognition** with interim results and multiple alternatives for better accuracy
-- **Chat Memory** with context awareness
-- **Dynamic Chat Titles** generated by AI
-- **Enhanced Error Handling** with retry mechanisms
-- **Performance Optimizations** (30-50% faster responses)
-- **Avatar System** with fallback handling
-- **Improved Authentication** with cookie support
-- **Newsletter System** with daily/weekly automated emails
-- **Chrome Extension** with installation guide
-- **Community Features** with posts, comments, and voting
-- **Legal Glossary** with 500+ terms
-- **Contract Comparison** tool
-- **Bug Reporting** system
-- **Multilingual Text-to-Speech** for AI responses with automatic language detection
-- **Account Management** with secure account deletion functionality
-
-### **🔧 Technical Improvements**
-- **3-Model AI Rotation** for reliability (Gemini 3 Flash, 2.5 Flash Lite, 1.5 Flash)
-- **Exponential Backoff** retry mechanism
-- **Optimized Prompts** for faster processing
-- **Better Error Messages** with user-friendly feedback
-- **Enhanced Security** with improved JWT handling
-- **Database Optimization** with efficient queries
-- **Email Service** with Gmail SMTP integration
-- **Cron Jobs** for automated tasks
-- **Usage Tracking** with real-time limits
-- **Payment Integration** ready for Stripe
-- **Multilingual Text-to-Speech** with automatic language detection for 12+ Indian languages
-- **Speech Recognition** with language-specific support and fallback mechanisms
-
-### **🎯 Bug Fixes**
-- **Fixed Chat Memory** - Context now properly maintained
-- **Resolved OAuth Issues** - Google login working on all domains
-- **Improved Greeting Detection** - No false positives
-- **Enhanced File Upload** - Better document analysis triggers
-- **Optimized Loading Times** - Reduced buffering significantly
-- **Fixed Email Credentials** - Support for both EMAIL_USER and SMTP_EMAIL
-- **Speech Synthesis Errors** - Handled "interrupted" errors gracefully (no more console spam)
-- **Community Voting** - Fixed duplicate votes and count issues
-- **Text-to-Speech Language Detection** - Automatic language detection from text content
-- **Voice Recognition Improvements** - Better multilingual support with interim results
-
----
-
-## 📈 **Performance Metrics**
-
-### **Speed Improvements**
-- **Document Analysis**: 40% faster
-- **Text Conversations**: 50% faster
-- **File Uploads**: 25% faster
-- **UI Animations**: 60% faster
-- **API Response Time**: 35% improvement
-
-### **Reliability**
-- **99.5% Uptime** with retry mechanisms
-- **3-Model Fallback** for AI reliability
-- **Error Recovery** in <2 seconds
-- **Rate Limit Handling** with graceful degradation
-
----
-
-## 🎯 **Target Audience**
-
-### **Primary Users**
-- **Students** - Understanding internship agreements and academic contracts
-- **Freelancers** - Analyzing client contracts and work agreements
-- **Small Business Owners** - Reviewing vendor and customer contracts
-- **Startup Founders** - Understanding investment and partnership agreements
-
-### **Secondary Users**
-- **Legal Professionals** - Quick document screening and initial analysis
-- **HR Professionals** - Employment contract review
-- **Real Estate Agents** - Property agreement analysis
-- **Consultants** - Service agreement evaluation
-
----
-
-## 🔮 **Future Roadmap**
-
-### **Q2 2026**
-- ✅ **Newsletter System** - Automated daily/weekly emails (COMPLETED)
-- ✅ **Chrome Extension** - Browser integration (COMPLETED)
-- ✅ **Community Features** - Posts, comments, voting (COMPLETED)
-- ✅ **Multilingual TTS** - Text-to-speech in multiple languages (COMPLETED)
-- 🔄 **Real Payment Gateway** - Stripe/Razorpay integration (IN PROGRESS)
-- 📱 **Mobile App** - React Native application
-- 📊 **Advanced Analytics** - Usage insights dashboard
-- 👥 **Team Features** - Collaboration tools
-
-### **Q3 2026**
-- 🔌 **API Platform** - Public API for developers
-- 📝 **Document Templates** - Pre-built legal templates
-- 🤖 **Advanced AI Models** - Custom legal AI training
-- 🌍 **International Expansion** - Support for other legal systems
-- 🔔 **Push Notifications** - Real-time alerts
-- 📧 **Email Templates** - Customizable newsletter designs
-
-### **Q4 2026**
-- 🏢 **Enterprise Features** - Advanced team management
-- 🎨 **White-label Solution** - Customizable branding
-- 🔗 **Integration Platform** - Third-party app connections
-- 🔒 **Advanced Security** - SOC 2 compliance
-- 📊 **Business Intelligence** - Advanced reporting
-- 🌐 **Multi-region Support** - Global deployment
-
----
-
-## 🤝 **Contributing**
-
-We welcome contributions! Here's how to get started:
-
-### **Development Setup**
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Add tests if applicable
-5. Commit your changes: `git commit -m 'Add amazing feature'`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
-
-### **Contribution Guidelines**
-- Follow the existing code style
-- Write clear commit messages
-- Add documentation for new features
-- Test your changes thoroughly
-- Update the README if needed
-
-<!-- ---
-
-## 📞 **Support & Community**
-
-### **Get Help**
-- **Email**: support@legaladvisor.com
-- **Documentation**: [docs.legaladvisor.com](https://docs.legaladvisor.com)
-- **GitHub Issues**: Report bugs and request features
-- **Community Discord**: Join our developer community
-
-### **Business Inquiries**
-- **Enterprise Sales**: enterprise@legaladvisor.com
-- **Partnerships**: partnerships@legaladvisor.com
-- **Media**: press@legaladvisor.com -->
-
----
-
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 **Acknowledgments**
-
-### **Inspiration**
-- **ChatGPT** - Conversational AI interface design
-- **Google Gemini** - Advanced AI capabilities
-- **Claude AI** - Thoughtful AI response patterns
-- **Stripe** - Seamless payment experience
-- **Notion** - Clean, professional design principles
-
-### **Technologies**
-- **Google Gemini AI** - Powering our legal analysis
-- **Firebase** - Reliable backend infrastructure
-- **Next.js** - Modern React framework
-- **Tailwind CSS** - Utility-first styling
-- **Vercel** - Deployment and hosting
-
----
-
-## 📊 **Project Stats**
-
-**Current Version**: v2.0  
-**Status**: Production Ready  
-**Last Updated**: February 2026  
-**License**: MIT  
-**Contributors**: 4+  
-**Stars**: ⭐ (Star us on GitHub!)
-
-### **Key Metrics**
-- 🎯 **Complete Feature Set** - All planned features implemented
-- 🔐 **Production Security** - JWT auth, input validation, rate limiting
-- 📱 **Responsive Design** - Works on all devices
-- 🚀 **Optimized Performance** - Fast loading and response times
-- 💳 **Payment Ready** - Subscription system implemented
-- 📊 **Analytics Enabled** - Usage tracking and insights
-- 🎨 **Professional UI** - Modern, clean interface
-- 📧 **Email System** - Newsletter and notifications
-- 🌐 **Multilingual** - 12+ Indian languages supported
-- 🔌 **Chrome Extension** - Browser integration available
-- 👥 **Community Platform** - Posts, comments, voting
-- 📚 **Legal Glossary** - 500+ legal terms
-
-### **Technical Achievements**
-- ⚡ **99.5% Uptime** - Reliable service with fallback mechanisms
-- 🤖 **3-Model AI Rotation** - Gemini 3 Flash, 2.5 Flash Lite, 1.5 Flash
-- 🔄 **Automatic Retry** - Exponential backoff with 3 attempts
-- 📈 **40% Faster** - Optimized AI prompts and processing
-- 🔒 **Secure by Design** - JWT, HTTPS, input validation
-- 📱 **Mobile Optimized** - Touch-friendly interface
-- ♿ **Accessible** - WCAG 2.1 AA compliant
-- 🌍 **Global Ready** - Multi-language and multi-currency support
-
----
-
-**Built with ❤️ for the legal community by developers who believe legal documents should be accessible to everyone.**
-
----
-
-*LegalAdvisor - Making Legal Documents Understandable for Everyone* 🏛️⚖️
+*Legal Advisor — Making Legal Documents Understandable for Everyone* 🏛️⚖️

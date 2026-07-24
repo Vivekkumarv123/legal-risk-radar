@@ -18,16 +18,18 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
  */
 async function autoSubscribeToNewsletter(email, name) {
   try {
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    if (!normalizedEmail) return;
+
     const subscriptionsRef = db.collection('newsletterSubscriptions');
+    const docRef = subscriptionsRef.doc(normalizedEmail);
+    const docSnap = await docRef.get();
     
-    // Check if already subscribed
-    const existingSnapshot = await subscriptionsRef.where('email', '==', email).limit(1).get();
-    
-    if (existingSnapshot.empty) {
-      // Create newsletter subscription
+    if (!docSnap.exists) {
+      // Create newsletter subscription with normalized email doc ID
       const unsubscribeToken = crypto.randomBytes(32).toString('hex');
-      await subscriptionsRef.add({
-        email,
+      await docRef.set({
+        email: normalizedEmail,
         name: name || '',
         categories: ['all'],
         frequency: 'daily', // Default to daily
@@ -35,11 +37,13 @@ async function autoSubscribeToNewsletter(email, name) {
         unsubscribeToken,
         subscribedAt: new Date(),
         lastSentAt: null,
+        lastNewsletterDate: null,
+        lastWeeklyNewsletterDate: null,
         createdAt: new Date(),
         updatedAt: new Date()
       });
       
-      console.log(`✅ Auto-subscribed ${email} to newsletter`);
+      console.log(`✅ Auto-subscribed ${normalizedEmail} to newsletter`);
     }
   } catch (error) {
     console.error('Failed to auto-subscribe to newsletter:', error);

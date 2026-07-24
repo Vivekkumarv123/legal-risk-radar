@@ -1,24 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/middleware/auth.middleware";
-import mongoose from "mongoose";
-
-// Bug Report Schema
-const bugReportSchema = new mongoose.Schema({
-    userId: { type: String, required: true },
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    severity: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
-    category: { type: String, required: true },
-    steps: String,
-    expected: String,
-    actual: String,
-    screenshots: [String],
-    status: { type: String, enum: ['open', 'in-progress', 'resolved', 'closed'], default: 'open' },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
-});
-
-const BugReport = mongoose.models.BugReport || mongoose.model('BugReport', bugReportSchema);
+import { db } from "@/lib/firebaseAdmin";
 
 export async function POST(req) {
     try {
@@ -31,24 +13,27 @@ export async function POST(req) {
         
         const bugData = {
             userId: authResult.user.id,
-            title: formData.get('title'),
-            description: formData.get('description'),
+            title: formData.get('title') || '',
+            description: formData.get('description') || '',
             severity: formData.get('severity') || 'medium',
-            category: formData.get('category'),
+            category: formData.get('category') || '',
             steps: formData.get('steps') || '',
             expected: formData.get('expected') || '',
             actual: formData.get('actual') || '',
-            screenshots: []
+            screenshots: [],
+            status: 'open',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
 
-        const bugReport = await BugReport.create(bugData);
+        const docRef = await db.collection('bugReports').add(bugData);
 
-        console.log('New bug report:', bugReport._id);
+        console.log('New bug report:', docRef.id);
 
         return NextResponse.json({
             success: true,
             message: "Bug report submitted successfully",
-            reportId: bugReport._id
+            reportId: docRef.id
         });
     } catch (error) {
         console.error('Bug report error:', error);
@@ -66,9 +51,19 @@ export async function GET(req) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const reports = await BugReport.find({ userId: authResult.user.id })
-            .sort({ createdAt: -1 })
-            .limit(20);
+        const snapshot = await db.collection('bugReports')
+            .where('userId', '==', authResult.user.id)
+            .orderBy('createdAt', 'desc')
+            .limit(20)
+            .get();
+
+        const reports = [];
+        snapshot.forEach(doc => {
+            reports.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
 
         return NextResponse.json({
             success: true,

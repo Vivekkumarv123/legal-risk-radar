@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 export async function GET() {
   const healthStatus = {
@@ -25,10 +25,12 @@ export async function GET() {
   
   if (testGemini === 'true') {
     try {
-      const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_1);
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await model.generateContent("Say 'API working'");
-      const response = result.response.text();
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY_1 });
+      const result = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: "Say 'API working'",
+      });
+      const response = result.text;
       
       healthStatus.checks.geminiApi = response.includes('working') ? "ok" : "partial";
     } catch (error) {

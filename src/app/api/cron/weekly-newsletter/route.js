@@ -1,18 +1,51 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
-import { generateDailyNewsletter, getNewsletterTemplate } from '@/services/newsletterService';
+import { generateWeeklyNewsletter, getNewsletterTemplate } from '@/services/newsletterService';
 import { sendBulkNewsletters } from '@/services/emailService';
+import crypto from 'crypto';
 
 /**
- * Vercel Cron Job: Weekly Newsletter
- * Runs every Monday at 9:00 AM (Asia/Kolkata)
- * Schedule: 0 9 * * 1 (configured in vercel.json)
+ * Verify Cron Authorization with constant-time token comparison
  */
-export async function GET(request) {
-    try {
-        console.log('📧 Running weekly newsletter cron job...');
+function verifyCronAuth(request) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) return true; // Allow in dev mode if secret not set
 
-        // Get all active subscribers with weekly frequency from Firestore
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) return false;
+
+    const expectedToken = `Bearer ${cronSecret}`;
+    if (authHeader.length !== expectedToken.length) return false;
+
+    return crypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedToken));
+}
+
+/**
+ * Calculate ISO Week Identifier (e.g. 2026-W30)
+ */
+function getISOWeekIdentifier(date = new Date()) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+async function handleWeeklyNewsletterCron(request) {
+    const startTime = Date.now();
+    try {
+        if (!verifyCronAuth(request)) {
+            return NextResponse.json(
+                { success: false, error: 'Unauthorized' },
+                { status: 401, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+            );
+        }
+
+        console.log('📧 Running weekly newsletter cron job...');
+        const currentWeekId = getISOWeekIdentifier();
+
+        // Get active weekly subscribers
         const subscribersSnapshot = await db.collection('newsletterSubscriptions')
             .where('isActive', '==', true)
             .where('frequency', '==', 'weekly')
@@ -24,35 +57,59 @@ export async function GET(request) {
                 success: true,
                 message: 'No weekly subscribers found',
                 sent: 0
-            });
+            }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
         }
 
-        const subscribers = subscribersSnapshot.docs.map(doc => ({
+        const allSubscribers = subscribersSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
 
-        console.log(`Found ${subscribers.length} weekly subscribers`);
+        // Idempotency Filter: Exclude subscribers who already received weekly newsletter this week
+        const eligibleSubscribers = allSubscribers.filter(sub => sub.lastWeeklyNewsletterDate !== currentWeekId);
 
-        // Generate weekly roundup (you can create a separate weekly generator)
-        const newsletterData = await generateDailyNewsletter();
+        if (eligibleSubscribers.length === 0) {
+            console.log(`✅ All ${allSubscribers.length} weekly subscribers already received newsletter for week ${currentWeekId}. Skipping.`);
+            return NextResponse.json({
+                success: true,
+                message: `All weekly subscribers already received newsletter for week ${currentWeekId}`,
+                subscribersCount: allSubscribers.length,
+                eligibleCount: 0,
+                sent: 0
+            }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+        }
+
+        // Deduplicate by email
+        const recipientMap = new Map();
+        eligibleSubscribers.forEach(sub => {
+            const normalizedEmail = (sub.email || '').toLowerCase().trim();
+            if (normalizedEmail && !recipientMap.has(normalizedEmail)) {
+                recipientMap.set(normalizedEmail, {
+                    id: sub.id,
+                    email: normalizedEmail,
+                    name: sub.name || 'Legal Enthusiast',
+                    unsubscribeToken: sub.unsubscribeToken
+                });
+            }
+        });
+
+        const recipients = Array.from(recipientMap.values());
+        console.log(`Found ${recipients.length} eligible weekly subscribers for week ${currentWeekId}`);
+
+        // Generate Weekly AI Newsletter Content
+        const newsletterData = await generateWeeklyNewsletter();
 
         if (!newsletterData.success) {
             console.error('Failed to generate weekly newsletter:', newsletterData.error);
             return NextResponse.json({
                 success: false,
-                error: 'Failed to generate newsletter content'
-            }, { status: 500 });
+                error: 'Failed to generate weekly newsletter content'
+            }, { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } });
         }
 
-        const recipients = subscribers.map(sub => ({
-            email: sub.email,
-            name: sub.name || 'Legal Enthusiast',
-            unsubscribeToken: sub.unsubscribeToken
-        }));
+        const subject = `Weekly Legal Roundup Digest - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
-        const subject = `Weekly Legal Roundup - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-        
+        // Send bulk emails
         const results = await sendBulkNewsletters(
             recipients,
             subject,
@@ -63,34 +120,50 @@ export async function GET(request) {
             )
         );
 
-        // Update lastSentAt for successful sends using Firestore batch
+        // Update Firestore batch
         const batch = db.batch();
-        subscribers.forEach(sub => {
-            const docRef = db.collection('newsletterSubscriptions').doc(sub.id);
-            batch.update(docRef, { lastSentAt: new Date() });
+        recipients.forEach(rec => {
+            const docRef = db.collection('newsletterSubscriptions').doc(rec.id);
+            batch.update(docRef, {
+                lastWeeklyNewsletterDate: currentWeekId,
+                lastSentAt: new Date(),
+                updatedAt: new Date()
+            });
         });
         await batch.commit();
 
-        console.log('📊 Weekly newsletter results:');
-        console.log(`   ✅ Sent: ${results.sent}`);
-        console.log(`   ❌ Failed: ${results.failed}`);
+        const durationMs = Date.now() - startTime;
+        console.log(`📊 Weekly Newsletter Cron complete in ${durationMs}ms: Sent ${results.sent}, Failed ${results.failed}`);
 
         return NextResponse.json({
             success: true,
-            message: 'Weekly newsletter sent successfully',
+            message: 'Weekly newsletter processed successfully',
             stats: {
-                subscribers: subscribers.length,
+                currentWeekId,
+                grounded: newsletterData.grounded,
+                totalSubscribers: allSubscribers.length,
+                eligibleSubscribers: recipients.length,
                 sent: results.sent,
                 failed: results.failed,
+                durationMs,
                 errors: results.errors
             }
-        });
+        }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
 
     } catch (error) {
         console.error('Error in weekly newsletter cron:', error);
         return NextResponse.json(
             { success: false, error: error.message },
-            { status: 500 }
+            { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } }
         );
     }
 }
+
+export async function GET(request) {
+    return handleWeeklyNewsletterCron(request);
+}
+
+export async function POST(request) {
+    return handleWeeklyNewsletterCron(request);
+}
+

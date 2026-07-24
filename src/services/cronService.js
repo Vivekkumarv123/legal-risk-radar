@@ -1,10 +1,18 @@
 import cron from 'node-cron';
 import { db } from '@/lib/firebaseAdmin';
-import { generateDailyNewsletter } from './newsletterService';
-import { getNewsletterTemplate } from './newsletterService';
+import { generateDailyNewsletter, generateWeeklyNewsletter, getNewsletterTemplate } from './newsletterService';
 import { sendBulkNewsletters } from './emailService';
 
 let cronJobs = [];
+
+function getISOWeekIdentifier(date = new Date()) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
 
 /**
  * Initialize all cron jobs
@@ -12,13 +20,13 @@ let cronJobs = [];
 export function initializeCronJobs() {
     console.log('🚀 Initializing newsletter cron jobs...');
 
-    // Daily newsletter at 8:00 AM for anytime testing * * * * *
+    // Daily newsletter at 8:00 AM
     const dailyNewsletterJob = cron.schedule('0 8 * * *', async () => {
         console.log('📧 Running daily newsletter job...');
         await sendDailyNewsletters();
     }, {
         scheduled: true,
-        timezone: "Asia/Kolkata" // Change to your timezone
+        timezone: "Asia/Kolkata"
     });
 
     cronJobs.push({ name: 'Daily Newsletter', job: dailyNewsletterJob });
@@ -44,7 +52,8 @@ export function initializeCronJobs() {
  */
 async function sendDailyNewsletters() {
     try {
-        // Get all active subscribers with daily frequency from Firestore
+        const todayDateString = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
         const subscribersSnapshot = await db.collection('newsletterSubscriptions')
             .where('isActive', '==', true)
             .where('frequency', '==', 'daily')
@@ -55,14 +64,34 @@ async function sendDailyNewsletters() {
             return;
         }
 
-        const subscribers = subscribersSnapshot.docs.map(doc => ({
+        const allSubscribers = subscribersSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
 
-        console.log(`Found ${subscribers.length} daily subscribers`);
+        const eligibleSubscribers = allSubscribers.filter(sub => sub.lastNewsletterDate !== todayDateString);
 
-        // Generate newsletter content
+        if (eligibleSubscribers.length === 0) {
+            console.log(`All subscribers already received daily newsletter today (${todayDateString}). Skipping.`);
+            return;
+        }
+
+        const recipientMap = new Map();
+        eligibleSubscribers.forEach(sub => {
+            const normalizedEmail = (sub.email || '').toLowerCase().trim();
+            if (normalizedEmail && !recipientMap.has(normalizedEmail)) {
+                recipientMap.set(normalizedEmail, {
+                    id: sub.id,
+                    email: normalizedEmail,
+                    name: sub.name || 'Legal Enthusiast',
+                    unsubscribeToken: sub.unsubscribeToken
+                });
+            }
+        });
+
+        const recipients = Array.from(recipientMap.values());
+        console.log(`Found ${recipients.length} eligible daily subscribers for ${todayDateString}`);
+
         const newsletterData = await generateDailyNewsletter();
 
         if (!newsletterData.success) {
@@ -70,14 +99,6 @@ async function sendDailyNewsletters() {
             return;
         }
 
-        // Prepare recipients
-        const recipients = subscribers.map(sub => ({
-            email: sub.email,
-            name: sub.name || 'Legal Enthusiast',
-            unsubscribeToken: sub.unsubscribeToken
-        }));
-
-        // Send newsletters
         const subject = `Legal Newsletter - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
         
         const results = await sendBulkNewsletters(
@@ -90,21 +111,20 @@ async function sendDailyNewsletters() {
             )
         );
 
-        // Update lastSentAt for successful sends using Firestore batch
         const batch = db.batch();
-        subscribers.forEach(sub => {
-            const docRef = db.collection('newsletterSubscriptions').doc(sub.id);
-            batch.update(docRef, { lastSentAt: new Date() });
+        recipients.forEach(rec => {
+            const docRef = db.collection('newsletterSubscriptions').doc(rec.id);
+            batch.update(docRef, {
+                lastNewsletterDate: todayDateString,
+                lastSentAt: new Date(),
+                updatedAt: new Date()
+            });
         });
         await batch.commit();
 
         console.log('📊 Newsletter sending results:');
         console.log(`   ✅ Sent: ${results.sent}`);
         console.log(`   ❌ Failed: ${results.failed}`);
-        
-        if (results.errors.length > 0) {
-            console.log('   Errors:', results.errors);
-        }
 
     } catch (error) {
         console.error('Error in daily newsletter job:', error);
@@ -116,7 +136,8 @@ async function sendDailyNewsletters() {
  */
 async function sendWeeklyNewsletters() {
     try {
-        // Get all active subscribers with weekly frequency from Firestore
+        const currentWeekId = getISOWeekIdentifier();
+
         const subscribersSnapshot = await db.collection('newsletterSubscriptions')
             .where('isActive', '==', true)
             .where('frequency', '==', 'weekly')
@@ -127,28 +148,42 @@ async function sendWeeklyNewsletters() {
             return;
         }
 
-        const subscribers = subscribersSnapshot.docs.map(doc => ({
+        const allSubscribers = subscribersSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
 
-        console.log(`Found ${subscribers.length} weekly subscribers`);
+        const eligibleSubscribers = allSubscribers.filter(sub => sub.lastWeeklyNewsletterDate !== currentWeekId);
 
-        // Generate weekly roundup
-        const newsletterData = await generateDailyNewsletter(); // You can create a separate weekly generator
+        if (eligibleSubscribers.length === 0) {
+            console.log(`All weekly subscribers already received newsletter for week ${currentWeekId}. Skipping.`);
+            return;
+        }
+
+        const recipientMap = new Map();
+        eligibleSubscribers.forEach(sub => {
+            const normalizedEmail = (sub.email || '').toLowerCase().trim();
+            if (normalizedEmail && !recipientMap.has(normalizedEmail)) {
+                recipientMap.set(normalizedEmail, {
+                    id: sub.id,
+                    email: normalizedEmail,
+                    name: sub.name || 'Legal Enthusiast',
+                    unsubscribeToken: sub.unsubscribeToken
+                });
+            }
+        });
+
+        const recipients = Array.from(recipientMap.values());
+        console.log(`Found ${recipients.length} eligible weekly subscribers for week ${currentWeekId}`);
+
+        const newsletterData = await generateWeeklyNewsletter();
 
         if (!newsletterData.success) {
             console.error('Failed to generate weekly newsletter:', newsletterData.error);
             return;
         }
 
-        const recipients = subscribers.map(sub => ({
-            email: sub.email,
-            name: sub.name || 'Legal Enthusiast',
-            unsubscribeToken: sub.unsubscribeToken
-        }));
-
-        const subject = `Weekly Legal Roundup - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        const subject = `Weekly Legal Roundup Digest - ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
         
         const results = await sendBulkNewsletters(
             recipients,
@@ -160,11 +195,14 @@ async function sendWeeklyNewsletters() {
             )
         );
 
-        // Update lastSentAt for successful sends using Firestore batch
         const batch = db.batch();
-        subscribers.forEach(sub => {
-            const docRef = db.collection('newsletterSubscriptions').doc(sub.id);
-            batch.update(docRef, { lastSentAt: new Date() });
+        recipients.forEach(rec => {
+            const docRef = db.collection('newsletterSubscriptions').doc(rec.id);
+            batch.update(docRef, {
+                lastWeeklyNewsletterDate: currentWeekId,
+                lastSentAt: new Date(),
+                updatedAt: new Date()
+            });
         });
         await batch.commit();
 
@@ -176,6 +214,7 @@ async function sendWeeklyNewsletters() {
         console.error('Error in weekly newsletter job:', error);
     }
 }
+
 
 /**
  * Stop all cron jobs

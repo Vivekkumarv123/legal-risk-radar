@@ -3,6 +3,7 @@ import PDFParser from "pdf2json";
 import { callGemini } from "@/lib/gemini";
 import { verifyToken } from '@/middleware/auth.middleware';
 import { checkUsageLimit, trackUsage } from '@/middleware/usage.middleware';
+import { getCachedDocumentText, setCachedDocumentText } from "@/lib/documentCache";
 
 const MAX_FILE_SIZE_MB = 10;
 
@@ -84,7 +85,21 @@ async function handleTextAnalysis(req) {
   // For Chrome extension, we'll do basic analysis without authentication
   if (source === 'chrome_extension' || source === 'chrome_extension_pdf' || source === 'chrome_extension_content') {
     try {
+      const startTime = Date.now();
       const analysis = await analyzeTextWithGemini(text, 'TEXT_INPUT');
+      const latencyMs = Date.now() - startTime;
+
+      const riskScore = analysis?.decisionSummary?.decisionScore || 0;
+      import("@/services/bigqueryService").then(({ logAuditAnalyticsEvent }) => {
+        logAuditAnalyticsEvent({
+          eventType: "chrome_extension_text_analysis",
+          docType: "TEXT_INPUT",
+          riskScore: riskScore,
+          latencyMs: latencyMs,
+          userType: "guest"
+        });
+      }).catch(err => console.error("BigQuery log invoke failed:", err));
+
       return Response.json({
         success: true,
         extraction: {
@@ -139,10 +154,23 @@ async function handleTextAnalysis(req) {
     }, { status: 403 });
   }
 
+  const startTime = Date.now();
   const analysis = await analyzeTextWithGemini(text, 'TEXT_INPUT');
+  const latencyMs = Date.now() - startTime;
   
   // Track usage
   await trackUsage(userId, 'ai_query');
+
+  const riskScore = analysis?.decisionSummary?.decisionScore || 0;
+  import("@/services/bigqueryService").then(({ logAuditAnalyticsEvent }) => {
+    logAuditAnalyticsEvent({
+      eventType: "user_text_analysis",
+      docType: "TEXT_INPUT",
+      riskScore: riskScore,
+      latencyMs: latencyMs,
+      userType: "user"
+    });
+  }).catch(err => console.error("BigQuery log invoke failed:", err));
 
   return Response.json({
     success: true,
@@ -269,29 +297,42 @@ async function handleFileAnalysis(req) {
   let ocrConfidence = null;
   let extractionType = "PDF_TEXT";
 
-  // PDF
-  if (file.type === "application/pdf") {
-    extractedText = await parsePdfBuffer(buffer);
-  }
-
-  // Image OCR
-  else if (file.type.startsWith("image/")) {
-    const result = await Tesseract.recognize(
-      buffer,
-      "eng+hin",
-      { logger: () => {} }
-    );
-
-    extractedText = result.data.text;
-    ocrConfidence = result.data.confidence;
-    extractionType = "IMAGE_OCR";
-  }
-
-  else {
-    return Response.json(
-      { error: "Only PDF or Image files are supported" },
-      { status: 400 }
-    );
+  // 1. Try Cache Lookup (SHA-256 hash comparison)
+  const cachedText = getCachedDocumentText(buffer);
+  if (cachedText) {
+    extractedText = cachedText;
+    ocrConfidence = 100;
+    extractionType = "CACHED_PARSED_TEXT";
+  } else {
+    // PDF
+    if (file.type === "application/pdf") {
+      extractedText = await parsePdfBuffer(buffer);
+    }
+    // Image OCR
+    else if (file.type.startsWith("image/")) {
+      try {
+        const { detectTextFromBuffer } = await import("@/services/gcpVisionService");
+        extractedText = await detectTextFromBuffer(buffer);
+        ocrConfidence = 99;
+        extractionType = "IMAGE_OCR_GCP";
+      } catch (gcpErr) {
+        console.warn("GCP Vision OCR failed, falling back to local Tesseract OCR:", gcpErr.message);
+        const result = await Tesseract.recognize(
+          buffer,
+          "eng+hin",
+          { logger: () => {} }
+        );
+        extractedText = result.data.text;
+        ocrConfidence = result.data.confidence;
+        extractionType = "IMAGE_OCR_TESSERACT";
+      }
+    }
+    else {
+      return Response.json(
+        { error: "Only PDF or Image files are supported" },
+        { status: 400 }
+      );
+    }
   }
 
   const cleanText = extractedText.trim();
@@ -303,10 +344,32 @@ async function handleFileAnalysis(req) {
     );
   }
 
+  // 2. Save result to SHA-256 Cache
+  if (!cachedText) {
+    setCachedDocumentText(buffer, cleanText);
+  }
+
+  const startTime = Date.now();
   const analysis = await analyzeTextWithGemini(cleanText, extractionType, ocrConfidence);
+  const latencyMs = Date.now() - startTime;
 
   // Track usage after successful analysis
   await trackUsage(userId, 'document_analysis');
+
+  // Stream audit logging event to BigQuery asynchronously (non-blocking)
+  const rawScore = analysis?.overall_risk_score || analysis?.decisionSummary?.decisionScore;
+  const riskScore = parseFloat(rawScore ?? 0) || 0;
+  const docTypeLabel = file?.type === 'application/pdf' ? 'pdf_contract' : file?.type?.startsWith('image/') ? 'scanned_image' : extractionType;
+
+  import("@/services/bigqueryService").then(({ logAuditAnalyticsEvent }) => {
+    logAuditAnalyticsEvent({
+      eventType: "file_analysis",
+      docType: docTypeLabel || "file_upload",
+      riskScore: riskScore,
+      latencyMs: latencyMs,
+      userType: userId ? "user" : "guest"
+    });
+  }).catch(err => console.error("BigQuery log invoke failed:", err));
 
   return Response.json({
     success: true,
@@ -398,7 +461,7 @@ SAFETY RULES:
 // ---------- pdf2json helper ----------
 function parsePdfBuffer(buffer) {
   return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser(this, 1);
+    const pdfParser = new PDFParser(null, 1);
 
     pdfParser.on("pdfParser_dataError", err =>
       reject(new Error(err.parserError))

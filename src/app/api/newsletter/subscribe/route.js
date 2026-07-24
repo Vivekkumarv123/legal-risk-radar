@@ -15,13 +15,15 @@ export async function POST(request) {
             );
         }
 
-        // Check if already subscribed in Firestore
-        const subscriptionsRef = db.collection('newsletterSubscriptions');
-        const existingSnapshot = await subscriptionsRef.where('email', '==', email).limit(1).get();
+        const normalizedEmail = email.toLowerCase().trim();
 
-        if (!existingSnapshot.empty) {
-            const existingDoc = existingSnapshot.docs[0];
-            const existing = existingDoc.data();
+        // Check if already subscribed using normalized email doc ID
+        const subscriptionsRef = db.collection('newsletterSubscriptions');
+        const docRef = subscriptionsRef.doc(normalizedEmail);
+        const docSnap = await docRef.get();
+
+        if (docSnap.exists) {
+            const existing = docSnap.data();
 
             if (existing.isActive) {
                 return NextResponse.json(
@@ -30,7 +32,7 @@ export async function POST(request) {
                 );
             } else {
                 // Reactivate subscription
-                await existingDoc.ref.update({
+                await docRef.update({
                     isActive: true,
                     name: name || existing.name,
                     categories: categories || existing.categories,
@@ -42,7 +44,7 @@ export async function POST(request) {
                     success: true,
                     message: 'Subscription reactivated successfully',
                     subscription: {
-                        email: existing.email,
+                        email: normalizedEmail,
                         name: name || existing.name,
                         frequency: frequency || existing.frequency,
                         categories: categories || existing.categories
@@ -51,10 +53,10 @@ export async function POST(request) {
             }
         }
 
-        // Create new subscription in Firestore
+        // Create new subscription using normalizedEmail as Document ID
         const unsubscribeToken = crypto.randomBytes(32).toString('hex');
         const newSubscription = {
-            email,
+            email: normalizedEmail,
             name: name || '',
             categories: categories || ['all'],
             frequency: frequency || 'daily',
@@ -62,11 +64,13 @@ export async function POST(request) {
             unsubscribeToken,
             subscribedAt: new Date(),
             lastSentAt: null,
+            lastNewsletterDate: null,
+            lastWeeklyNewsletterDate: null,
             createdAt: new Date(),
             updatedAt: new Date()
         };
 
-        const docRef = await subscriptionsRef.add(newSubscription);
+        await docRef.set(newSubscription);
 
         return NextResponse.json({
             success: true,
@@ -92,27 +96,27 @@ export async function POST(request) {
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const email = searchParams.get('email');
+        const rawEmail = searchParams.get('email');
 
-        if (!email) {
+        if (!rawEmail) {
             return NextResponse.json(
                 { success: false, error: 'Email required' },
                 { status: 400 }
             );
         }
 
-        // Query Firestore for subscription
-        const subscriptionsRef = db.collection('newsletterSubscriptions');
-        const snapshot = await subscriptionsRef.where('email', '==', email).limit(1).get();
+        const normalizedEmail = rawEmail.toLowerCase().trim();
+        const docRef = db.collection('newsletterSubscriptions').doc(normalizedEmail);
+        const docSnap = await docRef.get();
 
-        if (snapshot.empty) {
+        if (!docSnap.exists) {
             return NextResponse.json({
                 success: true,
                 subscribed: false
             });
         }
 
-        const subscription = snapshot.docs[0].data();
+        const subscription = docSnap.data();
 
         return NextResponse.json({
             success: true,
@@ -134,3 +138,4 @@ export async function GET(request) {
         );
     }
 }
+

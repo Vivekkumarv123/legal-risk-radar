@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 /**
  * Gemini API Key Rotation Manager
@@ -66,11 +66,11 @@ class GeminiKeyRotation {
     }
 
     /**
-     * Get GoogleGenerativeAI instance with current key
+     * Get GoogleGenAI instance with current key
      */
     getGenAI() {
         const currentKey = this.getCurrentKey();
-        return new GoogleGenerativeAI(currentKey.key);
+        return new GoogleGenAI({ apiKey: currentKey.key });
     }
 
     /**

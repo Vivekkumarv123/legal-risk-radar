@@ -334,7 +334,7 @@ class PDFAnalyzer {
         const risksElement = overlay.querySelector('.key-risks');
         if (analysis.clauses && analysis.clauses.length > 0) {
             const topRisks = analysis.clauses
-                .filter(clause => ['CRITICAL', 'HIGH'].includes(clause.risk_level))
+                .filter(clause => ['critical', 'high'].includes(clause.risk_level?.toLowerCase()))
                 .slice(0, 3);
             
             risksElement.innerHTML = `
@@ -342,7 +342,7 @@ class PDFAnalyzer {
                 ${topRisks.map(risk => `
                     <div class="risk-item ${risk.risk_level.toLowerCase()}">
                         <div class="risk-level">${risk.risk_level}</div>
-                        <div class="risk-text">${risk.explanation}</div>
+                        <div class="risk-text"><strong>${risk.clause_snippet || risk.clause || ''}</strong>: ${risk.explanation || risk.issue || ''}</div>
                     </div>
                 `).join('')}
                 ${topRisks.length === 0 ? '<p>No critical risks detected in this document.</p>' : ''}
