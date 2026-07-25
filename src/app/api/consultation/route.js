@@ -1,21 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '@/middleware/auth.middleware';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-// Extract authenticated user ID from JWT token
-function getUserIdFromRequest(req) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.split(" ")[1];
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      return decoded.id;
-    } catch (err) {
-      console.warn("JWT verification failed on consultation request:", err.message);
-      return null;
-    }
+// Extract authenticated user ID using middleware verifyToken
+async function getUserIdFromRequest(req) {
+  const authResult = await verifyToken(req);
+  if (authResult.success) {
+    return authResult.user.id;
   }
   return null;
 }
@@ -35,7 +26,7 @@ function generateConsultationId() {
  */
 export async function POST(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
@@ -84,7 +75,7 @@ export async function POST(req) {
  */
 export async function GET(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
@@ -115,7 +106,7 @@ export async function GET(req) {
  */
 export async function DELETE(req) {
   try {
-    const userId = getUserIdFromRequest(req);
+    const userId = await getUserIdFromRequest(req);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });

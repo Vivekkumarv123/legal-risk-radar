@@ -44,30 +44,30 @@ export const getValidAccessToken = async () => {
 export const authenticatedFetch = async (url, options = {}) => {
   const token = await getValidAccessToken();
   
-  if (!token) {
-    throw new Error('Authentication required');
-  }
-  
   const headers = {
     ...options.headers,
-    'Authorization': `Bearer ${token}`
   };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   
   const response = await fetch(url, {
     ...options,
-    headers
+    headers,
+    credentials: 'include'
   });
   
   // If we get a 401, try refreshing the token once
   if (response.status === 401) {
-    // Remove the potentially expired token
-    localStorage.removeItem('accessToken');
+    if (token) {
+      localStorage.removeItem('accessToken');
+    }
     
     // Try to get a fresh token
     const newToken = await getValidAccessToken();
     
-    if (newToken) {
-      // Retry the request with the new token
+    if (newToken && newToken !== token) {
       const retryHeaders = {
         ...options.headers,
         'Authorization': `Bearer ${newToken}`
@@ -75,7 +75,8 @@ export const authenticatedFetch = async (url, options = {}) => {
       
       return fetch(url, {
         ...options,
-        headers: retryHeaders
+        headers: retryHeaders,
+        credentials: 'include'
       });
     }
   }

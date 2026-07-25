@@ -81,12 +81,6 @@ export default function LegalGlossary() {
     };
 
     const handleSelectTerm = async (term) => {
-        if (loadingPlan) return;
-        if (!subscription || !planDetails) {
-            toast.error('Please log in to view glossary details');
-            return;
-        }
-
         setSelectedTerm(term);
 
         try {
@@ -95,6 +89,11 @@ export default function LegalGlossary() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ term: term.term }),
             });
+
+            if (res.status === 401) {
+                // If the user is unauthenticated according to the backend
+                return;
+            }
 
             if (res.status === 403) {
                 const data = await res.json();
