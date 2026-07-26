@@ -1045,6 +1045,7 @@ export default function Demo() {
     const fileInputRef = useRef(null);
     const textareaRef = useRef(null);
     const liveCooldownRef = useRef(false);
+    const speechCancelledRef = useRef(false);
 
     const toolItems = [
         { id: 'doc_generator', label: 'Legal Doc Studio', icon: FileText, description: 'AI Legal document generator & drafting studio' },
@@ -1214,33 +1215,45 @@ export default function Demo() {
     }, []);
 
     // Speech Utils
+    const detectLanguage = (text) => {
+        if (!text) return 'en-US';
+        if (/[\u0900-\u097F]/.test(text)) return 'hi-IN'; // Hindi / Marathi Devanagari
+        if (/[\u0980-\u09FF]/.test(text)) return 'bn-IN'; // Bengali
+        if (/[\u0B80-\u0BFF]/.test(text)) return 'ta-IN'; // Tamil
+        if (/[\u0C00-\u0C7F]/.test(text)) return 'te-IN'; // Telugu
+        if (/[\u0A80-\u0AFF]/.test(text)) return 'gu-IN'; // Gujarati
+        if (/[\u0C80-\u0CFF]/.test(text)) return 'kn-IN'; // Kannada
+        if (/[\u0D00-\u0D7F]/.test(text)) return 'ml-IN'; // Malayalam
+        if (/[\u0A00-\u0A7F]/.test(text)) return 'pa-IN'; // Punjabi
+        return 'en-US';
+    };
+
     const getBestVoice = (text) => {
-        if (!availableVoices.length) return null;
+        const voices = (window.speechSynthesis && window.speechSynthesis.getVoices()) || availableVoices || [];
+        if (!voices.length) return null;
 
-        const isHindi = /[\u0900-\u097F]/.test(text);
-        const isBengali = /[\u0980-\u09FF]/.test(text);
-        const isTamil = /[\u0B80-\u0BFF]/.test(text);
-        const isTelugu = /[\u0C00-\u0C7F]/.test(text);
-        const isGujarati = /[\u0A80-\u0AFF]/.test(text);
-        const isKannada = /[\u0C80-\u0CFF]/.test(text);
-        const isMalayalam = /[\u0D00-\u0D7F]/.test(text);
-        const isPunjabi = /[\u0A00-\u0A7F]/.test(text);
+        const lang = detectLanguage(text);
+        const langPrefix = lang.split('-')[0];
 
-        if (isHindi) return availableVoices.find(v => v.lang.includes('hi') || v.name.toLowerCase().includes('hindi') || v.lang === 'hi-IN') || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isBengali) return availableVoices.find(v => v.lang.includes('bn') || v.name.toLowerCase().includes('bengali')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isTamil) return availableVoices.find(v => v.lang.includes('ta') || v.name.toLowerCase().includes('tamil')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isTelugu) return availableVoices.find(v => v.lang.includes('te') || v.name.toLowerCase().includes('telugu')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isGujarati) return availableVoices.find(v => v.lang.includes('gu') || v.name.toLowerCase().includes('gujarati')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isKannada) return availableVoices.find(v => v.lang.includes('kn') || v.name.toLowerCase().includes('kannada')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isMalayalam) return availableVoices.find(v => v.lang.includes('ml') || v.name.toLowerCase().includes('malayalam')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-        if (isPunjabi) return availableVoices.find(v => v.lang.includes('pa') || v.name.toLowerCase().includes('punjabi')) || availableVoices.find(v => v.lang.includes('en-IN')) || null;
-
-        return availableVoices.find(v => v.lang === 'en-US' || v.lang === 'en-IN' || v.name.includes('Google US English') || v.name.includes('Google UK English')) || availableVoices[0] || null;
+        return voices.find(v => v.lang.toLowerCase() === lang.toLowerCase()) ||
+            voices.find(v => v.lang.toLowerCase().startsWith(langPrefix)) ||
+            voices.find(v => v.lang.toLowerCase().includes(langPrefix)) ||
+            voices.find(v => v.lang.toLowerCase().includes('in')) ||
+            voices.find(v => v.lang.toLowerCase().includes('en')) ||
+            voices[0] || null;
     };
 
     const cleanMarkdown = (text) => {
         if (!text) return "";
-        return text.replace(/\*\*/g, "").replace(/\*/g, "").replace(/#{1,6}\s/g, "").replace(/`{1,3}/g, "").replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1").trim();
+        return text
+            .replace(/\*\*/g, "")
+            .replace(/\*/g, "")
+            .replace(/#{1,6}\s/g, "")
+            .replace(/`{1,3}/g, "")
+            .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+            .replace(/^[•\-\*]\s+/gm, "")
+            .replace(/\n+/g, " ")
+            .trim();
     };
 
     const speakTextPromise = (text) => {
@@ -1250,11 +1263,13 @@ export default function Demo() {
             const cleanText = cleanMarkdown(text);
             if (!cleanText) { resolve(); return; }
 
+            const lang = detectLanguage(cleanText);
             const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = lang;
             const voice = getBestVoice(cleanText);
             if (voice) utterance.voice = voice;
 
-            utterance.rate = 0.9;
+            utterance.rate = 0.95;
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
 
@@ -1269,32 +1284,91 @@ export default function Demo() {
         if (!window.speechSynthesis) return toast.error('Text-to-speech not supported');
         if (!text) return;
 
+        speechCancelledRef.current = false;
         window.speechSynthesis.cancel();
+
         const cleanText = cleanMarkdown(text);
         if (!cleanText) return;
 
-        const utterance = new SpeechSynthesisUtterance(cleanText);
+        const lang = detectLanguage(cleanText);
         const voice = getBestVoice(cleanText);
-        if (voice) utterance.voice = voice;
 
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
+        // Split text into chunks by sentence/punctuation to avoid Chrome WebSpeech API timeout on long texts
+        const rawChunks = cleanText.split(/(?<=[.!?:\n])\s+/);
+        const chunks = rawChunks.filter(c => c.trim().length > 0);
 
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = (e) => {
-            setIsSpeaking(false);
-            if (e.error !== 'interrupted' && e.error !== 'canceled') console.error('Speech error:', e.error);
+        if (chunks.length === 0) chunks.push(cleanText);
+
+        let chunkIndex = 0;
+
+        const speakNextChunk = () => {
+            if (speechCancelledRef.current || chunkIndex >= chunks.length) {
+                setIsSpeaking(false);
+                return;
+            }
+
+            const currentChunk = chunks[chunkIndex].trim();
+            if (!currentChunk) {
+                chunkIndex++;
+                speakNextChunk();
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(currentChunk);
+            utterance.lang = lang; // Explicit language code (e.g., hi-IN, mr-IN, en-US)
+            if (voice) utterance.voice = voice;
+
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+
+            utterance.onstart = () => {
+                if (speechCancelledRef.current) {
+                    window.speechSynthesis.cancel();
+                    setIsSpeaking(false);
+                    return;
+                }
+                setIsSpeaking(true);
+            };
+
+            utterance.onend = () => {
+                if (speechCancelledRef.current) {
+                    setIsSpeaking(false);
+                    return;
+                }
+                chunkIndex++;
+                if (chunkIndex < chunks.length && !speechCancelledRef.current) {
+                    speakNextChunk();
+                } else {
+                    setIsSpeaking(false);
+                }
+            };
+
+            utterance.onerror = (e) => {
+                if (speechCancelledRef.current || e.error === 'canceled' || e.error === 'interrupted') {
+                    setIsSpeaking(false);
+                    return;
+                }
+                console.warn('Speech chunk error:', e.error);
+                chunkIndex++;
+                if (chunkIndex < chunks.length && !speechCancelledRef.current) {
+                    speakNextChunk();
+                } else {
+                    setIsSpeaking(false);
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
         };
 
-        window.speechSynthesis.speak(utterance);
+        speakNextChunk();
     };
 
     const stopSpeaking = () => {
-        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        speechCancelledRef.current = true;
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
             window.speechSynthesis.cancel();
-            setIsSpeaking(false);
         }
+        setIsSpeaking(false);
     };
 
     // Live Voice Recognition Hooks
@@ -1642,7 +1716,6 @@ export default function Demo() {
         try {
             const res = await fetch(`/api/chats/${id}`);
             const data = await res.json();
-            console.log("Loaded chat data:", data);
             if (data.success) {
                 setChatId(id);
                 setDocumentContext(data.documentContext || "");
@@ -1712,7 +1785,7 @@ export default function Demo() {
         const isNewConversation = !chatId && !temporaryChat;
 
         try {
-            let apiBody = { message: textToSend, chatId: temporaryChat ? null : chatId };
+            let apiBody = { message: textToSend, chatId: temporaryChat ? null : chatId, isNewDocument: isNewDocument };
             if (!isNewDocument && documentContext) apiBody.documentText = documentContext;
 
             if (filesToProcess.length > 0) {

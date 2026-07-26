@@ -78,7 +78,7 @@ function normalizeDecisionAnalysis(rawPayload) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    let { documentText, message, userRole, docType, fileUrl, chatId } = body;
+    let { documentText, message, userRole, docType, fileUrl, chatId, isNewDocument, isAnalysis } = body;
 
     // Validate Input
     if (!documentText && !message) {
@@ -93,6 +93,7 @@ export async function POST(req) {
     // STEP 1: IDENTIFY THE USER (Use existing auth middleware)
     // ============================================================
     const headersList = await headers();
+    const authHeader = headersList.get("authorization");
     const guestIdHeader = headersList.get("x-guest-id");
 
     let userId = null;
@@ -106,9 +107,12 @@ export async function POST(req) {
       userId = authResult.user.uid;
       isGuest = false;
       trackerId = `user_${userId}`;
-      console.log('✅ Authenticated user:', userId);
-    } else {
-      console.log('⚠️ Guest user');
+    } else if (authHeader) {
+      // User attempted to send an auth token, but it expired or is invalid
+      return NextResponse.json({
+        error: authResult.error || "Session expired. Please log in again.",
+        sessionExpired: true
+      }, { status: 401 });
     }
 
     // 3. Fallback to Guest ID (only if truly a guest - no valid token)
@@ -199,7 +203,7 @@ export async function POST(req) {
     let chatHistory = [];
 
     // Retrieve context and chat history from DB if this is a follow-up
-    if (!isGuest && currentChatId && !documentText) {
+    if (currentChatId && !documentText) {
       const chatDoc = await db.collection("chats").doc(currentChatId).get();
       if (chatDoc.exists && chatDoc.data().documentContext) {
         contextToAnalyze = chatDoc.data().documentContext;
@@ -235,13 +239,19 @@ export async function POST(req) {
     const fileContext = fileUrl ? `(File URL provided: ${fileUrl})` : "";
 
     // LOGIC: It is a "Standard Analysis" (JSON) if:
-    // 1. User provided documentText (any new document analysis)
-    // 2. OR query explicitly starts with "analyze"
-    const isStandardAnalysis =
-      !!documentText ||
-      userQuery.toLowerCase().startsWith("analyze");
+    // 1. User explicitly requested new document/initial analysis (isNewDocument/isAnalysis flag)
+    // 2. OR documentText provided without an existing chatId and without a user query
+    // 3. OR query explicitly asks for document analysis
+    const isExplicitAnalysis =
+      Boolean(isNewDocument) ||
+      Boolean(isAnalysis) ||
+      userQuery.trim().toLowerCase().startsWith("analyze this document") ||
+      userQuery.trim().toLowerCase() === "analyze document" ||
+      userQuery.trim().toLowerCase() === "analyze";
 
-    console.log(isStandardAnalysis ? '🎯 ANALYSIS' : '💬 CHAT');
+    const isStandardAnalysis =
+      isExplicitAnalysis ||
+      (Boolean(documentText) && !chatId && (!message || message.trim().toLowerCase() === "analyze this document" || message.trim().toLowerCase() === "analyze"));
 
     // ✅ FIX: If analyzing but no separate documentText, the message IS the document.
     if (isStandardAnalysis && !contextToAnalyze) {
@@ -257,6 +267,10 @@ export async function POST(req) {
     let prompt;
 
     if (isStandardAnalysis) {
+      const userInstructionPrompt = userQuery && !userQuery.toLowerCase().includes("analyze")
+        ? `\nUSER SPECIFIC INSTRUCTIONS / LANGUAGE PREFERENCE:\n"${userQuery}"\nIMPORTANT: If the user requested a specific language (e.g. Hindi, Marathi, Hinglish, Spanish, etc.) or typed in Romanized script (e.g., "hindi me bataye", "marathi madhe sanga"), write all narrative text fields (executiveSummary, clause explanations, businessImpact, recommendations, nextBestActions, whatIfSuggestions) completely in that requested language.\n`
+        : "";
+
       // --- MODE A: ANALYST (Strict JSON) ---
       // Configures the analysis system instructions to extract legal risks,
       // identify missing protections, and return a structured JSON schema response.
@@ -270,7 +284,7 @@ Analyze the following legal document:
 
 DOCUMENT:
 """${sanitizedDoc}${fileContext}"""
-
+${userInstructionPrompt}
 Return ONLY valid JSON in the following structure.
 
 {
@@ -380,11 +394,11 @@ USER QUESTION:
 Rules:
 
 1. Answer in simple language suitable for non-lawyers.
-2. If the user asks in Hindi, Marathi, or any other language, reply in that language.
+2. MULTILINGUAL RULE: If the user asks in Hindi, Marathi, Gujarati, Tamil, Telugu, Kannada, Bengali, Spanish, French, or ANY language—including Hinglish (Romanized Hindi e.g., "hindi me bataye"), Marathi in Latin script (e.g., "marathi madhe sanga"), or explicit language requests—you MUST respond completely in that requested language.
 3. Use previous conversation for context.
 4. Explain only what is relevant to the user's question.
 5. Never make up legal facts.
-6. If the document does not contain the requested information, clearly say so.
+6. IMPORTANT CONTEXT RULE: Document context is provided in DOCUMENT above and in PREVIOUS CONVERSATION. Use that document text to answer, explain, or translate. Do NOT say "no document was provided" when document context or previous conversation is present.
 
 Whenever appropriate, also include:
 
@@ -470,7 +484,8 @@ Respond naturally using headings and bullet points where appropriate.
       await trackUsage(userId, 'ai_query', 1);
     }
 
-    if (!isGuest && userId) {
+    const ownerId = userId || trackerId;
+    if (ownerId) {
       const chatsRef = db.collection("chats");
       // Ensure we save the context if we just extracted it
       const contextToSave = documentText || contextToAnalyze || "";
@@ -480,7 +495,8 @@ Respond naturally using headings and bullet points where appropriate.
         const chatTitle = await generateChatTitle(message, contextToSave);
 
         const newChatData = {
-          userId,
+          userId: ownerId,
+          isGuest: isGuest,
           title: chatTitle,
           documentContext: contextToSave,
           createdAt: FieldValue.serverTimestamp(),
@@ -489,7 +505,6 @@ Respond naturally using headings and bullet points where appropriate.
 
         const newChat = await chatsRef.add(newChatData);
         currentChatId = newChat.id;
-        console.log('✅ Chat created:', currentChatId);
       } else {
         const updateData = { updatedAt: FieldValue.serverTimestamp() };
         if (contextToSave) updateData.documentContext = contextToSave;
@@ -521,7 +536,6 @@ Respond naturally using headings and bullet points where appropriate.
         };
 
         await messagesRef.add(analysisMessageData);
-        console.log('✅ Analysis saved');
       } else {
         assistantContent = parsedResult.response;
         const chatMessageData = {
@@ -532,7 +546,6 @@ Respond naturally using headings and bullet points where appropriate.
         };
 
         await messagesRef.add(chatMessageData);
-        console.log('✅ Chat response saved');
       }
     }
 
@@ -542,8 +555,6 @@ Respond naturally using headings and bullet points where appropriate.
       chatId: currentChatId,
       remainingTries: isGuest ? Math.max(0, GUEST_DAILY_LIMIT - (currentCount + 1)) : "Unlimited"
     };
-
-    console.log('✅ Response sent');
 
     return NextResponse.json(responseData);
 

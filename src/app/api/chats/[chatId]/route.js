@@ -6,32 +6,32 @@ import jwt from "jsonwebtoken";
 export async function GET(req, { params }) {
   try {
     // 1. Get Chat ID from URL
-    const { chatId } = await params; 
-    
+    const { chatId } = await params;
+
     // 2. Get Token from Cookies
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value || 
-                  cookieStore.get("accessToken")?.value || 
-                  cookieStore.get("refreshToken")?.value;
+    const token = cookieStore.get("token")?.value ||
+      cookieStore.get("accessToken")?.value ||
+      cookieStore.get("refreshToken")?.value;
 
     if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 3. Verify Token
     const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
     const decoded = jwt.verify(token, secret);
-    
+
     // 4. Check Chat Ownership (Security)
     // We check the PARENT document to make sure this user owns this chat
     const chatDoc = await db.collection("chats").doc(chatId).get();
-    
+
     if (!chatDoc.exists) {
-        return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
 
     if (chatDoc.data().userId !== decoded.id) {
-        return NextResponse.json({ error: "Forbidden: You do not own this chat" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden: You do not own this chat" }, { status: 403 });
     }
 
     // 5. Fetch Messages (The Conversation & Gemini Data)
@@ -48,10 +48,10 @@ export async function GET(req, { params }) {
         id: doc.id,
         role: data.role, // 'user' or 'assistant'
         content: data.content, // The text message
-        
+
         // ✅ This is the "Gemini Thing" (Structured Data for Cards)
-        analysisData: data.analysisData || null, 
-        
+        analysisData: data.analysisData || null,
+
         // File attachment if present
         attachmentUrl: data.attachmentUrl || null,
         file: data.attachmentUrl ? "Attached Document" : null,
