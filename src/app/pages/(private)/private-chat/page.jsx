@@ -16,6 +16,7 @@ import {
     FileText, Wand2
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isGreeting, getGreetingResponse } from "@/utils/greetingHandler";
 import dynamic from "next/dynamic";
@@ -232,9 +233,12 @@ export function ResultCard({ analysis }) {
 
                         {/* Buttons hidden on mobile — the sticky bottom bar below covers small screens */}
                         <div className="hidden lg:flex flex-col gap-3">
-                            <button className="w-full bg-white text-slate-900 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-100 active:scale-[0.98] transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                            <Link
+                                href="/pages/legal-consultation"
+                                className="w-full bg-white text-slate-900 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-100 active:scale-[0.98] transition-all shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white text-center flex items-center justify-center"
+                            >
                                 Talk to a professional
-                            </button>
+                            </Link>
                             <button
                                 onClick={() => generatePremiumPDF(analysis)}
                                 className="w-full bg-black/20 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-black/30 active:scale-[0.98] transition-all backdrop-blur-sm border border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
@@ -434,9 +438,12 @@ export function ResultCard({ analysis }) {
 
             {/* MOBILE STICKY ACTION BAR — always-reachable primary actions on small screens */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-slate-200 p-3 flex gap-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
-                <button className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm active:scale-[0.98] transition-all">
+                <Link
+                    href="/pages/legal-consultation"
+                    className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center text-center"
+                >
                     Talk to a pro
-                </button>
+                </Link>
                 <button
                     onClick={() => generatePremiumPDF(analysis)}
                     className="flex-1 bg-teal-700 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
