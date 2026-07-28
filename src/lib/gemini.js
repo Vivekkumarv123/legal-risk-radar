@@ -42,6 +42,11 @@ async function callWithFallback(primaryModel, prompt) {
 }
 
 // --------------------
+// Multilingual Engine Export
+// --------------------
+export { handleMultilingualConversation } from "./conversationEngine.js";
+
+// --------------------
 // Normal Chat
 // --------------------
 export async function callGemini(prompt) {

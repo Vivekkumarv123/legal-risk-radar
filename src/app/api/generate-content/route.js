@@ -6,6 +6,10 @@ import { headers, cookies } from "next/headers";
 import { verifyToken } from "@/middleware/auth.middleware";
 import { checkUsageLimit, trackUsage } from "@/middleware/usage.middleware";
 import { DecisionAnalysis } from "@/models/chat.model";
+import { FastPreClassifier } from "@/services/cpe/fastClassifier.js";
+import { LanguageEngine } from "@/services/cpe/languageEngine.js";
+import { FirestoreStore } from "@/services/memory/firestoreStore.js";
+import { buildGeminiSystemInstruction } from "@/services/llm/promptBuilder.js";
 
 // CONFIGURATION
 const GUEST_DAILY_LIMIT = 3;
@@ -368,9 +372,20 @@ Rules:
     }
 
     else {
-      // --- MODE B: CHAT COMPANION (Simple Text) ---
-      // Configures system guidelines defining conversational constraints
-      // to behave as a helpful legal assistant.
+      // --- MODE B: CHAT COMPANION (Native Multilingual CPE Engine) ---
+      let chatProfile = {};
+      if (currentChatId) {
+        const chatSession = await FirestoreStore.getChatSession(currentChatId);
+        chatProfile = chatSession?.profile || {};
+      }
+
+      // Fast Pre-Classifier (<1ms)
+      const preClassResult = FastPreClassifier.analyze(userQuery);
+
+      // EWMA + Composite Decision Matrix Profile Update
+      const updatedProfile = LanguageEngine.updateProfile(chatProfile, userQuery, preClassResult, []);
+      const systemInstruction = buildGeminiSystemInstruction(updatedProfile);
+
       const chatHistoryContext = chatHistory ? `
           PREVIOUS CONVERSATION:
           """
@@ -379,11 +394,9 @@ Rules:
         ` : "";
 
       prompt = `
-          You are LegalAdvisor AI, an AI-powered Legal Decision Intelligence Assistant.
+${systemInstruction}
 
-Your job is to help users understand legal documents and make better legal decisions.
-
-DOCUMENT:
+DOCUMENT CONTEXT:
 """${sanitizedDoc}${fileContext}"""
 
 ${chatHistoryContext}
@@ -391,36 +404,7 @@ ${chatHistoryContext}
 USER QUESTION:
 "${userQuery}"
 
-Rules:
-
-1. Answer in simple language suitable for non-lawyers.
-2. MULTILINGUAL RULE: If the user asks in Hindi, Marathi, Gujarati, Tamil, Telugu, Kannada, Bengali, Spanish, French, or ANY language—including Hinglish (Romanized Hindi e.g., "hindi me bataye"), Marathi in Latin script (e.g., "marathi madhe sanga"), or explicit language requests—you MUST respond completely in that requested language.
-3. Use previous conversation for context.
-4. Explain only what is relevant to the user's question.
-5. Never make up legal facts.
-6. IMPORTANT CONTEXT RULE: Document context is provided in DOCUMENT above and in PREVIOUS CONVERSATION. Use that document text to answer, explain, or translate. Do NOT say "no document was provided" when document context or previous conversation is present.
-
-Whenever appropriate, also include:
-
-• Recommendation
-• Next Best Action
-• Optional What-if Suggestion
-
-If the user asks:
-"Should I sign this?"
-
-Always provide:
-
-- Final Recommendation
-- Why
-- Major Risks
-- Suggested Negotiation Points
-
-If the document appears high-risk, recommend consulting a legal professional.
-
-Do NOT return JSON.
-
-Respond naturally using headings and bullet points where appropriate.
+Remember to mirror the user's active conversational language style naturally. Do not return JSON.
 `;
     }
 
@@ -546,6 +530,16 @@ Respond naturally using headings and bullet points where appropriate.
         };
 
         await messagesRef.add(chatMessageData);
+
+        // Run Assistant Response Feedback Loop & Update CPE Profile in Firestore
+        try {
+          const chatSession = await FirestoreStore.getChatSession(currentChatId);
+          const currentProfile = chatSession?.profile || {};
+          const reinforcedProfile = LanguageEngine.processAssistantFeedback(currentProfile, assistantContent);
+          await FirestoreStore.updateChatProfile(currentChatId, reinforcedProfile);
+        } catch (cpeError) {
+          console.warn("⚠️ CPE feedback loop update non-fatal warning:", cpeError.message);
+        }
       }
     }
 

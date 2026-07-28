@@ -976,6 +976,63 @@ function DeleteAccountModal({ isOpen, onClose, onConfirm, isLoading }) {
     );
 }
 
+// Chat Skeleton Loading Component (Claude/Gemini style shimmer loader)
+function ChatSkeletonLoader() {
+    return (
+        <div className="w-full max-w-4xl mx-auto py-8 px-4 space-y-8 animate-pulse">
+            {/* Header Status */}
+            <div className="flex items-center gap-3 bg-white/80 border border-slate-200/80 rounded-2xl p-4 shadow-sm backdrop-blur-sm">
+                <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center border border-teal-200 shrink-0">
+                    <Image src="/logo.svg" width={22} height={22} alt="Logo" className="animate-pulse opacity-80" />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                    <div className="h-4 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-48" />
+                    <div className="h-3 bg-slate-200/70 rounded-md w-28" />
+                </div>
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-teal-50 border border-teal-100 rounded-full text-xs text-teal-700 font-medium">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
+                    <span>Loading conversation...</span>
+                </div>
+            </div>
+
+            {/* Skeleton Messages Stack */}
+            <div className="space-y-6">
+                {/* Simulated Assistant Skeleton Card */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-sm bg-teal-100 border border-teal-200 flex items-center justify-center">
+                            <Sparkles className="w-3.5 h-3.5 text-teal-600 animate-spin" />
+                        </div>
+                        <div className="h-3.5 bg-slate-200 rounded-md w-36" />
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[95%]" />
+                        <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[88%]" />
+                        <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[76%]" />
+                        <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[91%]" />
+                    </div>
+                </div>
+
+                {/* Simulated User Message Skeleton */}
+                <div className="flex justify-end">
+                    <div className="bg-blue-600/10 border border-blue-200/60 rounded-2xl rounded-tr-sm p-4 w-72 space-y-2">
+                        <div className="h-3.5 bg-blue-300/40 rounded-md w-[85%]" />
+                        <div className="h-3.5 bg-blue-300/40 rounded-md w-[60%]" />
+                    </div>
+                </div>
+
+                {/* Simulated Second Assistant Skeleton Card */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-3">
+                    <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[92%]" />
+                    <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[82%]" />
+                    <div className="h-3.5 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-md w-[65%]" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ==========================================
 // MAIN COMPONENT
 // ==========================================
@@ -1719,7 +1776,10 @@ export default function Demo() {
     // 🚀 MAP DATA EXACTLY AS IT COMES FROM API
     const handleLoadChat = async (id) => {
         if (id === chatId) return;
-        setLoading(true); setSidebarOpen(false); setTemporaryChat(false);
+        setLoading(true); 
+        setMessages([]); // Clear messages so ChatSkeletonLoader displays immediately
+        setSidebarOpen(false); 
+        setTemporaryChat(false);
         try {
             const res = await fetch(`/api/chats/${id}`);
             const data = await res.json();
@@ -2114,7 +2174,9 @@ export default function Demo() {
                                 </div>
                             )}
 
-                            {messages.length === 0 ? (
+                            {loading && messages.length === 0 ? (
+                                <ChatSkeletonLoader />
+                            ) : messages.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center min-h-[50vh] mt-8">
                                     {temporaryChat ? (
                                         <>
@@ -2183,7 +2245,7 @@ export default function Demo() {
                                             </div>
                                         </div>
                                     ))}
-                                    {loading && <div className="flex gap-4"><div className="w-8 h-8 rounded-sm bg-green-100 flex items-center justify-center shrink-0"><Loader2 className="w-4 h-4 text-green-600 animate-spin" /></div><span className="text-gray-600 animate-pulse mt-1">Analyzing Document...</span></div>}
+                                    {loading && <div className="flex gap-4"><div className="w-8 h-8 rounded-sm bg-green-100 flex items-center justify-center shrink-0"><Loader2 className="w-4 h-4 text-green-600 animate-spin" /></div><span className="text-gray-600 animate-pulse mt-1">Aura is Thinking...</span></div>}
                                     <div ref={messagesEndRef} />
                                 </div>
                             )}

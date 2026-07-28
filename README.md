@@ -94,6 +94,14 @@ Legal Advisor is an **AI-powered legal decision-support and educational platform
 - **WHAT it does:** Streams consultation events, risk scores, latency metrics, and document metadata into Google Cloud BigQuery (`legal_risk_radar.audit_logs`).
 - **WHY it matters:** Enables operational auditing, analytics data warehousing, and system performance monitoring.
 
+### 14. Native Multilingual Conversation Engine (CPE) & Language Hysteresis
+- **WHAT it does:** An adaptive conversational language engine powered by an Exponentially Weighted Moving Average (EWMA), sub-millisecond Fast Pre-Classifier (`< 1ms`), composite 4-factor decision matrix, and language hysteresis. Dynamically infers and locks user language preferences (Hinglish, Devanagari Hindi, Marathi, Gujarati, Tamil, Telugu, Bengali) without dropping back to standard English when technical legal terms (like *"indemnity clause"* or *"force majeure"*) appear.
+- **WHY it matters:** Delivers a continuous, natural multilingual experience across Indian regional languages and scripts, operating just like frontier conversational assistants (ChatGPT, Gemini, Claude).
+
+### 15. Theme-Matched Skeleton Loading UI
+- **WHAT it does:** A Claude/Gemini-inspired shimmering skeleton loading animation with animated AI logo badges and glowing status indicators.
+- **WHY it matters:** Provides immediate visual feedback when users click or switch chats from the sidebar, eliminating blank load states.
+
 ---
 
 ## 🎙️ Aura AI / AI Legal Consultant
@@ -165,8 +173,8 @@ Legal Advisor integrates Google Cloud services and Google AI models to power its
 ### Core System Workflow
 1. **Frontend & Ingestion Layer:** Built with Next.js 15 (App Router) and React 19. Accepts document uploads (PDF, DOCX, images), user chat queries, and selection payloads from the Chrome Extension.
 2. **Document Processing & OCR:** Extracts document text natively via `pdf2json` and `mammoth`, using Google Cloud Vision OCR (`DOCUMENT_TEXT_DETECTION`) with local Tesseract.js fallback for scanned files. Extracted text is cached using SHA-256 content hashes.
-3. **Multi-Agent Gemini AI Engine:** Routes text through `gemini-3.1-flash-lite` for structured risk audits and clause extraction, while establishing WebSocket live streaming sessions via `models/gemini-3.1-flash-live-preview` for real-time voice consultations. Supported by multi-key rotation and exponential backoff retry algorithms.
-4. **Data Store & Telemetry:** Persists user sessions and state logs in Firebase Firestore, while streaming audit analytics and risk metrics into Google Cloud BigQuery (`legal_risk_radar.audit_logs`).
+3. **Multi-Agent Gemini AI Engine & Conversation Profile Engine (CPE):** Routes text through `gemini-3.1-flash-lite` for structured risk audits and clause extraction, while establishing WebSocket live streaming sessions via `models/gemini-3.1-flash-live-preview` for real-time voice consultations. Supported by an in-line Conversation Profile Engine (CPE) for sub-millisecond language classification, EWMA profile tracking, and multi-key rotation fallback algorithms.
+4. **Data Store & Telemetry:** Persists active conversation profiles (`/chats/{chatId}`), message transcripts, and user session states in Firebase Firestore, while streaming audit analytics and risk metrics into Google Cloud BigQuery (`legal_risk_radar.audit_logs`).
 5. **Outputs:** Delivers interactive risk dashboards, Aura AI live consultation stages, and exportable PDF decision briefs.
 
 ---
