@@ -121,3 +121,8 @@ export async function generateChatTitle(userMessage, documentContext = "") {
     return userMessage.substring(0, 25) + "...";
   }
 }
+
+// --------------------
+// Multilingual Engine Export
+// --------------------
+export { handleMultilingualConversation } from "./conversationEngine.js";
