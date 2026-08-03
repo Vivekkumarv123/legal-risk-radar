@@ -115,7 +115,7 @@ RULES:
             // Attempt 1: With Google Search Grounding
             try {
                 response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-3.1-flash-lite",
                     contents: prompt,
                     config: {
                         temperature: 0.85,
@@ -127,7 +127,7 @@ RULES:
                 usedGrounding = false;
                 // Attempt 2: Fallback without search grounding
                 response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-3.1-flash-lite",
                     contents: prompt,
                     config: {
                         temperature: 0.85
@@ -207,7 +207,7 @@ RULES:
 
             try {
                 response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-3.1-flash-lite",
                     contents: prompt,
                     config: {
                         temperature: 0.8,
@@ -218,7 +218,7 @@ RULES:
                 console.warn('⚠️ Search Grounding failed for weekly newsletter, falling back:', err.message);
                 usedGrounding = false;
                 response = await ai.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-3.1-flash-lite",
                     contents: prompt,
                     config: {
                         temperature: 0.8
@@ -287,7 +287,7 @@ Include:
 Make it informative and relevant to legal professionals and interested individuals.`;
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3.1-flash-lite",
                 contents: prompt,
             });
             const content = response.text;

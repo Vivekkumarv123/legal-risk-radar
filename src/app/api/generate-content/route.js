@@ -10,6 +10,7 @@ import { FastPreClassifier } from "@/services/cpe/fastClassifier.js";
 import { LanguageEngine } from "@/services/cpe/languageEngine.js";
 import { FirestoreStore } from "@/services/memory/firestoreStore.js";
 import { buildGeminiSystemInstruction } from "@/services/llm/promptBuilder.js";
+import { MainAgentOrchestrator } from "@/lib/agents/multiAgentOrchestrator";
 
 // CONFIGURATION
 const GUEST_DAILY_LIMIT = 3;
@@ -30,6 +31,15 @@ function sanitizeForFirestore(value) {
   return value;
 }
 
+function mapToRiskEnum(val, defaultVal = "MEDIUM") {
+  if (!val) return defaultVal;
+  const str = String(val).toUpperCase().trim();
+  if (["HIGH", "CRITICAL", "URGENT", "SEVERE"].includes(str)) return "HIGH";
+  if (["LOW", "BENEFICIAL", "NONE", "MINIMAL"].includes(str)) return "LOW";
+  if (["MEDIUM", "MODERATE"].includes(str)) return "MEDIUM";
+  return defaultVal;
+}
+
 function normalizeDecisionAnalysis(rawPayload) {
   const payload = typeof rawPayload === "string" ? { executiveSummary: rawPayload } : (rawPayload || {});
   const decisionSummary = payload.decisionSummary || payload.decision_summary || {};
@@ -41,7 +51,7 @@ function normalizeDecisionAnalysis(rawPayload) {
     decisionSummary: {
       finalDecision: decisionSummary.finalDecision || decisionSummary.final_decision || "Review Before Signing",
       decisionScore: Number(decisionSummary.decisionScore ?? decisionSummary.decision_score ?? 0),
-      overallRisk: String(decisionSummary.overallRisk || decisionSummary.overall_risk || "MEDIUM").toUpperCase(),
+      overallRisk: mapToRiskEnum(decisionSummary.overallRisk || decisionSummary.overall_risk, "MEDIUM"),
       confidence: Number(decisionSummary.confidence ?? 0),
       estimatedFinancialRisk: decisionSummary.estimatedFinancialRisk || decisionSummary.estimated_financial_risk,
       lawyerReviewRecommended: Boolean(decisionSummary.lawyerReviewRecommended ?? decisionSummary.lawyer_review_recommended ?? false),
@@ -55,7 +65,7 @@ function normalizeDecisionAnalysis(rawPayload) {
         return { priority: "MEDIUM", title: item, description: item };
       }
       return {
-        priority: item.priority || "MEDIUM",
+        priority: mapToRiskEnum(item.priority, "MEDIUM"),
         title: item.title || item.summary || "Recommendation",
         description: item.description || item.detail || "",
       };
@@ -70,7 +80,7 @@ function normalizeDecisionAnalysis(rawPayload) {
     followUpQuestions: Array.isArray(payload.followUpQuestions) ? payload.followUpQuestions : Array.isArray(payload.follow_up_questions) ? payload.follow_up_questions : [],
     clauses: clauses.map((clause) => ({
       clause: clause.clause || clause.clause_snippet || clause.clauseName || "Clause text missing",
-      riskLevel: String(clause.riskLevel || clause.risk_level || "LOW").toUpperCase(),
+      riskLevel: mapToRiskEnum(clause.riskLevel || clause.risk_level, "LOW"),
       severity: Number(clause.severity ?? 1),
       explanation: clause.explanation || clause.summary || "No explanation provided.",
       businessImpact: clause.businessImpact || clause.business_impact || "No business impact provided.",
@@ -409,35 +419,26 @@ Remember to mirror the user's active conversational language style naturally. Do
     }
 
     // ============================================================
-    // STEP 5: CALL GEMINI API
+    // STEP 5: MULTI-AGENT ORCHESTRATION & ANALYSIS
     // ============================================================
     const startTime = Date.now();
-    const rawResult = await callGemini(prompt);
-    const latencyMs = Date.now() - startTime;
     let parsedResult;
+    let telemetryData = null;
 
     if (isStandardAnalysis) {
-      try {
-        const cleanedJson = rawResult.replace(/```json|```/g, '').trim();
-        let parsedJson;
-        try {
-          parsedJson = JSON.parse(cleanedJson);
-        } catch (e) {
-          console.warn('⚠️ JSON parse failed');
-          parsedJson = { executiveSummary: cleanedJson };
-        }
-        parsedResult = normalizeDecisionAnalysis(parsedJson);
-      } catch (e) {
-        console.error("❌ Analysis validation error", e);
-        parsedResult = normalizeDecisionAnalysis({ executiveSummary: rawResult });
-      }
+      // Execute 4-Stage Multi-Agent Analysis Pipeline (ClauseExtractor -> RiskAnalyzer -> OmissionGuard -> Validation -> Synthesis)
+      const agentResult = await MainAgentOrchestrator.runAnalysis(sanitizedDoc, userQuery, { docType });
+      parsedResult = normalizeDecisionAnalysis(agentResult.data);
+      telemetryData = agentResult._telemetry;
     } else {
       // Return Text for Chat Bubble
+      const rawResult = await callGemini(prompt);
       parsedResult = {
         response: rawResult,
         clauses: [] // Empty clauses = Frontend shows text bubble
       };
     }
+    const latencyMs = Date.now() - startTime;
 
     // Stream audit logging event to BigQuery asynchronously (non-blocking)
     const riskScore = typeof parsedResult?.decisionSummary?.decisionScore === 'number' ? parsedResult.decisionSummary.decisionScore : 0;
@@ -547,13 +548,23 @@ Remember to mirror the user's active conversational language style naturally. Do
       success: true,
       data: parsedResult,
       chatId: currentChatId,
+      _telemetry: telemetryData,
       remainingTries: isGuest ? Math.max(0, GUEST_DAILY_LIMIT - (currentCount + 1)) : "Unlimited"
     };
 
     return NextResponse.json(responseData);
 
   } catch (err) {
-    console.error("❌ Error:", err.message);
+    console.error("❌ Error:", err.message || err);
+
+    if (err.isControlledFailure) {
+      return NextResponse.json({
+        error: `Agent Execution Error: ${err.error}`,
+        agentName: err.agentName,
+        task: err.task,
+        _telemetry: err._telemetry
+      }, { status: 502 });
+    }
 
     // Provide user-friendly error messages based on error type
     if (err.message.includes('503') || err.message.includes('overloaded')) {

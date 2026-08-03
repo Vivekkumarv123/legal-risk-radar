@@ -27,7 +27,7 @@ export async function GET() {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY_1 });
       const result = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite",
         contents: "Say 'API working'",
       });
       const response = result.text;

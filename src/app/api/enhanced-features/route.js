@@ -76,7 +76,7 @@ async function handleVoiceAnalysis(data, userId) {
     `;
 
     const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
     });
     const text = result.text;
@@ -137,7 +137,7 @@ async function handleGlossaryLookup(data, userId) {
     `;
 
     const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
     });
     const text = result.text;
@@ -223,7 +223,7 @@ async function handlePDFDataGeneration(data, userId) {
     `;
 
     const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
     });
     const text = result.text;
@@ -295,7 +295,7 @@ async function handleMultiLanguageResponse(data, userId) {
     `;
 
     const result = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
     });
     const translatedText = result.text;

@@ -8,6 +8,7 @@ import {
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ShareChatModal from "@/components/chat-sharing/ShareChatModal";
+import AITracingPanel from "@/components/ui/AITracingPanel";
 // ============================================
 // UTILITY: Guest ID Generator
 // ============================================
@@ -757,7 +758,7 @@ export default function Try() {
 
             if (hasClauses) {
                 const normalized = normalizeAnalysis(aiData.data);
-                setMessages(prev => [...prev, { role: "assistant", analysis: normalized }]);
+                setMessages(prev => [...prev, { role: "assistant", analysis: normalized, telemetry: aiData._telemetry }]);
             } else {
                 const responseText =
                     aiData.data?.executiveSummary ||
@@ -886,6 +887,7 @@ export default function Try() {
                                             </div>
                                             <div className="flex-1">
                                                 <ResultCard analysis={msg.analysis} scrollToClause={scrollToClause} />
+                                                <AITracingPanel telemetry={msg.telemetry} />
                                             </div>
                                         </div>
                                     ) : (

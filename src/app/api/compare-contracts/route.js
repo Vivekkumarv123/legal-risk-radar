@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { executeWithKeyRotation } from '@/lib/geminiKeyRotation';
+import { executeWithKeyRotation } from '@/lib/geminiKeyRotation.js';
 import pdf2json from 'pdf2json';
 import { verifyToken } from '@/middleware/auth.middleware';
 import { checkUsageLimit, trackUsage } from '@/middleware/usage.middleware';
-import { getCachedDocumentText, setCachedDocumentText } from '@/lib/documentCache';
+import { getCachedDocumentText, setCachedDocumentText } from '@/lib/documentCache.js';
 
 // Safely decode text from pdf2json which sometimes returns malformed percent-escapes
 function safeDecode(raw) {
@@ -286,7 +286,7 @@ Rules:
 
     const result = await executeWithKeyRotation(async (ai) => {
       return ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
         config: {
           temperature: 0.3,

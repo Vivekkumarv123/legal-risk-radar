@@ -4,6 +4,7 @@ import { callGemini } from "@/lib/gemini";
 import { verifyToken } from '@/middleware/auth.middleware';
 import { checkUsageLimit, trackUsage } from '@/middleware/usage.middleware';
 import { getCachedDocumentText, setCachedDocumentText } from "@/lib/documentCache";
+import { MainAgentOrchestrator } from "@/lib/agents/multiAgentOrchestrator";
 
 const MAX_FILE_SIZE_MB = 10;
 
@@ -381,81 +382,22 @@ async function handleFileAnalysis(req) {
   });
 }
 
-// Shared Gemini analysis function
+// Shared Gemini multi-agent analysis function
 async function analyzeTextWithGemini(text, extractionType, ocrConfidence = null) {
-  const sanitizedDoc = text.replace(/"""/g, "'''");
-
-  const prompt = `
-You are a Legal Risk Explanation AI designed for NON-LAWYERS.
-
-IMPORTANT CONTEXT ABOUT INPUT QUALITY:
-- Extraction Type: ${extractionType}
-- OCR Confidence: ${ocrConfidence ?? "N/A"}
-If confidence is low, mention that some text may be unclear.
-
-ASSUME:
-- The user is a normal person (student, freelancer, startup founder)
-- They have NO legal background
-- They want to understand risks, not legal theory
-
-CONTEXT:
-- Client Role: Determine from context
-- Document Type: General Contract
-- Jurisdiction: General commercial understanding
-
-WHAT YOU MUST DO:
-1. Analyze the document ONLY from the client's point of view.
-2. Highlight clauses that can cause:
-   - Money loss
-   - Legal trouble
-   - Unfair control by the other party
-3. Identify important protections that are MISSING.
-4. Explain EVERYTHING in simple language.
-
-LANGUAGE RULES:
-- Avoid legal jargon.
-- Explain legal words in brackets.
-- Short sentences.
-- Friendly tone.
-
-DOCUMENT:
-"""
-${sanitizedDoc}
-"""
-
-OUTPUT FORMAT (STRICT JSON ONLY):
-{
-  "language": "detected language code (e.g. en, hi)",
-  "client_perspective": "Who this contract affects most",
-  "overall_risk_score": "1-10",
-  "summary": "Simple explanation of risk",
-  "missing_clauses": [
-    "Clause name (simple explanation)"
-  ],
-  "clauses": [
-    {
-      "id": "1",
-      "clause_snippet": "Exact risky sentence",
-      "risk_level": "CRITICAL | HIGH | MEDIUM | LOW | BENEFICIAL",
-      "explanation": "Simple explanation",
-      "recommendation": "What to ask or change"
-    }
-  ]
-}
-
-SAFETY RULES:
-- Do NOT give legal advice.
-- Output RAW JSON only.
-`;
-
-  const rawResult = await callGemini(prompt);
-
-  const cleanedJson = rawResult
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
-
-  return JSON.parse(cleanedJson);
+  const result = await MainAgentOrchestrator.runAnalysis(text, '', {
+    extractionType,
+    ocrConfidence
+  });
+  const data = result.data || {};
+  // Standardize both multi-agent fields and Chrome Extension legacy fields (overall_risk_score, summary)
+  const rawScore = data.decisionSummary?.decisionScore ?? data.overall_risk_score ?? 50;
+  const normalizedScore = Math.round(Number(rawScore) > 10 ? Number(rawScore) / 10 : Number(rawScore));
+  
+  return {
+    ...data,
+    overall_risk_score: String(normalizedScore),
+    summary: data.executiveSummary || data.summary || 'Document analysis completed.'
+  };
 }
 
 // ---------- pdf2json helper ----------

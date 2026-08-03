@@ -11,7 +11,7 @@ const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-fla
 // Try with fallback models if primary model fails
 // Self-Healing Multi-Agent Fallback Protocol
 // --------------------
-async function callWithFallback(primaryModel, prompt) {
+export async function callWithFallback(primaryModel, prompt) {
   const modelsToTry = [primaryModel, ...FALLBACK_MODELS];
 
   for (let i = 0; i < modelsToTry.length; i++) {
