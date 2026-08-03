@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { syncTranscript, syncTimelineEvent } from '@/lib/firebase';
-import { authenticatedFetch } from '@/utils/auth.utils';
 
 /**
  * Custom hook to manage the Gemini Live WebSocket connection and Audio playout.
@@ -27,6 +26,11 @@ export function useGeminiLive({ sessionId, accessToken, isMuted = false, onState
   const isMutedRef = useRef(isMuted);
   useEffect(() => {
     isMutedRef.current = isMuted;
+    if (micStreamRef.current) {
+      micStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted;
+      });
+    }
   }, [isMuted]);
 
   // Store options in ref to avoid re-triggering effect hooks
@@ -69,7 +73,7 @@ export function useGeminiLive({ sessionId, accessToken, isMuted = false, onState
       console.log('[WSS Live] connect() called, requesting ephemeral token for session', configRef.current.sessionId);
       
       // 1. Fetch short-lived token and context from the Next.js API
-      const tokenRes = await authenticatedFetch('/api/auth/live-token', {
+      const tokenRes = await fetch('/api/auth/live-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: configRef.current.sessionId })
@@ -259,7 +263,7 @@ export function useGeminiLive({ sessionId, accessToken, isMuted = false, onState
       // Shared audio processor function to downsample and stream to WebSocket
       const processAudioBuffer = (inputData) => {
         if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
-        // Skip audio streaming and volume checks when user microphone is muted
+        // Skip audio processing when microphone is muted
         if (isMutedRef.current) return;
 
         // Downsample from native rate to 16kHz
