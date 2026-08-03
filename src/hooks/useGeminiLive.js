@@ -6,7 +6,7 @@ import { authenticatedFetch } from '@/utils/auth.utils';
  * Custom hook to manage the Gemini Live WebSocket connection and Audio playout.
  * Directly connects browser client to Google Gemini Live API using an ephemeral token.
  */
-export function useGeminiLive({ sessionId, accessToken, onStateChange }) {
+export function useGeminiLive({ sessionId, accessToken, isMuted = false, onStateChange }) {
   const [roomState, setRoomState] = useState('idle'); // idle | listening | thinking | speaking
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
@@ -23,6 +23,11 @@ export function useGeminiLive({ sessionId, accessToken, onStateChange }) {
   const audioWorkletNodeRef = useRef(null);
   const activeSourcesRef = useRef([]);
   const nextStartTimeRef = useRef(0);
+
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
   // Store options in ref to avoid re-triggering effect hooks
   const configRef = useRef({ sessionId, accessToken });
@@ -254,6 +259,8 @@ export function useGeminiLive({ sessionId, accessToken, onStateChange }) {
       // Shared audio processor function to downsample and stream to WebSocket
       const processAudioBuffer = (inputData) => {
         if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
+        // Skip audio streaming and volume checks when user microphone is muted
+        if (isMutedRef.current) return;
 
         // Downsample from native rate to 16kHz
         const downsampled = downsampleBuffer(inputData, audioCtx.sampleRate, 16000);

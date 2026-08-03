@@ -98,6 +98,7 @@ export default function LegalConsultationRoom({ params }) {
   } = useGeminiLive({
     sessionId: resolvedId,
     accessToken: accessToken,
+    isMuted: isMuted,
     onStateChange: (state) => {
       // Synchronize states
     }
