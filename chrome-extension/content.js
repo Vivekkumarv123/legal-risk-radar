@@ -402,7 +402,12 @@ class LegalRiskRadarExtension {
         
         // Extract analysis data
         const analysisData = analysis.analysis || {};
-        const riskScore = analysisData.overall_risk_score || 'N/A';
+        const rawScore = analysisData.overall_risk_score;
+        const overallRisk = analysisData.decisionSummary?.overallRisk || analysisData.overallRisk;
+        
+        const riskLevelLabel = overallRisk ? (overallRisk.charAt(0).toUpperCase() + overallRisk.slice(1).toLowerCase()) : this.getRiskLevel(rawScore || '5');
+        const riskClass = this.getRiskClass(overallRisk || rawScore || '5');
+        const displayScore = rawScore || (riskLevelLabel.toLowerCase() === 'high' ? '8' : riskLevelLabel.toLowerCase() === 'medium' ? '5' : '2');
         const summary = analysisData.summary || 'Analysis completed';
         const clauses = analysisData.clauses || [];
         const missingProtections = analysisData.missing_protections || analysisData.missing_clauses || [];
@@ -418,11 +423,11 @@ class LegalRiskRadarExtension {
                 </div>
                 <div class="lrr-popup-body">
                     <div class="lrr-risk-score">
-                        <div class="lrr-score-circle ${this.getRiskClass(riskScore)}">
-                            <span class="lrr-score-number">${riskScore}</span>
+                        <div class="lrr-score-circle ${riskClass}">
+                            <span class="lrr-score-number">${displayScore}</span>
                             <span class="lrr-score-label">/10</span>
                         </div>
-                        <div class="lrr-risk-level">${this.getRiskLevel(riskScore)} Risk</div>
+                        <div class="lrr-risk-level">${riskLevelLabel} Risk</div>
                     </div>
                     
                     <div class="lrr-summary">
@@ -811,7 +816,7 @@ class LegalRiskRadarExtension {
     }
 
     getRiskClass(riskLevel) {
-        if (typeof riskLevel === 'string') {
+        if (typeof riskLevel === 'string' && isNaN(Number(riskLevel))) {
             const level = riskLevel.toLowerCase();
             if (level.includes('high') || level.includes('critical')) return 'high-risk';
             if (level.includes('medium') || level.includes('moderate')) return 'medium-risk';
@@ -819,15 +824,28 @@ class LegalRiskRadarExtension {
         }
         
         const score = parseInt(riskLevel);
-        if (score >= 7) return 'high-risk';
-        if (score >= 4) return 'medium-risk';
+        if (!isNaN(score)) {
+            if (score >= 7) return 'high-risk';
+            if (score >= 4) return 'medium-risk';
+            return 'low-risk';
+        }
         return 'low-risk';
     }
 
     getRiskLevel(riskScore) {
+        if (typeof riskScore === 'string' && isNaN(Number(riskScore))) {
+            const level = riskScore.toLowerCase();
+            if (level.includes('high') || level.includes('critical')) return 'High';
+            if (level.includes('medium') || level.includes('moderate')) return 'Medium';
+            return 'Low';
+        }
+
         const score = parseInt(riskScore);
-        if (score >= 7) return 'High';
-        if (score >= 4) return 'Medium';
+        if (!isNaN(score)) {
+            if (score >= 7) return 'High';
+            if (score >= 4) return 'Medium';
+            return 'Low';
+        }
         return 'Low';
     }
 

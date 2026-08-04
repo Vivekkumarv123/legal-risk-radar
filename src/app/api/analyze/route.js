@@ -389,13 +389,38 @@ async function analyzeTextWithGemini(text, extractionType, ocrConfidence = null)
     ocrConfidence
   });
   const data = result.data || {};
-  // Standardize both multi-agent fields and Chrome Extension legacy fields (overall_risk_score, summary)
-  const rawScore = data.decisionSummary?.decisionScore ?? data.overall_risk_score ?? 50;
-  const normalizedScore = Math.round(Number(rawScore) > 10 ? Number(rawScore) / 10 : Number(rawScore));
   
+  // Calculate standardized 0-10 Risk Score (10 = Maximum Risk, 1 = Minimal Risk)
+  let riskScore;
+  const overallRisk = (data.decisionSummary?.overallRisk || data.overallRisk || '').toUpperCase();
+  const decisionScore = data.decisionSummary?.decisionScore;
+
+  if (typeof decisionScore === 'number') {
+    // decisionScore is a Safety/Decision Score (0-100, 100 = safe, 0 = do not sign/severe risk).
+    // Invert Safety Score (0-100) to Risk Score (0-10)
+    const safetyTen = Math.round(decisionScore > 10 ? decisionScore / 10 : decisionScore);
+    riskScore = 10 - safetyTen;
+  } else if (data.overall_risk_score !== undefined) {
+    const raw = Number(data.overall_risk_score);
+    riskScore = raw > 10 ? Math.round(raw / 10) : raw;
+  } else {
+    riskScore = overallRisk === 'HIGH' ? 8 : overallRisk === 'LOW' ? 2 : 5;
+  }
+
+  // Enforce strict alignment between overallRisk label and numeric riskScore
+  if (overallRisk === 'HIGH' && riskScore < 7) {
+    riskScore = 8;
+  } else if (overallRisk === 'LOW' && riskScore > 3) {
+    riskScore = 2;
+  } else if (overallRisk === 'MEDIUM' && (riskScore < 4 || riskScore > 6)) {
+    riskScore = 5;
+  }
+
+  riskScore = Math.min(10, Math.max(1, Math.round(riskScore)));
+
   return {
     ...data,
-    overall_risk_score: String(normalizedScore),
+    overall_risk_score: String(riskScore),
     summary: data.executiveSummary || data.summary || 'Document analysis completed.'
   };
 }
